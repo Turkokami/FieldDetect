@@ -4,8 +4,9 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Phone, MapPin, Dog, User, AlertTriangle, CheckCircle2,
-  Camera, Plus, X, ChevronRight, Clock, Trash2, ArrowRight, PenLine,
+  Camera, Plus, X, ChevronRight, Clock, Trash2, ArrowRight, PenLine, ArrowLeft, Building2,
 } from "lucide-react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { useUploadThing } from "@/lib/uploadthing-client";
 
@@ -718,6 +719,21 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
     if (data.data) setInspection(data.data);
   }, [inspection?.id]);
 
+  const refreshProperty = useCallback(async () => {
+    const res = await fetch(`/api/properties/${apt.property.id}`);
+    const data = await res.json();
+    if (data.data) {
+      setApt((prev) => ({
+        ...prev,
+        property: {
+          ...prev.property,
+          buildings: data.data.buildings,
+          units: data.data.units,
+        },
+      }));
+    }
+  }, [apt.property.id]);
+
   const checkIn = async () => {
     setCheckingIn(true);
     try {
@@ -783,14 +799,17 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
       <div className="min-h-screen bg-background pb-6">
         {/* ── Sticky header ── */}
         <div className="sticky top-0 z-20 bg-card border-b border-border px-4 py-3">
-          <div className="flex items-center justify-between max-w-lg mx-auto">
-            <div>
-              <div className="font-bold text-foreground text-sm leading-tight">{apt.property.name}</div>
-              <div className="text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 max-w-lg mx-auto">
+            <Link href="/field" className="shrink-0 p-1 -ml-1 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-foreground text-sm leading-tight truncate">{apt.property.name}</div>
+              <div className="text-xs text-muted-foreground truncate">
                 {apt.property.addressLine1}, {apt.property.city}
               </div>
             </div>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+            <span className={`shrink-0 text-xs px-2.5 py-1 rounded-full font-semibold ${
               isComplete ? "bg-green-100 text-green-700" :
               isCheckedIn ? "bg-purple-100 text-purple-700" :
               "bg-blue-100 text-blue-700"
@@ -968,24 +987,56 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
                       />
                     ))}
                   </div>
+                  {!isComplete && (
+                    <div className="mt-3">
+                      <AddUnitToProperty
+                        propertyId={apt.property.id}
+                        buildingId={building.id}
+                        onAdded={async (unitNumber) => {
+                          await refreshProperty();
+                          setEditingUnit(unitNumber);
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
 
               {/* Standalone units (no building) */}
-              {apt.property.units.length > 0 && (
+              {(apt.property.units.length > 0 || apt.property.buildings.length === 0) && (
                 <div className="bg-card border border-border rounded-xl p-4">
                   <div className="text-sm font-semibold text-foreground mb-3">Units</div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[...apt.property.units].sort((a, b) => naturalSort(a.unitNumber, b.unitNumber)).map((unit) => (
-                      <UnitTile
-                        key={unit.id}
-                        unit={unit}
-                        inspUnits={inspMap.get(unit.unitNumber) ?? []}
-                        onSelect={() => !isComplete && setEditingUnit(unit.unitNumber)}
-                      />
-                    ))}
-                  </div>
+                  {apt.property.units.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {[...apt.property.units].sort((a, b) => naturalSort(a.unitNumber, b.unitNumber)).map((unit) => (
+                        <UnitTile
+                          key={unit.id}
+                          unit={unit}
+                          inspUnits={inspMap.get(unit.unitNumber) ?? []}
+                          onSelect={() => !isComplete && setEditingUnit(unit.unitNumber)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!isComplete && (
+                    <AddUnitToProperty
+                      propertyId={apt.property.id}
+                      buildingId={null}
+                      onAdded={async (unitNumber) => {
+                        await refreshProperty();
+                        setEditingUnit(unitNumber);
+                      }}
+                    />
+                  )}
                 </div>
+              )}
+
+              {/* Add Building button */}
+              {!isComplete && (
+                <AddBuildingToProperty
+                  propertyId={apt.property.id}
+                  onAdded={refreshProperty}
+                />
               )}
 
               {/* Extra entry points */}
@@ -1092,6 +1143,147 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
         />
       )}
     </>
+  );
+}
+
+// ─── AddUnitToProperty ───────────────────────────────────────────────────────
+
+function AddUnitToProperty({
+  propertyId,
+  buildingId,
+  onAdded,
+}: {
+  propertyId: string;
+  buildingId: string | null;
+  onAdded: (unitNumber: string) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [unitNumber, setUnitNumber] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const add = async () => {
+    const num = unitNumber.trim();
+    if (!num) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/properties/${propertyId}/units`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unitNumber: num, buildingId: buildingId ?? undefined }),
+      });
+      if (res.ok) {
+        setUnitNumber("");
+        setOpen(false);
+        await onAdded(num);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full py-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add Unit
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <input
+        value={unitNumber}
+        onChange={(e) => setUnitNumber(e.target.value)}
+        placeholder="Unit # (e.g. 101)"
+        className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+        onKeyDown={(e) => e.key === "Enter" && add()}
+        autoFocus
+      />
+      <button onClick={add} disabled={!unitNumber.trim() || saving}
+        className="px-3 h-8 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+        style={{ background: "#0ABAB5" }}>
+        {saving ? "…" : "Add"}
+      </button>
+      <button onClick={() => { setOpen(false); setUnitNumber(""); }}
+        className="px-2 h-8 rounded-lg text-xs border border-border text-muted-foreground">
+        ✕
+      </button>
+    </div>
+  );
+}
+
+// ─── AddBuildingToProperty ────────────────────────────────────────────────────
+
+function AddBuildingToProperty({
+  propertyId,
+  onAdded,
+}: {
+  propertyId: string;
+  onAdded: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const add = async () => {
+    const n = name.trim();
+    if (!n) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/properties/${propertyId}/buildings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: n }),
+      });
+      if (res.ok) {
+        setName("");
+        setOpen(false);
+        await onAdded();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full py-2.5 rounded-xl border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors flex items-center justify-center gap-2"
+      >
+        <Building2 className="h-4 w-4" />
+        Add Building
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+      <p className="text-sm font-semibold text-foreground">Add Building</p>
+      <div className="flex gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Building name (e.g. Building A, North Wing)"
+          className="flex-1 h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          autoFocus
+        />
+        <button onClick={add} disabled={!name.trim() || saving}
+          className="px-4 h-9 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+          style={{ background: "#0ABAB5" }}>
+          {saving ? "…" : "Add"}
+        </button>
+        <button onClick={() => { setOpen(false); setName(""); }}
+          className="px-3 h-9 rounded-lg text-sm border border-border text-muted-foreground">
+          ✕
+        </button>
+      </div>
+    </div>
   );
 }
 

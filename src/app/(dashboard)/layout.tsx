@@ -13,6 +13,7 @@ export default async function DashboardLayout({
   if (!userId) redirect("/sign-in");
 
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+  if (user?.role === "TECHNICIAN") redirect("/field");
   if (user?.role === "CUSTOMER") redirect("/portal");
 
   return (

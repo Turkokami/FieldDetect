@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import FieldTechView from "@/components/field/field-tech-view";
 import type { TechAppointment } from "@/components/field/field-tech-view";
 
-export default async function FieldAppointmentPage({
+export default async function FieldJobPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -58,8 +58,6 @@ export default async function FieldAppointmentPage({
 
   if (!appointment) notFound();
 
-  // Serialize Dates → strings so the client component receives plain JSON
   const apt: TechAppointment = JSON.parse(JSON.stringify(appointment));
-
   return <FieldTechView appointment={apt} />;
 }
