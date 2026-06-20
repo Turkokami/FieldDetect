@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 
@@ -9,10 +10,10 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
 
-  if (!userId) {
-    redirect("/sign-in");
-  }
+  const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+  if (user?.role === "CUSTOMER") redirect("/portal");
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

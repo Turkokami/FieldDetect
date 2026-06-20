@@ -4,67 +4,59 @@
   --font-sans: var(--font-inter, system-ui, sans-serif);
 
   /* ── Brand palette ─────────────────────────────────────────── */
-  /* Tiffany Blue: #0ABAB5  |  Teal: #0D9488  |  Near-black: #0A0F1A */
-
   --color-background: #F4FFFE;
   --color-foreground: #0A0F1A;
   --color-card: #FFFFFF;
   --color-card-foreground: #0A0F1A;
   --color-popover: #FFFFFF;
   --color-popover-foreground: #0A0F1A;
-
   --color-primary: #0ABAB5;
   --color-primary-foreground: #FFFFFF;
-
   --color-secondary: #E8F7F6;
   --color-secondary-foreground: #0A4A47;
-
   --color-muted: #EBF8F7;
   --color-muted-foreground: #527D7A;
-
   --color-accent: #D0F0EE;
   --color-accent-foreground: #0A4A47;
-
   --color-destructive: #EF4444;
   --color-destructive-foreground: #FFFFFF;
-
   --color-border: #C8E8E6;
   --color-input: #C8E8E6;
   --color-ring: #0ABAB5;
-
   --radius: 0.625rem;
-
-  /* ── Teal scale (used directly in components) ───────────────── */
-  --color-teal-50:  #F0FDFA;
-  --color-teal-100: #CCFBF1;
-  --color-teal-200: #99F6E4;
-  --color-teal-500: #14B8A6;
-  --color-teal-600: #0D9488;
-  --color-teal-700: #0F766E;
-  --color-teal-900: #134E4A;
-
-  /* Tiffany Blue shades */
-  --color-tiffany-50:  #EDFFFE;
-  --color-tiffany-100: #C4FFFE;
-  --color-tiffany-200: #8BFFFE;
-  --color-tiffany-400: #0ABAB5;
-  --color-tiffany-500: #0ABAB5;
-  --color-tiffany-600: #089B97;
-  --color-tiffany-700: #067875;
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
+  * { border-color: var(--color-border); }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  ::selection {
-    background-color: #0ABAB540;
+  ::selection { background-color: #0ABAB540; }
+
+  /* ── Dark mode overrides ──────────────────────────────────── */
+  .dark {
+    --color-background: #080E14;
+    --color-foreground: #DFF0EE;
+    --color-card: #0D1822;
+    --color-card-foreground: #DFF0EE;
+    --color-popover: #0D1822;
+    --color-popover-foreground: #DFF0EE;
+    --color-primary: #0ABAB5;
+    --color-primary-foreground: #FFFFFF;
+    --color-secondary: #0F2028;
+    --color-secondary-foreground: #7ECECE;
+    --color-muted: #0F2028;
+    --color-muted-foreground: #5B9E9A;
+    --color-accent: #132A2A;
+    --color-accent-foreground: #7ECECE;
+    --color-destructive: #EF4444;
+    --color-destructive-foreground: #FFFFFF;
+    --color-border: #163332;
+    --color-input: #163332;
+    --color-ring: #0ABAB5;
   }
 }
 

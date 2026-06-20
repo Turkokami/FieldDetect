@@ -1,17 +1,22 @@
 "use client";
 
+import { useTheme } from "next-themes";
 import { UserButton } from "@clerk/nextjs";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, Sun, Moon } from "lucide-react";
+import { MobileNav } from "@/components/layout/mobile-nav";
 
 interface TopbarProps {
   title?: string;
 }
 
 export function Topbar({ title }: TopbarProps) {
+  const { theme, setTheme } = useTheme();
+
   return (
-    <header className="h-14 border-b border-border bg-card flex items-center px-5 gap-4 shrink-0 shadow-sm">
+    <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0 shadow-sm">
+      <MobileNav />
       {title && (
-        <h1 className="text-base font-semibold text-foreground mr-4">{title}</h1>
+        <h1 className="text-base font-semibold text-foreground hidden sm:block">{title}</h1>
       )}
       <div className="flex-1 max-w-sm">
         <div className="relative">
@@ -23,8 +28,16 @@ export function Topbar({ title }: TopbarProps) {
         </div>
       </div>
       <div className="flex items-center gap-2 ml-auto">
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label="Toggle theme"
+        >
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </button>
         <button className="relative h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <Bell className="h-4.5 w-4.5" />
+          <Bell className="h-4 w-4" />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-destructive rounded-full" />
         </button>
         <div className="w-px h-5 bg-border mx-1" />
