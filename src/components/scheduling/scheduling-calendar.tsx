@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { AppointmentSlidePanel } from "@/components/scheduling/appointment-slide-panel";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -102,6 +103,7 @@ export function SchedulingCalendar({
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedAptId, setSelectedAptId] = useState<string | null>(null);
   const rangeRef = useRef<{ start: Date; end: Date } | null>(null);
 
   const techColorMap: Record<string, string> = {};
@@ -230,11 +232,20 @@ export function SchedulingCalendar({
             eventTimeFormat={{ hour: "numeric", minute: "2-digit", meridiem: "short" }}
             eventClick={(info: EventClickArg) => {
               const apt = info.event.extendedProps.appointment as Appointment;
-              window.location.href = `/scheduling/${apt.id}`;
+              setSelectedAptId(apt.id);
             }}
           />
         </div>
       </div>
+
+      {/* Appointment slide panel */}
+      {selectedAptId && (
+        <AppointmentSlidePanel
+          appointmentId={selectedAptId}
+          onClose={() => setSelectedAptId(null)}
+          onStatusChange={() => rangeRef.current && fetchRange(rangeRef.current.start, rangeRef.current.end)}
+        />
+      )}
 
       {/* Reschedule confirmation dialog */}
       {pendingMove && (

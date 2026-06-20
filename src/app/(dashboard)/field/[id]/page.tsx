@@ -36,6 +36,13 @@ export default async function FieldAppointmentPage({
           },
         },
       },
+      technician: { select: { firstName: true, lastName: true } },
+      k9Team: {
+        include: {
+          dogs: { where: { isActive: true }, take: 1 },
+          members: { where: { isPrimary: true }, include: { user: { select: { firstName: true, lastName: true } } } },
+        },
+      },
       inspection: {
         include: {
           inspectionUnits: {
