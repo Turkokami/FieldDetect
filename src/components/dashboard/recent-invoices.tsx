@@ -27,42 +27,44 @@ interface Invoice {
 
 export function RecentInvoices({ invoices }: { invoices: Invoice[] }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <Receipt className="h-4 w-4 text-primary" />
+    <Card className="border-border shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 pt-4 px-5">
+        <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md" style={{ background: "rgba(10,186,181,0.12)" }}>
+            <Receipt className="h-3.5 w-3.5" style={{ color: "#0ABAB5" }} />
+          </span>
           Outstanding Invoices
         </CardTitle>
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-2" asChild>
           <Link href="/invoices">
-            View all <ChevronRight className="h-3 w-3" />
+            View all <ChevronRight className="h-3 w-3 ml-0.5" />
           </Link>
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="px-5 pb-4 space-y-2">
         {invoices.length === 0 && (
-          <p className="text-sm text-slate-500 text-center py-4">No outstanding invoices</p>
+          <p className="text-sm text-muted-foreground text-center py-6">No outstanding invoices</p>
         )}
         {invoices.map((inv) => (
           <Link
             key={inv.id}
             href={`/invoices/${inv.id}`}
-            className="flex items-center justify-between rounded-lg border p-3 hover:bg-slate-50 transition-colors"
+            className="flex items-center justify-between rounded-lg border border-border p-3 hover:border-primary/40 hover:bg-muted/40 transition-all duration-150"
           >
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground truncate">
                 {inv.customer.companyName ?? `${inv.customer.firstName} ${inv.customer.lastName}`}
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {inv.invoiceNumber} · {formatDate(inv.createdAt)}
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+            <div className="flex items-center gap-2.5 shrink-0 ml-3">
               <div className="text-right">
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-foreground">
                   {formatCurrency(inv.balanceDue)}
                 </p>
-                <p className="text-xs text-slate-400">due</p>
+                <p className="text-xs text-muted-foreground">due</p>
               </div>
               <Badge variant={statusVariant[inv.status] ?? "secondary"}>
                 {inv.status.replace("_", " ")}

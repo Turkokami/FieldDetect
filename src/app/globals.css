@@ -3,26 +3,54 @@
 @theme inline {
   --font-sans: var(--font-inter, system-ui, sans-serif);
 
-  --color-background: #ffffff;
-  --color-foreground: #0f172a;
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0f172a;
-  --color-primary: #3b82f6;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #1e293b;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-accent: #f1f5f9;
-  --color-accent-foreground: #1e293b;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #3b82f6;
-  --radius: 0.5rem;
+  /* ── Brand palette ─────────────────────────────────────────── */
+  /* Tiffany Blue: #0ABAB5  |  Teal: #0D9488  |  Near-black: #0A0F1A */
+
+  --color-background: #F4FFFE;
+  --color-foreground: #0A0F1A;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #0A0F1A;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #0A0F1A;
+
+  --color-primary: #0ABAB5;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-secondary: #E8F7F6;
+  --color-secondary-foreground: #0A4A47;
+
+  --color-muted: #EBF8F7;
+  --color-muted-foreground: #527D7A;
+
+  --color-accent: #D0F0EE;
+  --color-accent-foreground: #0A4A47;
+
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+
+  --color-border: #C8E8E6;
+  --color-input: #C8E8E6;
+  --color-ring: #0ABAB5;
+
+  --radius: 0.625rem;
+
+  /* ── Teal scale (used directly in components) ───────────────── */
+  --color-teal-50:  #F0FDFA;
+  --color-teal-100: #CCFBF1;
+  --color-teal-200: #99F6E4;
+  --color-teal-500: #14B8A6;
+  --color-teal-600: #0D9488;
+  --color-teal-700: #0F766E;
+  --color-teal-900: #134E4A;
+
+  /* Tiffany Blue shades */
+  --color-tiffany-50:  #EDFFFE;
+  --color-tiffany-100: #C4FFFE;
+  --color-tiffany-200: #8BFFFE;
+  --color-tiffany-400: #0ABAB5;
+  --color-tiffany-500: #0ABAB5;
+  --color-tiffany-600: #089B97;
+  --color-tiffany-700: #067875;
 }
 
 @layer base {
@@ -32,31 +60,36 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background-color: #0ABAB540;
   }
 }
 
-/* Tailwind v4 custom utilities for shadcn-style components */
-@utility bg-background { background-color: var(--color-background); }
-@utility bg-card { background-color: var(--color-card); }
-@utility bg-popover { background-color: var(--color-popover); }
-@utility bg-primary { background-color: var(--color-primary); }
-@utility bg-secondary { background-color: var(--color-secondary); }
-@utility bg-muted { background-color: var(--color-muted); }
-@utility bg-accent { background-color: var(--color-accent); }
-@utility bg-destructive { background-color: var(--color-destructive); }
+/* ── Theme utilities ─────────────────────────────────────────── */
+@utility bg-background      { background-color: var(--color-background); }
+@utility bg-card            { background-color: var(--color-card); }
+@utility bg-popover         { background-color: var(--color-popover); }
+@utility bg-primary         { background-color: var(--color-primary); }
+@utility bg-secondary       { background-color: var(--color-secondary); }
+@utility bg-muted           { background-color: var(--color-muted); }
+@utility bg-accent          { background-color: var(--color-accent); }
+@utility bg-destructive     { background-color: var(--color-destructive); }
 
-@utility text-foreground { color: var(--color-foreground); }
-@utility text-card-foreground { color: var(--color-card-foreground); }
-@utility text-popover-foreground { color: var(--color-popover-foreground); }
-@utility text-primary { color: var(--color-primary); }
-@utility text-primary-foreground { color: var(--color-primary-foreground); }
-@utility text-secondary-foreground { color: var(--color-secondary-foreground); }
-@utility text-muted-foreground { color: var(--color-muted-foreground); }
-@utility text-accent-foreground { color: var(--color-accent-foreground); }
-@utility text-destructive { color: var(--color-destructive); }
+@utility text-foreground            { color: var(--color-foreground); }
+@utility text-card-foreground       { color: var(--color-card-foreground); }
+@utility text-popover-foreground    { color: var(--color-popover-foreground); }
+@utility text-primary               { color: var(--color-primary); }
+@utility text-primary-foreground    { color: var(--color-primary-foreground); }
+@utility text-secondary-foreground  { color: var(--color-secondary-foreground); }
+@utility text-muted-foreground      { color: var(--color-muted-foreground); }
+@utility text-accent-foreground     { color: var(--color-accent-foreground); }
+@utility text-destructive           { color: var(--color-destructive); }
 @utility text-destructive-foreground { color: var(--color-destructive-foreground); }
 
-@utility border-border { border-color: var(--color-border); }
-@utility border-input { border-color: var(--color-input); }
-@utility ring-ring { --tw-ring-color: var(--color-ring); }
+@utility border-border  { border-color: var(--color-border); }
+@utility border-input   { border-color: var(--color-input); }
+@utility ring-ring      { --tw-ring-color: var(--color-ring); }
 @utility ring-offset-background { --tw-ring-offset-color: var(--color-background); }

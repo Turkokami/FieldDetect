@@ -25,57 +25,57 @@ const stats = (data: StatsCardsProps) => [
     label: "Inspections This Month",
     value: data.totalInspectionsThisMonth.toString(),
     icon: ClipboardList,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    change: null,
+    iconColor: "#0ABAB5",
+    iconBg: "rgba(10,186,181,0.12)",
+    accent: true,
   },
   {
-    label: "Positive Detection Rate",
+    label: "Detection Rate",
     value: `${data.positiveDetectionRate}%`,
     icon: TrendingUp,
-    color: "text-red-600",
-    bg: "bg-red-50",
-    change: null,
+    iconColor: "#EF4444",
+    iconBg: "rgba(239,68,68,0.1)",
+    accent: false,
   },
   {
     label: "Revenue This Month",
     value: formatCurrency(data.revenueThisMonth),
     icon: DollarSign,
-    color: "text-green-600",
-    bg: "bg-green-50",
-    change: null,
+    iconColor: "#10B981",
+    iconBg: "rgba(16,185,129,0.1)",
+    accent: false,
   },
   {
     label: "Unpaid Invoices",
     value: formatCurrency(data.unpaidInvoicesTotal),
     icon: AlertCircle,
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    change: null,
+    iconColor: "#F59E0B",
+    iconBg: "rgba(245,158,11,0.1)",
+    accent: false,
   },
   {
-    label: "Upcoming Appointments",
+    label: "Upcoming Jobs",
     value: data.upcomingAppointmentsCount.toString(),
     icon: Calendar,
-    color: "text-purple-600",
-    bg: "bg-purple-50",
-    change: null,
+    iconColor: "#0D9488",
+    iconBg: "rgba(13,148,136,0.1)",
+    accent: false,
   },
   {
     label: "Pending Reports",
     value: data.pendingReportsCount.toString(),
     icon: FileText,
-    color: "text-indigo-600",
-    bg: "bg-indigo-50",
-    change: null,
+    iconColor: "#6366F1",
+    iconBg: "rgba(99,102,241,0.1)",
+    accent: false,
   },
   {
     label: "Follow-Up Jobs",
     value: data.followUpJobsCount.toString(),
     icon: RefreshCw,
-    color: "text-orange-600",
-    bg: "bg-orange-50",
-    change: null,
+    iconColor: "#F97316",
+    iconBg: "rgba(249,115,22,0.1)",
+    accent: false,
   },
 ];
 
@@ -87,13 +87,20 @@ export function DashboardStats(props: StatsCardsProps) {
       {items.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Card key={stat.label} className="hover:shadow-md transition-shadow">
+          <Card
+            key={stat.label}
+            className="hover:shadow-md transition-all hover:-translate-y-0.5 duration-200 border-border"
+            style={stat.accent ? { borderTop: "2px solid #0ABAB5" } : {}}
+          >
             <CardContent className="p-4">
-              <div className={`inline-flex p-2 rounded-lg ${stat.bg} mb-3`}>
-                <Icon className={`h-5 w-5 ${stat.color}`} />
+              <div
+                className="inline-flex p-2 rounded-lg mb-3"
+                style={{ backgroundColor: stat.iconBg }}
+              >
+                <Icon className="h-4.5 w-4.5" style={{ color: stat.iconColor }} />
               </div>
-              <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-              <p className="text-xs text-slate-500 mt-1 leading-tight">{stat.label}</p>
+              <p className="text-2xl font-bold text-foreground tracking-tight">{stat.value}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-tight">{stat.label}</p>
             </CardContent>
           </Card>
         );
