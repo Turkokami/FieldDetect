@@ -40,7 +40,7 @@ export default async function RoutesPage() {
     SCHEDULED: "bg-blue-100 text-blue-700",
     CONFIRMED: "bg-green-100 text-green-700",
     EN_ROUTE: "bg-purple-100 text-purple-700",
-    ARRIVED: "bg-indigo-100 text-indigo-700",
+    ON_SITE: "bg-indigo-100 text-indigo-700",
     INSPECTION_STARTED: "bg-amber-100 text-amber-700",
   };
 

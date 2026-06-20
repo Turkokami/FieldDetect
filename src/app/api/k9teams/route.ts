@@ -5,8 +5,12 @@ import { z } from "zod";
 
 const createK9TeamSchema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
-  leadTechnicianId: z.string().optional(),
+  notes: z.string().optional(),
+  handlerUserId: z.string().optional(),
+  dogName: z.string().optional(),
+  dogBreed: z.string().optional(),
+  dogCertificationNumber: z.string().optional(),
+  dogCertifiedUntil: z.string().datetime().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -51,12 +55,44 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = createK9TeamSchema.parse(body);
 
-    const team = await prisma.k9Team.create({
-      data: {
-        ...validated,
-        organizationId: user.organizationId,
-      },
-      include: { members: true, dogs: true },
+    const team = await prisma.$transaction(async (tx) => {
+      const created = await tx.k9Team.create({
+        data: {
+          name: validated.name,
+          notes: validated.notes,
+          organizationId: user.organizationId,
+        },
+      });
+
+      if (validated.dogName) {
+        await tx.k9Dog.create({
+          data: {
+            k9TeamId: created.id,
+            name: validated.dogName,
+            breed: validated.dogBreed,
+            certificationNumber: validated.dogCertificationNumber,
+            certifiedUntil: validated.dogCertifiedUntil ? new Date(validated.dogCertifiedUntil) : null,
+          },
+        });
+      }
+
+      if (validated.handlerUserId) {
+        await tx.k9TeamMember.create({
+          data: {
+            k9TeamId: created.id,
+            userId: validated.handlerUserId,
+            isPrimary: true,
+          },
+        });
+      }
+
+      return tx.k9Team.findUnique({
+        where: { id: created.id },
+        include: {
+          members: { include: { user: { select: { id: true, firstName: true, lastName: true } } } },
+          dogs: true,
+        },
+      });
     });
 
     return NextResponse.json({ data: team }, { status: 201 });

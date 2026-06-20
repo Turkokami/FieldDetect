@@ -25,7 +25,7 @@ function NewInspectionForm() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/appointments?status=CONFIRMED,SCHEDULED,ARRIVED,ON_SITE&pageSize=50")
+    fetch("/api/appointments?status=CONFIRMED,SCHEDULED,EN_ROUTE,ON_SITE&pageSize=50")
       .then((r) => r.json())
       .then((d) => setAppointments(d.data ?? []));
   }, []);
