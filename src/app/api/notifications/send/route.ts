@@ -10,9 +10,9 @@ const resend = process.env.RESEND_API_KEY
 
 const sendSchema = z.object({
   type: z.enum([
-    "APPOINTMENT_CONFIRMED", "APPOINTMENT_REMINDER", "APPOINTMENT_CANCELLED",
+    "APPOINTMENT_CONFIRMATION", "APPOINTMENT_REMINDER", "APPOINTMENT_CANCELLED",
     "TECHNICIAN_EN_ROUTE", "INSPECTION_COMPLETE", "REPORT_READY",
-    "INVOICE_SENT", "PAYMENT_RECEIVED", "FOLLOW_UP_REQUIRED", "GENERAL",
+    "INVOICE_SENT", "PAYMENT_RECEIVED", "FOLLOW_UP_NEEDED",
   ]),
   recipientType: z.enum(["customer", "technician", "internal"]),
   recipientId: z.string().optional(),
@@ -72,7 +72,6 @@ export async function POST(req: NextRequest) {
       if (channel === "IN_APP" && validated.recipientId) {
         await prisma.notification.create({
           data: {
-            organizationId: user.organizationId,
             userId: validated.recipientId,
             type: validated.type,
             channel: "IN_APP",

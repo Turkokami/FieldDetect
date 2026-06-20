@@ -46,7 +46,7 @@ export default async function ReportDetailPage({
   };
 
   const positiveUnits = inspection.inspectionUnits.filter((u) =>
-    ["POSITIVE_K9_ALERT", "VISUAL_CONFIRMATION"].includes(u.result ?? "")
+    ["POSITIVE_K9_ALERT", "VISUAL_CONFIRMATION"].includes(u.detectionResult ?? "")
   );
 
   return (
@@ -220,7 +220,7 @@ export default async function ReportDetailPage({
                   <div key={u.id} className="bg-red-100 rounded-lg p-2 text-center">
                     <div className="text-sm font-bold text-red-800">{u.unitNumber}</div>
                     <div className="text-xs text-red-600">
-                      {RESULT_CONFIG[u.result ?? ""]?.label ?? u.result?.replace(/_/g, " ") ?? ""}
+                      {RESULT_CONFIG[u.detectionResult ?? ""]?.label ?? u.detectionResult?.replace(/_/g, " ") ?? ""}
                     </div>
                   </div>
                 ))}
@@ -235,7 +235,7 @@ export default async function ReportDetailPage({
             </h2>
             <div className="space-y-1">
               {inspection.inspectionUnits.map((unit) => {
-                const config = RESULT_CONFIG[unit.result ?? ""];
+                const config = RESULT_CONFIG[unit.detectionResult ?? ""];
                 return (
                   <div
                     key={unit.id}
@@ -243,7 +243,7 @@ export default async function ReportDetailPage({
                   >
                     <span className="text-sm font-medium text-foreground">{unit.unitNumber}</span>
                     <span className={`text-xs font-medium ${config?.color ?? "text-muted-foreground"}`}>
-                      {config?.label ?? unit.result?.replace(/_/g, " ") ?? "Pending"}
+                      {config?.label ?? unit.detectionResult?.replace(/_/g, " ") ?? "Pending"}
                     </span>
                   </div>
                 );

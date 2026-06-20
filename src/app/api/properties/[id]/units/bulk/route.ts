@@ -8,7 +8,7 @@ const bulkSchema = z.object({
     z.object({
       unitNumber: z.string().min(1),
       floor: z.number().int().optional().nullable(),
-      unitType: z.string().default("RESIDENTIAL"),
+      unitType: z.string().default("APARTMENT"),
       buildingId: z.string().optional().nullable(),
     })
   ).min(1),
@@ -37,11 +37,10 @@ export async function POST(
     const result = await prisma.unit.createMany({
       data: units.map((u) => ({
         unitNumber: u.unitNumber,
-        floor: u.floor ?? null,
-        unitType: (u.unitType as "RESIDENTIAL") ?? "RESIDENTIAL",
+        floor: u.floor != null ? String(u.floor) : null,
+        unitType: (u.unitType as "APARTMENT") ?? "APARTMENT",
         buildingId: u.buildingId ?? null,
         propertyId: id,
-        organizationId: user.organizationId,
       })),
       skipDuplicates: true,
     });

@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         phone: true,
         isActive: true,
         createdAt: true,
-        _count: { select: { appointments: true } },
+        _count: { select: { assignedAppointments: true } },
       },
       orderBy: [{ role: "asc" }, { firstName: "asc" }],
     });

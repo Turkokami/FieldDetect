@@ -35,12 +35,12 @@ export async function GET(
         phone: true,
         isActive: true,
         createdAt: true,
-        appointments: {
+        assignedAppointments: {
           select: { id: true, scheduledDate: true, status: true },
           orderBy: { scheduledDate: "desc" },
           take: 20,
         },
-        _count: { select: { appointments: true } },
+        _count: { select: { assignedAppointments: true } },
       },
     });
 

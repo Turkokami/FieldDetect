@@ -105,11 +105,10 @@ export async function PATCH(
         await prisma.k9Dog.create({
           data: {
             k9TeamId: id,
-            organizationId: user.organizationId,
             name: validated.dogName ?? "Unknown",
             breed: validated.dogBreed,
             certificationNumber: validated.certificationNumber,
-            certificationExpiry: validated.certificationExpiry
+            certifiedUntil: validated.certificationExpiry
               ? new Date(validated.certificationExpiry)
               : null,
           },

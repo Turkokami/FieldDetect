@@ -82,8 +82,8 @@ export default async function K9TeamDetailPage({
             <h2 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">
               Team Info
             </h2>
-            {team.description && (
-              <p className="text-sm text-foreground mb-4">{team.description}</p>
+            {team.notes && (
+              <p className="text-sm text-foreground mb-4">{team.notes}</p>
             )}
             <div className="text-xs text-muted-foreground">
               Created {formatDate(team.createdAt)}
@@ -108,8 +108,8 @@ export default async function K9TeamDetailPage({
                       {dog.certificationNumber && (
                         <div className="text-xs text-muted-foreground">
                           Cert #{dog.certificationNumber}
-                          {dog.certificationExpiry && (
-                            <> · Exp {formatDate(dog.certificationExpiry)}</>
+                          {dog.certifiedUntil && (
+                            <> · Exp {formatDate(dog.certifiedUntil)}</>
                           )}
                         </div>
                       )}

@@ -5,12 +5,11 @@ import { z } from "zod";
 
 const addUnitSchema = z.object({
   unitNumber: z.string().min(1),
-  floor: z.number().int().optional().nullable(),
+  floor: z.union([z.number().int(), z.string()]).optional().nullable().transform((v) => v != null ? String(v) : null),
   unitType: z.enum([
-    "RESIDENTIAL", "STUDIO", "ONE_BEDROOM", "TWO_BEDROOM", "THREE_BEDROOM",
-    "FOUR_PLUS_BEDROOM", "HOTEL_ROOM", "DORMITORY_ROOM", "COMMON_AREA",
-    "OFFICE", "STORAGE", "LAUNDRY", "MECHANICAL", "OTHER",
-  ]).default("RESIDENTIAL"),
+    "APARTMENT", "HOTEL_ROOM", "DORM_ROOM", "OFFICE", "ROOM", "SUITE",
+    "FLOOR", "AREA", "COMMON_AREA", "LOBBY", "HALLWAY", "STORAGE", "OTHER",
+  ]).default("APARTMENT"),
   buildingId: z.string().optional().nullable(),
   notes: z.string().optional(),
 });
@@ -39,7 +38,6 @@ export async function POST(
       data: {
         ...validated,
         propertyId: id,
-        organizationId: user.organizationId,
       },
     });
 

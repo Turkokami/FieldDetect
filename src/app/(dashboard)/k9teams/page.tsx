@@ -59,8 +59,8 @@ export default async function K9TeamsPage() {
                   <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                     {team.name}
                   </h3>
-                  {team.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5">{team.description}</p>
+                  {team.notes && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{team.notes}</p>
                   )}
                 </div>
                 <div className="text-right">

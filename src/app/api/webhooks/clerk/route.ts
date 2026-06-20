@@ -88,7 +88,6 @@ export async function POST(req: Request) {
           clerkOrgId: data.id,
           name: data.name,
           slug: data.slug,
-          plan: "TRIAL",
         },
       });
     }

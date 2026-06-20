@@ -126,7 +126,7 @@ export default async function PortalInvoiceDetailPage({
                   <td className="px-5 py-3 text-foreground">{item.description}</td>
                   <td className="px-5 py-3 text-right text-muted-foreground">{Number(item.quantity)}</td>
                   <td className="px-5 py-3 text-right text-muted-foreground">{formatCurrency(Number(item.unitPrice))}</td>
-                  <td className="px-5 py-3 text-right font-semibold text-foreground">{formatCurrency(Number(item.totalPrice))}</td>
+                  <td className="px-5 py-3 text-right font-semibold text-foreground">{formatCurrency(Number(item.total))}</td>
                 </tr>
               ))}
             </tbody>
@@ -182,8 +182,8 @@ export default async function PortalInvoiceDetailPage({
             {invoice.payments.map((pmt) => (
               <div key={pmt.id} className="flex items-center justify-between px-5 py-3">
                 <div>
-                  <div className="text-sm font-medium text-foreground">{pmt.paymentMethod.replace(/_/g, " ")}</div>
-                  <div className="text-xs text-muted-foreground">{formatDate(pmt.paidAt ?? pmt.createdAt)}</div>
+                  <div className="text-sm font-medium text-foreground">{pmt.method.replace(/_/g, " ")}</div>
+                  <div className="text-xs text-muted-foreground">{formatDate(pmt.processedAt ?? pmt.createdAt)}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-semibold text-foreground">{formatCurrency(Number(pmt.amount))}</div>

@@ -28,7 +28,6 @@ export default async function PortalPage() {
   const recentInspections = await prisma.inspection.findMany({
     where: {
       property: { customerId: customer.id },
-      status: { in: ["COMPLETED", "REPORT_SENT"] },
     },
     orderBy: { startTime: "desc" },
     take: 5,
@@ -36,8 +35,7 @@ export default async function PortalPage() {
   });
 
   const totalOwed = customer.invoices.reduce((sum, inv) => {
-    const paid = (inv as any).amountPaid ?? 0;
-    return sum + (Number(inv.totalAmount) - Number(paid));
+    return sum + (Number(inv.totalAmount) - Number(inv.paidAmount));
   }, 0);
 
   return (

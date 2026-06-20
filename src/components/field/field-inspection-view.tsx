@@ -7,8 +7,8 @@ type Photo = { id: string; url: string };
 type InspectionUnit = {
   id: string;
   unitNumber: string;
-  result: string | null;
-  notes: string | null;
+  detectionResult: string | null;
+  technicianNotes: string | null;
   photos: Photo[];
 };
 
@@ -102,8 +102,8 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
   const selectUnit = useCallback((unitNumber: string) => {
     const existing = inspectionMap.get(unitNumber);
     setSelectedUnit(unitNumber);
-    setActiveResult(existing?.result ?? null);
-    setActiveNotes(existing?.notes ?? "");
+    setActiveResult(existing?.detectionResult ?? null);
+    setActiveNotes(existing?.technicianNotes ?? "");
     setShowResultPicker(true);
   }, [inspectionMap]);
 
@@ -203,7 +203,7 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
                       key={unit.id}
                       onClick={() => selectUnit(unit.unitNumber)}
                       className={`aspect-square rounded-lg border-2 text-sm font-bold flex items-center justify-center transition-all active:scale-95 ${
-                        insp?.result ? RESULT_COLORS[insp.result] : "border-border bg-background text-foreground"
+                        insp?.detectionResult ? RESULT_COLORS[insp.detectionResult] : "border-border bg-background text-foreground"
                       }`}
                     >
                       {unit.unitNumber}
@@ -224,7 +224,7 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
                       key={unit.id}
                       onClick={() => selectUnit(unit.unitNumber)}
                       className={`aspect-square rounded-lg border-2 text-sm font-bold flex items-center justify-center transition-all active:scale-95 ${
-                        insp?.result ? RESULT_COLORS[insp.result] : "border-border bg-background text-foreground"
+                        insp?.detectionResult ? RESULT_COLORS[insp.detectionResult] : "border-border bg-background text-foreground"
                       }`}
                     >
                       {unit.unitNumber}
