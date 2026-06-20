@@ -64,6 +64,34 @@ export async function GET(
   }
 }
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!["OWNER", "ADMIN"].includes(user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const existing = await prisma.appointment.findFirst({
+      where: { id, organizationId: user.organizationId },
+    });
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    await prisma.appointment.delete({ where: { id } });
+    return NextResponse.json({ data: { deleted: true } });
+  } catch (error) {
+    console.error("[APPOINTMENT_DELETE]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

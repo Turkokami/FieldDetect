@@ -18,14 +18,17 @@ function NewInvoiceForm() {
   const searchParams = useSearchParams();
   const prefillCustomerId = searchParams.get("customerId") ?? "";
   const prefillAppointmentId = searchParams.get("appointmentId") ?? "";
+  const prefillPropertyId = searchParams.get("propertyId") ?? "";
+  const prefillInspectionId = searchParams.get("inspectionId") ?? "";
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   const [customerId, setCustomerId] = useState(prefillCustomerId);
-  const [propertyId, setPropertyId] = useState("");
+  const [propertyId, setPropertyId] = useState(prefillPropertyId);
   const [appointmentId, setAppointmentId] = useState(prefillAppointmentId);
+  const [inspectionId, setInspectionId] = useState(prefillInspectionId);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
@@ -95,6 +98,7 @@ function NewInvoiceForm() {
           customerId,
           propertyId: propertyId || undefined,
           appointmentId: appointmentId || undefined,
+          inspectionId: inspectionId || undefined,
           dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
           taxRate: parseFloat(taxRate) / 100,
           notes: notes || undefined,

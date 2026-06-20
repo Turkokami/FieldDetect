@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
 import AppointmentActions from "@/components/scheduling/appointment-actions";
 
 export default async function AppointmentDetailPage({
@@ -30,6 +30,7 @@ export default async function AppointmentDetailPage({
             include: { photos: true },
             orderBy: { sortOrder: "asc" },
           },
+          invoice: { select: { id: true, invoiceNumber: true, status: true, totalAmount: true } },
         },
       },
     },
@@ -83,7 +84,7 @@ export default async function AppointmentDetailPage({
           <span className={`text-sm px-3 py-1 rounded-full border font-medium ${STATUS_COLORS[appointment.status] ?? "bg-gray-100 text-gray-700"}`}>
             {appointment.status.replace(/_/g, " ")}
           </span>
-          <AppointmentActions appointment={appointment} />
+          <AppointmentActions appointment={{ ...appointment, userRole: user.role }} />
         </div>
       </div>
 
@@ -259,6 +260,38 @@ export default async function AppointmentDetailPage({
               </p>
               {["SCHEDULED", "CONFIRMED", "EN_ROUTE", "ON_SITE"].includes(appointment.status) && (
                 <AppointmentActions appointment={appointment} variant="start-inspection" />
+              )}
+            </div>
+          )}
+
+          {/* Invoice section */}
+          {["INSPECTION_COMPLETE", "REPORT_SENT", "INVOICED", "PAID"].includes(appointment.status) && (
+            <div className="mt-4 bg-card border border-border rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Invoice</h2>
+                {!appointment.inspection?.invoice && (
+                  <Link
+                    href={`/invoices/new?customerId=${appointment.customerId}&propertyId=${appointment.propertyId}${appointment.inspection ? `&inspectionId=${appointment.inspection.id}` : ""}`}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
+                    style={{ background: "#0ABAB5" }}
+                  >
+                    + Create Invoice
+                  </Link>
+                )}
+              </div>
+              {appointment.inspection?.invoice ? (
+                <Link
+                  href={`/invoices/${appointment.inspection.invoice.id}`}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">{appointment.inspection.invoice.invoiceNumber}</div>
+                    <div className="text-xs text-muted-foreground">{appointment.inspection.invoice.status}</div>
+                  </div>
+                  <div className="text-sm font-bold text-foreground">{formatCurrency(appointment.inspection.invoice.totalAmount)}</div>
+                </Link>
+              ) : (
+                <p className="text-sm text-muted-foreground">No invoice yet. Create one to bill your customer.</p>
               )}
             </div>
           )}

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 type Customer = { id: string; firstName: string; lastName: string; companyName: string | null };
 type Property = { id: string; name: string; addressLine1: string; city: string };
 type Technician = { id: string; firstName: string; lastName: string };
+type K9Team = { id: string; name: string };
 
 const SERVICE_TYPES = [
   { value: "BED_BUG_INSPECTION", label: "Bed Bug Inspection" },
@@ -30,10 +31,12 @@ function NewAppointmentForm() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [k9Teams, setK9Teams] = useState<K9Team[]>([]);
 
   const [customerId, setCustomerId] = useState(prefillCustomerId);
   const [propertyId, setPropertyId] = useState(prefillPropertyId);
   const [technicianId, setTechnicianId] = useState("");
+  const [k9TeamId, setK9TeamId] = useState("");
   const [serviceType, setServiceType] = useState("BED_BUG_INSPECTION");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("09:00");
@@ -52,6 +55,9 @@ function NewAppointmentForm() {
     fetch("/api/users?role=TECHNICIAN")
       .then((r) => r.json())
       .then((d) => setTechnicians(d.data ?? []));
+    fetch("/api/k9teams?pageSize=50")
+      .then((r) => r.json())
+      .then((d) => setK9Teams(d.data ?? []));
   }, []);
 
   useEffect(() => {
@@ -82,6 +88,7 @@ function NewAppointmentForm() {
           customerId,
           propertyId,
           technicianId: technicianId || undefined,
+          k9TeamId: k9TeamId || undefined,
           serviceType,
           scheduledDate: dateTime.toISOString(),
           scheduledEndTime: endTime.toISOString(),
@@ -241,6 +248,25 @@ function NewAppointmentForm() {
             ))}
           </select>
         </div>
+
+        {/* K9 Team */}
+        {k9Teams.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Assign K9 Team
+            </label>
+            <select
+              value={k9TeamId}
+              onChange={(e) => setK9TeamId(e.target.value)}
+              className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">No K9 Team</option>
+              {k9Teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Title */}
         <div>
