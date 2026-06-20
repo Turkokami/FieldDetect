@@ -1,0 +1,135 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Appointment = {
+  id: string;
+  status: string;
+  inspection?: { id: string } | null;
+};
+
+type Props = {
+  appointment: Appointment;
+  variant?: "menu" | "start-inspection";
+};
+
+const STATUS_TRANSITIONS: Record<string, { label: string; next: string }[]> = {
+  REQUESTED: [
+    { label: "Confirm Appointment", next: "CONFIRMED" },
+    { label: "Mark Scheduled", next: "SCHEDULED" },
+    { label: "Cancel", next: "CANCELLED" },
+  ],
+  SCHEDULED: [
+    { label: "Confirm Appointment", next: "CONFIRMED" },
+    { label: "Cancel", next: "CANCELLED" },
+  ],
+  CONFIRMED: [
+    { label: "Mark En Route", next: "EN_ROUTE" },
+    { label: "Cancel", next: "CANCELLED" },
+  ],
+  EN_ROUTE: [
+    { label: "Mark On Site", next: "ON_SITE" },
+  ],
+  ON_SITE: [
+    { label: "Start Inspection", next: "INSPECTION_STARTED" },
+  ],
+  INSPECTION_STARTED: [
+    { label: "Complete Inspection", next: "INSPECTION_COMPLETE" },
+  ],
+  INSPECTION_COMPLETE: [
+    { label: "Mark Report Sent", next: "REPORT_SENT" },
+  ],
+  REPORT_SENT: [
+    { label: "Mark Invoiced", next: "INVOICED" },
+  ],
+  INVOICED: [
+    { label: "Mark Paid", next: "PAID" },
+  ],
+};
+
+export default function AppointmentActions({ appointment, variant = "menu" }: Props) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const transitions = STATUS_TRANSITIONS[appointment.status] ?? [];
+
+  const handleStatusChange = async (newStatus: string) => {
+    setLoading(true);
+    setOpen(false);
+    try {
+      if (newStatus === "INSPECTION_STARTED" && !appointment.inspection) {
+        const res = await fetch("/api/inspections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appointmentId: appointment.id }),
+        });
+        if (!res.ok) throw new Error("Failed to start inspection");
+        const data = await res.json();
+        router.push(`/inspections/${data.data.id}`);
+        return;
+      }
+
+      const res = await fetch(`/api/appointments/${appointment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (variant === "start-inspection") {
+    return (
+      <button
+        onClick={() => handleStatusChange("INSPECTION_STARTED")}
+        disabled={loading}
+        className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+      >
+        {loading ? "Starting..." : "Start Inspection"}
+      </button>
+    );
+  }
+
+  if (transitions.length === 0) return null;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+      >
+        Actions
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-20 w-52 bg-popover border border-border rounded-lg shadow-lg py-1 overflow-hidden">
+            {transitions.map((t) => (
+              <button
+                key={t.next}
+                onClick={() => handleStatusChange(t.next)}
+                className={`w-full px-4 py-2 text-left text-sm hover:bg-muted transition-colors ${
+                  t.next === "CANCELLED" ? "text-destructive" : "text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
