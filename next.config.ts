@@ -8,9 +8,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img.clerk.com" },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ["@prisma/client", "@react-pdf/renderer"],
-  },
 };
 
 export default nextConfig;
