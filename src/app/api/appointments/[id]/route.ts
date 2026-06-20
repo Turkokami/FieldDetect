@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { notifyOnStatusChange } from "@/lib/notify";
 
 const updateAppointmentSchema = z.object({
   technicianId: z.string().optional().nullable(),
@@ -101,6 +102,11 @@ export async function PATCH(
       data: updateData,
       include: { customer: true, property: true, technician: true, k9Team: true },
     });
+
+    // Fire-and-forget — status notification must never block the response
+    if (validated.status) {
+      notifyOnStatusChange(id, validated.status).catch(() => {});
+    }
 
     return NextResponse.json({ data: appointment });
   } catch (error) {
