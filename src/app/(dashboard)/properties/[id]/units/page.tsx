@@ -65,6 +65,7 @@ export default function PropertyUnitsPage() {
   const [showForm, setShowForm] = useState(false);
   const [mode, setMode] = useState<AddMode>("generate");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Single unit
   const [single, setSingle] = useState({ unitNumber: "", floor: "", unitType: "APARTMENT", buildingId: "" });
@@ -122,17 +123,19 @@ export default function PropertyUnitsPage() {
   const addSingle = async () => {
     if (!single.unitNumber.trim()) return;
     setSaving(true);
+    setError(null);
     try {
-      await fetch(`/api/properties/${id}/units`, {
+      const res = await fetch(`/api/properties/${id}/units`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           unitNumber: single.unitNumber.trim(),
-          floor: single.floor ? single.floor : null,
+          floor: single.floor ? parseInt(single.floor, 10) : null,
           unitType: single.unitType,
           buildingId: single.buildingId || null,
         }),
       });
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? "Failed to add unit."); return; }
       setSingle({ unitNumber: "", floor: "", unitType: "APARTMENT", buildingId: "" });
       await fetchProperty();
     } finally { setSaving(false); }
@@ -141,35 +144,45 @@ export default function PropertyUnitsPage() {
   const generateRange = async () => {
     if (generatedUnits.length === 0) return;
     setSaving(true);
+    setError(null);
     try {
       let buildingId = gen.buildingId || null;
 
-      // Create new building first if needed
       if (gen.useNewBuilding && gen.newBuildingName.trim()) {
         const res = await fetch(`/api/properties/${id}/buildings`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: gen.newBuildingName.trim() }),
         });
+        if (!res.ok) { setError("Failed to create building."); return; }
         const data = await res.json();
         buildingId = data.data?.id ?? null;
       }
 
-      await fetch(`/api/properties/${id}/units/bulk`, {
+      const floorNum = gen.floor ? parseInt(gen.floor, 10) : null;
+      const res = await fetch(`/api/properties/${id}/units/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           units: generatedUnits.map((unitNumber) => ({
             unitNumber,
-            floor: gen.floor || null,
+            floor: floorNum,
             unitType: gen.unitType,
             buildingId,
           })),
         }),
       });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Failed to create units.");
+        return;
+      }
 
       setShowPreview(false);
+      setGen((g) => ({ ...g, useNewBuilding: false, newBuildingName: "", buildingId: buildingId ?? "" }));
       await fetchProperty();
+    } catch {
+      setError("Unexpected error. Please try again.");
     } finally { setSaving(false); }
   };
 
@@ -444,6 +457,12 @@ export default function PropertyUnitsPage() {
 
               {generatedUnits.length === 0 && (parseInt(gen.end) - parseInt(gen.start)) > 999 && (
                 <p className="text-xs text-destructive">Maximum 1,000 units per batch.</p>
+              )}
+
+              {error && (
+                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-2">
+                  {error}
+                </p>
               )}
 
               <button

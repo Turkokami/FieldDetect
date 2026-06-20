@@ -7,7 +7,7 @@ const bulkSchema = z.object({
   units: z.array(
     z.object({
       unitNumber: z.string().min(1),
-      floor: z.number().int().optional().nullable(),
+      floor: z.coerce.number().int().optional().nullable(),
       unitType: z.string().default("APARTMENT"),
       buildingId: z.string().optional().nullable(),
     })
