@@ -16,18 +16,13 @@ export default async function SchedulingPage() {
   if (!user) redirect("/onboarding");
 
   const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
+  const rangeStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const rangeEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0, 23, 59, 59);
 
   const appointments = await prisma.appointment.findMany({
     where: {
       organizationId: user.organizationId,
-      scheduledDate: { gte: startOfWeek, lte: endOfWeek },
+      scheduledDate: { gte: rangeStart, lte: rangeEnd },
     },
     include: {
       customer: { select: { firstName: true, lastName: true, companyName: true } },
