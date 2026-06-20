@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Phone, MapPin, Dog, User, AlertTriangle, CheckCircle2,
-  Camera, Plus, X, ChevronRight, Clock, Trash2, ArrowRight,
+  Camera, Plus, X, ChevronRight, Clock, Trash2, ArrowRight, PenLine,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useUploadThing } from "@/lib/uploadthing-client";
@@ -478,6 +478,169 @@ function UnitEditor({
   );
 }
 
+// ─── Signature Pad ────────────────────────────────────────────────────────────
+
+function SignaturePad({
+  inspectionId,
+  onSigned,
+  onSkip,
+}: {
+  inspectionId: string;
+  onSigned: () => void;
+  onSkip: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [drawing, setDrawing] = useState(false);
+  const [hasStrokes, setHasStrokes] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, []);
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e) {
+      const t = e.touches[0];
+      return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
+    }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+  };
+
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    setDrawing(true);
+    lastPos.current = getPos(e, canvas);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    if (!drawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !lastPos.current) return;
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastPos.current = pos;
+    setHasStrokes(true);
+  };
+
+  const stopDraw = () => setDrawing(false);
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setHasStrokes(false);
+  };
+
+  const save = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    setSaving(true);
+    try {
+      const dataUrl = canvas.toDataURL("image/png");
+      await fetch(`/api/inspections/${inspectionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerSignature: dataUrl }),
+      });
+      onSigned();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
+        <div>
+          <h2 className="font-bold text-foreground text-lg">Customer Sign-Off</h2>
+          <p className="text-xs text-muted-foreground">Have the customer sign below to acknowledge the inspection</p>
+        </div>
+        <button onClick={onSkip} className="p-1.5 rounded-lg hover:bg-muted">
+          <X className="h-5 w-5 text-muted-foreground" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <p className="text-xs text-amber-700">
+            By signing, the customer acknowledges that the inspection has been completed and they have received a verbal summary of the findings.
+          </p>
+        </div>
+
+        <div className="relative">
+          <canvas
+            ref={canvasRef}
+            width={600}
+            height={220}
+            className="w-full border-2 border-dashed border-border rounded-xl bg-white touch-none"
+            style={{ touchAction: "none" }}
+            onMouseDown={startDraw}
+            onMouseMove={draw}
+            onMouseUp={stopDraw}
+            onMouseLeave={stopDraw}
+            onTouchStart={startDraw}
+            onTouchMove={draw}
+            onTouchEnd={stopDraw}
+          />
+          {!hasStrokes && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <PenLine className="h-8 w-8 opacity-30" />
+                <span className="text-xs opacity-50">Sign here</span>
+              </div>
+            </div>
+          )}
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+            <div className="w-48 h-px bg-border" />
+          </div>
+        </div>
+
+        {hasStrokes && (
+          <button onClick={clear} className="text-xs text-muted-foreground hover:text-foreground underline">
+            Clear and redo
+          </button>
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-border bg-card p-4 space-y-2">
+        <button
+          onClick={save}
+          disabled={!hasStrokes || saving}
+          className="w-full py-3 rounded-xl font-semibold text-base text-white disabled:opacity-40 flex items-center justify-center gap-2"
+          style={{ background: "#0ABAB5" }}
+        >
+          {saving ? "Saving…" : <><CheckCircle2 className="h-5 w-5" />Confirm Signature & Complete</>}
+        </button>
+        <button onClick={onSkip} className="w-full py-2 text-sm text-muted-foreground hover:text-foreground">
+          Skip (complete without signature)
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main FieldTechView ───────────────────────────────────────────────────────
 
 export default function FieldTechView({ appointment: initial }: { appointment: TechAppointment }) {
@@ -486,6 +649,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
   const [inspection, setInspection] = useState<Inspection | null>(initial.inspection);
   const [checkingIn, setCheckingIn] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
   const [editingUnit, setEditingUnit] = useState<string | null>(null);
 
   const allPropertyUnits: PUnit[] = useMemo(() => {
@@ -592,7 +756,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
     }
   };
 
-  const completeInspection = async () => {
+  const finishInspection = async () => {
     setCompleting(true);
     try {
       const res = await fetch(`/api/field/${apt.id}/complete`, { method: "POST" });
@@ -602,6 +766,11 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
     } finally {
       setCompleting(false);
     }
+  };
+
+  const completeInspection = () => {
+    // Show signature pad first, then complete
+    setShowSignature(true);
   };
 
   const isCheckedIn = ["INSPECTION_STARTED", "ON_SITE"].includes(apt.status);
@@ -854,7 +1023,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
               {!isComplete && completedCount > 0 && (
                 <button
                   onClick={completeInspection}
-                  disabled={completing}
+                  disabled={completing || showSignature}
                   className="w-full py-4 rounded-xl font-bold text-base text-white flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
                   style={{ background: alertCount > 0 ? "#dc2626" : "#0ABAB5" }}
                 >
@@ -862,7 +1031,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
                     <><Clock className="h-5 w-5 animate-spin" />Completing…</>
                   ) : (
                     <><CheckCircle2 className="h-5 w-5" />
-                      Complete Inspection & Send Report
+                      Complete & Get Signature
                       {alertCount > 0 ? ` — ${alertCount} Alert${alertCount > 1 ? "s" : ""}` : " — All Clear"}
                     </>
                   )}
@@ -897,6 +1066,15 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
           )}
         </div>
       </div>
+
+      {/* ── Signature overlay ── */}
+      {showSignature && inspection && (
+        <SignaturePad
+          inspectionId={inspection.id}
+          onSigned={() => { setShowSignature(false); finishInspection(); }}
+          onSkip={() => { setShowSignature(false); finishInspection(); }}
+        />
+      )}
 
       {/* ── Unit editor overlay ── */}
       {editingUnit && inspection && (
