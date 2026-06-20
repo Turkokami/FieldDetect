@@ -1,4 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { User, Organization } from "@prisma/client";
 
@@ -51,6 +52,25 @@ export async function syncUserFromClerk(clerkUserId: string) {
 
   // Find or create organization from Clerk org membership
   // In production this is handled via Clerk webhooks
+  return null;
+}
+
+export async function requirePermission(
+  permission: string
+): Promise<AuthContext> {
+  const ctx = await getAuthContext();
+  if (!ctx) throw new Error("Unauthorized");
+  if (!hasPermission(ctx.user.role, permission)) throw new Error("Forbidden");
+  return ctx;
+}
+
+export function rbacResponse(err: unknown) {
+  if (err instanceof Error && err.message === "Unauthorized") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (err instanceof Error && err.message === "Forbidden") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   return null;
 }
 

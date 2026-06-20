@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Menu, X, LayoutDashboard, Users, Building2, Calendar,
   ClipboardList, FileText, Receipt, Settings, Dog, MapPin, TrendingUp,
+  FileCheck, Bell,
 } from "lucide-react";
 
 const navItems = [
@@ -15,7 +16,9 @@ const navItems = [
   { label: "Properties",  href: "/properties",  icon: Building2 },
   { label: "Scheduling",  href: "/scheduling",  icon: Calendar },
   { label: "Inspections", href: "/inspections", icon: ClipboardList },
+  { label: "Follow-Ups",  href: "/follow-ups",  icon: Bell },
   { label: "Reports",     href: "/reports",     icon: FileText },
+  { label: "Estimates",   href: "/estimates",   icon: FileCheck },
   { label: "Invoices",    href: "/invoices",    icon: Receipt },
   { label: "Routes",      href: "/routes",      icon: MapPin },
   { label: "Analytics",   href: "/analytics",   icon: TrendingUp },

@@ -38,7 +38,7 @@ export async function POST(
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.fielddetect.com";
-    const invoiceUrl = `${appUrl}/invoices/${id}`;
+    const invoiceUrl = invoice.stripePaymentUrl ?? `${appUrl}/portal`;
 
     const lineItemsHtml = invoice.lineItems
       .map(
@@ -91,8 +91,8 @@ export async function POST(
         </div>
         ${invoice.notes ? `<div style="color:#6b7280;margin-bottom:24px">${invoice.notes}</div>` : ""}
         <div style="text-align:center">
-          <a href="${invoiceUrl}" style="background:#1e40af;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:bold">
-            View Invoice &amp; Pay Online
+          <a href="${invoiceUrl}" style="background:linear-gradient(135deg,#0ABAB5,#0D9488);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px">
+            View Invoice &amp; Pay Online →
           </a>
         </div>
         <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:32px">

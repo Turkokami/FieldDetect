@@ -17,6 +17,8 @@ import {
   ChevronRight,
   MapPin,
   TrendingUp,
+  FileCheck,
+  Bell,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -26,7 +28,9 @@ const navItems = [
   { label: "Properties",  href: "/properties",  icon: Building2 },
   { label: "Scheduling",  href: "/scheduling",  icon: Calendar },
   { label: "Inspections", href: "/inspections", icon: ClipboardList },
+  { label: "Follow-Ups",  href: "/follow-ups",  icon: Bell },
   { label: "Reports",     href: "/reports",     icon: FileText },
+  { label: "Estimates",   href: "/estimates",   icon: FileCheck },
   { label: "Invoices",    href: "/invoices",    icon: Receipt },
   { label: "Routes",      href: "/routes",      icon: MapPin },
   { label: "Analytics",   href: "/analytics",   icon: TrendingUp },

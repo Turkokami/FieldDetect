@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import SettingsForm from "@/components/settings/settings-form";
 import UsersTable from "@/components/settings/users-table";
+import NotificationTemplates from "@/components/settings/notification-templates";
 
 export default async function SettingsPage() {
   const { userId } = await auth();
@@ -11,11 +12,15 @@ export default async function SettingsPage() {
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) notFound();
 
-  const [org, users] = await Promise.all([
+  const [org, users, templates] = await Promise.all([
     prisma.organization.findUnique({ where: { id: user.organizationId } }),
     prisma.user.findMany({
       where: { organizationId: user.organizationId, isActive: true },
       orderBy: [{ role: "asc" }, { firstName: "asc" }],
+    }),
+    prisma.notificationTemplate.findMany({
+      where: { organizationId: user.organizationId },
+      orderBy: [{ type: "asc" }, { channel: "asc" }],
     }),
   ]);
 
@@ -43,6 +48,14 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-semibold text-foreground mb-4">Team Members</h2>
         <UsersTable users={users} currentUserId={user.id} canManage={canEdit} />
       </div>
+
+      {/* Notification Templates */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Notification Templates</h2>
+          <NotificationTemplates initialTemplates={JSON.parse(JSON.stringify(templates))} />
+        </div>
+      )}
     </div>
   );
 }
