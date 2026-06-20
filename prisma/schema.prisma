@@ -1,0 +1,713 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  OWNER
+  ADMIN
+  DISPATCHER
+  TECHNICIAN
+  CUSTOMER
+}
+
+enum CustomerType {
+  RESIDENTIAL
+  COMMERCIAL
+  PROPERTY_MANAGEMENT
+  HOTEL
+  DORMITORY
+  ASSISTED_LIVING
+  GOVERNMENT
+  OTHER
+}
+
+enum PropertyType {
+  SINGLE_FAMILY
+  MULTI_FAMILY
+  APARTMENT_COMPLEX
+  CONDOMINIUM
+  HOTEL
+  MOTEL
+  DORMITORY
+  ASSISTED_LIVING
+  NURSING_HOME
+  OFFICE
+  WAREHOUSE
+  RETAIL
+  RESTAURANT
+  SCHOOL
+  HOSPITAL
+  GOVERNMENT
+  OTHER
+}
+
+enum UnitType {
+  APARTMENT
+  HOTEL_ROOM
+  DORM_ROOM
+  OFFICE
+  ROOM
+  SUITE
+  FLOOR
+  AREA
+  COMMON_AREA
+  LOBBY
+  HALLWAY
+  STORAGE
+  OTHER
+}
+
+enum ServiceType {
+  BED_BUG_INSPECTION
+  BED_BUG_TREATMENT
+  RODENT_INSPECTION
+  RODENT_EXCLUSION
+  WILDLIFE_INSPECTION
+  WILDLIFE_REMOVAL
+  BIRD_EXCLUSION
+  GOOSE_CONTROL
+  GENERAL_PEST_INSPECTION
+  GENERAL_PEST_TREATMENT
+  OTHER
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  SCHEDULED
+  CONFIRMED
+  EN_ROUTE
+  ON_SITE
+  INSPECTION_STARTED
+  INSPECTION_COMPLETE
+  REPORT_SENT
+  INVOICED
+  PAID
+  CANCELLED
+  NO_SHOW
+}
+
+enum DetectionResult {
+  NEGATIVE
+  POSITIVE_K9_ALERT
+  VISUAL_CONFIRMATION
+  INCONCLUSIVE
+  UNABLE_TO_INSPECT
+  ACCESS_DENIED
+  FOLLOW_UP_REQUIRED
+}
+
+enum SeverityLevel {
+  NONE
+  LOW
+  MODERATE
+  HIGH
+  SEVERE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CHECK
+  CREDIT_CARD
+  DEBIT_CARD
+  ACH
+  STRIPE
+  SQUARE
+  OTHER
+}
+
+enum NotificationType {
+  APPOINTMENT_CONFIRMATION
+  TECHNICIAN_EN_ROUTE
+  INSPECTION_COMPLETE
+  REPORT_READY
+  INVOICE_SENT
+  PAYMENT_RECEIVED
+  FOLLOW_UP_NEEDED
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CANCELLED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+// ─── Organization ─────────────────────────────────────────────────────────────
+
+model Organization {
+  id                String   @id @default(cuid())
+  clerkOrgId        String?  @unique
+  name              String
+  slug              String   @unique
+  logoUrl           String?
+  phone             String?
+  email             String?
+  website           String?
+  addressLine1      String?
+  addressLine2      String?
+  city              String?
+  state             String?
+  zip               String?
+  country           String   @default("US")
+  licenseNumber     String?
+  insuranceInfo     String?
+  taxId             String?
+  stripeAccountId   String?
+  stripeCustomerId  String?
+  settings          Json     @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  users                 User[]
+  customers             Customer[]
+  properties            Property[]
+  appointments          Appointment[]
+  inspections           Inspection[]
+  invoices              Invoice[]
+  k9Teams               K9Team[]
+  serviceAreas          ServiceArea[]
+  notificationTemplates NotificationTemplate[]
+
+  @@map("organizations")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  clerkUserId    String   @unique
+  organizationId String
+  role           UserRole
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  avatarUrl      String?
+  isActive       Boolean  @default(true)
+  licenseNumber  String?
+  certifications Json     @default("[]")
+  settings       Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization         Organization   @relation(fields: [organizationId], references: [id])
+  k9TeamMemberships    K9TeamMember[]
+  assignedAppointments Appointment[]  @relation("AssignedTechnician")
+  inspectionsPerformed Inspection[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+// ─── K9 Teams ────────────────────────────────────────────────────────────────
+
+model K9Team {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  isActive       Boolean  @default(true)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  members      K9TeamMember[]
+  dogs         K9Dog[]
+  appointments Appointment[]
+  inspections  Inspection[]
+
+  @@map("k9_teams")
+}
+
+model K9TeamMember {
+  id        String   @id @default(cuid())
+  k9TeamId  String
+  userId    String
+  isPrimary Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+
+  k9Team K9Team @relation(fields: [k9TeamId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([k9TeamId, userId])
+  @@map("k9_team_members")
+}
+
+model K9Dog {
+  id                  String    @id @default(cuid())
+  k9TeamId            String
+  name                String
+  breed               String?
+  certificationNumber String?
+  certifiedUntil      DateTime?
+  photoUrl            String?
+  isActive            Boolean   @default(true)
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  k9Team      K9Team      @relation(fields: [k9TeamId], references: [id])
+  inspections Inspection[]
+
+  @@map("k9_dogs")
+}
+
+// ─── Customers ────────────────────────────────────────────────────────────────
+
+model Customer {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  clerkUserId         String?      @unique
+  customerType        CustomerType @default(RESIDENTIAL)
+  companyName         String?
+  firstName           String
+  lastName            String
+  email               String?
+  phone               String?
+  altPhone            String?
+  billingAddressLine1 String?
+  billingAddressLine2 String?
+  billingCity         String?
+  billingState        String?
+  billingZip          String?
+  billingCountry      String       @default("US")
+  taxExempt           Boolean      @default(false)
+  taxExemptId         String?
+  preferredContact    String?
+  notes               String?
+  tags                String[]     @default([])
+  referralSource      String?
+  isActive            Boolean      @default(true)
+  stripeCustomerId    String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  contacts     CustomerContact[]
+  properties   Property[]
+  appointments Appointment[]
+  invoices     Invoice[]
+  notifications Notification[]
+
+  @@map("customers")
+}
+
+model CustomerContact {
+  id         String   @id @default(cuid())
+  customerId String
+  firstName  String
+  lastName   String
+  email      String?
+  phone      String?
+  role       String?
+  isPrimary  Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("customer_contacts")
+}
+
+// ─── Properties & Units ───────────────────────────────────────────────────────
+
+model Property {
+  id             String       @id @default(cuid())
+  organizationId String
+  customerId     String
+  name           String
+  propertyType   PropertyType @default(SINGLE_FAMILY)
+  addressLine1   String
+  addressLine2   String?
+  city           String
+  state          String
+  zip            String
+  country        String       @default("US")
+  latitude       Float?
+  longitude      Float?
+  totalUnits     Int?
+  totalBuildings Int?
+  accessNotes    String?
+  gateCode       String?
+  parkingNotes   String?
+  notes          String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  customer     Customer       @relation(fields: [customerId], references: [id])
+  buildings    Building[]
+  units        Unit[]
+  appointments Appointment[]
+  inspections  Inspection[]
+
+  @@map("properties")
+}
+
+model Building {
+  id         String   @id @default(cuid())
+  propertyId String
+  name       String
+  code       String?
+  floors     Int?
+  totalUnits Int?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  units    Unit[]
+
+  @@map("buildings")
+}
+
+model Unit {
+  id         String   @id @default(cuid())
+  propertyId String
+  buildingId String?
+  unitNumber String
+  floor      String?
+  unitType   UnitType @default(APARTMENT)
+  occupant   String?
+  sqft       Float?
+  notes      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property        Property         @relation(fields: [propertyId], references: [id])
+  building        Building?        @relation(fields: [buildingId], references: [id])
+  inspectionUnits InspectionUnit[]
+
+  @@map("units")
+}
+
+// ─── Service Areas ────────────────────────────────────────────────────────────
+
+model ServiceArea {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  zipCodes       String[]
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("service_areas")
+}
+
+// ─── Appointments / Scheduling ────────────────────────────────────────────────
+
+model Appointment {
+  id                  String            @id @default(cuid())
+  organizationId      String
+  customerId          String
+  propertyId          String
+  technicianId        String?
+  k9TeamId            String?
+  serviceType         ServiceType       @default(BED_BUG_INSPECTION)
+  status              AppointmentStatus @default(REQUESTED)
+  scheduledDate       DateTime
+  scheduledEndTime    DateTime?
+  estimatedMinutes    Int?
+  actualStartTime     DateTime?
+  actualEndTime       DateTime?
+  title               String?
+  description         String?
+  accessNotes         String?
+  specialInstructions String?
+  priority            Int               @default(0)
+  routeOrder          Int?
+  travelMinutes       Int?
+  confirmedAt         DateTime?
+  cancelledAt         DateTime?
+  cancellationReason  String?
+  notes               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  property      Property      @relation(fields: [propertyId], references: [id])
+  technician    User?         @relation("AssignedTechnician", fields: [technicianId], references: [id])
+  k9Team        K9Team?       @relation(fields: [k9TeamId], references: [id])
+  inspection    Inspection?
+  notifications Notification[]
+
+  @@map("appointments")
+}
+
+// ─── Inspections ──────────────────────────────────────────────────────────────
+
+model Inspection {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  appointmentId       String          @unique
+  propertyId          String
+  technicianId        String
+  k9TeamId            String?
+  k9DogId             String?
+  serviceType         ServiceType     @default(BED_BUG_INSPECTION)
+  inspectionNumber    String          @unique
+  startTime           DateTime
+  endTime             DateTime?
+  weather             String?
+  temperature         Float?
+  accessNotes         String?
+  scopeNotes          String?
+  totalUnitsInspected Int             @default(0)
+  totalPositive       Int             @default(0)
+  totalNegative       Int             @default(0)
+  totalInconclusive   Int             @default(0)
+  totalInaccessible   Int             @default(0)
+  overallResult       DetectionResult?
+  summaryNotes        String?
+  recommendations     String?
+  followUpRequired    Boolean         @default(false)
+  followUpDate        DateTime?
+  treatmentReferral   Boolean         @default(false)
+  customerSignature   String?
+  signedAt            DateTime?
+  reportGeneratedAt   DateTime?
+  reportUrl           String?
+  internalNotes       String?
+  metadata            Json            @default("{}")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id])
+  appointment     Appointment       @relation(fields: [appointmentId], references: [id])
+  property        Property          @relation(fields: [propertyId], references: [id])
+  technician      User              @relation(fields: [technicianId], references: [id])
+  k9Team          K9Team?           @relation(fields: [k9TeamId], references: [id])
+  k9Dog           K9Dog?            @relation(fields: [k9DogId], references: [id])
+  inspectionUnits InspectionUnit[]
+  photos          InspectionPhoto[]
+  invoice         Invoice?
+
+  @@map("inspections")
+}
+
+model InspectionUnit {
+  id                String          @id @default(cuid())
+  inspectionId      String
+  unitId            String?
+  unitNumber        String
+  buildingName      String?
+  floor             String?
+  unitType          UnitType        @default(APARTMENT)
+  occupant          String?
+  detectionResult   DetectionResult @default(NEGATIVE)
+  severityLevel     SeverityLevel   @default(NONE)
+  alertLocation     String?
+  visualEvidence    Boolean         @default(false)
+  visualNotes       String?
+  technicianNotes   String?
+  recommendations   String?
+  followUpRequired  Boolean         @default(false)
+  followUpDate      DateTime?
+  treatmentReferral Boolean         @default(false)
+  accessGranted     Boolean         @default(true)
+  inspectedAt       DateTime?
+  sortOrder         Int             @default(0)
+  metadata          Json            @default("{}")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  inspection Inspection        @relation(fields: [inspectionId], references: [id])
+  unit       Unit?             @relation(fields: [unitId], references: [id])
+  photos     InspectionPhoto[]
+
+  @@map("inspection_units")
+}
+
+model InspectionPhoto {
+  id               String    @id @default(cuid())
+  inspectionId     String
+  inspectionUnitId String?
+  url              String
+  key              String
+  filename         String
+  caption          String?
+  sortOrder        Int       @default(0)
+  takenAt          DateTime?
+  uploadedAt       DateTime  @default(now())
+
+  inspection     Inspection      @relation(fields: [inspectionId], references: [id])
+  inspectionUnit InspectionUnit? @relation(fields: [inspectionUnitId], references: [id])
+
+  @@map("inspection_photos")
+}
+
+// ─── Invoices & Payments ──────────────────────────────────────────────────────
+
+model Invoice {
+  id               String        @id @default(cuid())
+  organizationId   String
+  customerId       String
+  inspectionId     String?       @unique
+  invoiceNumber    String        @unique
+  status           InvoiceStatus @default(DRAFT)
+  issueDate        DateTime      @default(now())
+  dueDate          DateTime?
+  subtotal         Float         @default(0)
+  taxRate          Float         @default(0)
+  taxAmount        Float         @default(0)
+  discountAmount   Float         @default(0)
+  totalAmount      Float         @default(0)
+  paidAmount       Float         @default(0)
+  balanceDue       Float         @default(0)
+  currency         String        @default("USD")
+  notes            String?
+  terms            String?
+  stripeInvoiceId  String?
+  stripePaymentUrl String?
+  sentAt           DateTime?
+  viewedAt         DateTime?
+  paidAt           DateTime?
+  overdueAt        DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  customer     Customer          @relation(fields: [customerId], references: [id])
+  inspection   Inspection?       @relation(fields: [inspectionId], references: [id])
+  lineItems    InvoiceLineItem[]
+  payments     Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float    @default(1)
+  unitPrice   Float
+  total       Float
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoice_line_items")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  invoiceId       String
+  amount          Float
+  currency        String        @default("USD")
+  method          PaymentMethod @default(CREDIT_CARD)
+  status          PaymentStatus @default(PENDING)
+  stripePaymentId String?
+  stripeChargeId  String?
+  referenceNumber String?
+  notes           String?
+  processedAt     DateTime?
+  refundedAt      DateTime?
+  refundAmount    Float?
+  refundReason    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id             String              @id @default(cuid())
+  customerId     String?
+  userId         String?
+  appointmentId  String?
+  type           NotificationType
+  channel        NotificationChannel
+  subject        String?
+  body           String
+  recipientEmail String?
+  recipientPhone String?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+  errorMessage   String?
+  metadata       Json                @default("{}")
+  createdAt      DateTime            @default(now())
+
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id             String              @id @default(cuid())
+  organizationId String
+  type           NotificationType
+  channel        NotificationChannel
+  subject        String?
+  body           String
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, type, channel])
+  @@map("notification_templates")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         String
+  entityType     String
+  entityId       String
+  oldValues      Json?
+  newValues      Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

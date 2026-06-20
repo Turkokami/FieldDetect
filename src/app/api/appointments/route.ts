@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+
+const createAppointmentSchema = z.object({
+  customerId: z.string().min(1),
+  propertyId: z.string().min(1),
+  technicianId: z.string().optional(),
+  k9TeamId: z.string().optional(),
+  serviceType: z.enum([
+    "BED_BUG_INSPECTION", "BED_BUG_TREATMENT", "RODENT_INSPECTION",
+    "RODENT_EXCLUSION", "WILDLIFE_INSPECTION", "WILDLIFE_REMOVAL",
+    "BIRD_EXCLUSION", "GOOSE_CONTROL", "GENERAL_PEST_INSPECTION",
+    "GENERAL_PEST_TREATMENT", "OTHER",
+  ]).default("BED_BUG_INSPECTION"),
+  scheduledDate: z.string().datetime(),
+  scheduledEndTime: z.string().datetime().optional(),
+  estimatedMinutes: z.number().int().positive().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  accessNotes: z.string().optional(),
+  specialInstructions: z.string().optional(),
+  priority: z.number().int().default(0),
+});
+
+export async function GET(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const technicianId = searchParams.get("technicianId");
+    const customerId = searchParams.get("customerId");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const page = parseInt(searchParams.get("page") ?? "1");
+    const pageSize = parseInt(searchParams.get("pageSize") ?? "20");
+
+    const where: Record<string, unknown> = {
+      organizationId: user.organizationId,
+    };
+
+    if (status) where.status = status;
+    if (technicianId) where.technicianId = technicianId;
+    if (customerId) where.customerId = customerId;
+    if (startDate || endDate) {
+      where.scheduledDate = {
+        ...(startDate && { gte: new Date(startDate) }),
+        ...(endDate && { lte: new Date(endDate) }),
+      };
+    }
+
+    // Technicians can only see their own appointments
+    if (user.role === "TECHNICIAN") {
+      where.technicianId = user.id;
+    }
+
+    const [appointments, total] = await Promise.all([
+      prisma.appointment.findMany({
+        where,
+        include: {
+          customer: {
+            select: { id: true, firstName: true, lastName: true, companyName: true, phone: true },
+          },
+          property: {
+            select: { id: true, name: true, addressLine1: true, city: true, state: true },
+          },
+          technician: {
+            select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+          },
+          k9Team: { select: { id: true, name: true } },
+          inspection: { select: { id: true, inspectionNumber: true } },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { scheduledDate: "asc" },
+      }),
+      prisma.appointment.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      data: appointments,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    });
+  } catch (error) {
+    console.error("[APPOINTMENTS_GET]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const body = await req.json();
+    const validated = createAppointmentSchema.parse(body);
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        ...validated,
+        organizationId: user.organizationId,
+        scheduledDate: new Date(validated.scheduledDate),
+        scheduledEndTime: validated.scheduledEndTime
+          ? new Date(validated.scheduledEndTime)
+          : null,
+      },
+      include: {
+        customer: true,
+        property: true,
+        technician: true,
+        k9Team: true,
+      },
+    });
+
+    return NextResponse.json({ data: appointment }, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Validation error", details: error.issues }, { status: 400 });
+    }
+    console.error("[APPOINTMENTS_POST]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

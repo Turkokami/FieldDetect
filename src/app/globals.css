@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter, system-ui, sans-serif);
+
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #1e293b;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #1e293b;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: #3b82f6;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+/* Tailwind v4 custom utilities for shadcn-style components */
+@utility bg-background { background-color: var(--color-background); }
+@utility bg-card { background-color: var(--color-card); }
+@utility bg-popover { background-color: var(--color-popover); }
+@utility bg-primary { background-color: var(--color-primary); }
+@utility bg-secondary { background-color: var(--color-secondary); }
+@utility bg-muted { background-color: var(--color-muted); }
+@utility bg-accent { background-color: var(--color-accent); }
+@utility bg-destructive { background-color: var(--color-destructive); }
+
+@utility text-foreground { color: var(--color-foreground); }
+@utility text-card-foreground { color: var(--color-card-foreground); }
+@utility text-popover-foreground { color: var(--color-popover-foreground); }
+@utility text-primary { color: var(--color-primary); }
+@utility text-primary-foreground { color: var(--color-primary-foreground); }
+@utility text-secondary-foreground { color: var(--color-secondary-foreground); }
+@utility text-muted-foreground { color: var(--color-muted-foreground); }
+@utility text-accent-foreground { color: var(--color-accent-foreground); }
+@utility text-destructive { color: var(--color-destructive); }
+@utility text-destructive-foreground { color: var(--color-destructive-foreground); }
+
+@utility border-border { border-color: var(--color-border); }
+@utility border-input { border-color: var(--color-input); }
+@utility ring-ring { --tw-ring-color: var(--color-ring); }
+@utility ring-offset-background { --tw-ring-offset-color: var(--color-background); }
