@@ -70,8 +70,8 @@ export default async function PropertiesPage({
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Properties</h1>
           <p className="text-sm text-muted-foreground mt-1">{total} properties</p>
@@ -84,7 +84,7 @@ export default async function PropertiesPage({
         </Link>
       </div>
 
-      <div className="mb-6">
+      <div>
         <form method="get">
           <input
             name="search"

@@ -88,7 +88,7 @@ export default async function FollowUpsPage() {
   );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Follow-Up Queue</h1>
@@ -160,54 +160,39 @@ export default async function FollowUpsPage() {
           <h2 className="text-sm font-bold text-blue-600 uppercase tracking-wide mb-3">
             Unit Follow-Up Schedule
           </h2>
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Unit</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Property</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Follow-Up Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Days Away</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingUnits.map((u) => {
-                  const daysAway = Math.ceil(
-                    (new Date(u.followUpDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                  );
-                  return (
-                    <tr key={u.id} className="border-t border-border/50">
-                      <td className="px-4 py-3 font-semibold">{u.unitNumber}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {u.inspection.property.name}
-                        <br />
-                        <span className="text-xs">{u.inspection.property.city}, {u.inspection.property.state}</span>
-                      </td>
-                      <td className="px-4 py-3">{formatDate(u.followUpDate!)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          daysAway <= 3 ? "bg-red-100 text-red-700" :
-                          daysAway <= 7 ? "bg-amber-100 text-amber-700" :
-                          "bg-blue-100 text-blue-700"
-                        }`}>
-                          {daysAway}d
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/inspections/${u.inspectionId}`}
-                          className="text-xs font-medium hover:underline"
-                          style={{ color: "#0ABAB5" }}
-                        >
-                          View →
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            {pendingUnits.map((u) => {
+              const daysAway = Math.ceil(
+                (new Date(u.followUpDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+              );
+              return (
+                <Link
+                  key={u.id}
+                  href={`/inspections/${u.inspectionId}`}
+                  className="flex items-center justify-between gap-4 bg-card border border-border rounded-xl px-4 py-3 hover:border-[#0ABAB5]/40 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-bold text-foreground text-sm">{u.unitNumber}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        daysAway <= 3 ? "bg-red-100 text-red-700" :
+                        daysAway <= 7 ? "bg-amber-100 text-amber-700" :
+                        "bg-blue-100 text-blue-700"
+                      }`}>
+                        {daysAway}d
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {u.inspection.property.name} · {u.inspection.property.city}, {u.inspection.property.state}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-xs font-medium text-foreground">{formatDate(u.followUpDate!)}</div>
+                    <div className="text-xs text-muted-foreground">Follow-up date</div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

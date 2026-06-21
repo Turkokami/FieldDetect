@@ -212,24 +212,22 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Title row */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
             Good {today.getHours() < 12 ? "morning" : today.getHours() < 17 ? "afternoon" : "evening"}, {user.firstName}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {format(today, "EEEE, MMMM d, yyyy")} · {data.todayAppointments.length} jobs today
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {activeToday.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{ background: "rgba(139,92,246,0.12)", color: "#7c3aed" }}>
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-              {activeToday.length} job{activeToday.length > 1 ? "s" : ""} in progress
-            </div>
-          )}
-        </div>
+        {activeToday.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0"
+            style={{ background: "rgba(139,92,246,0.12)", color: "#7c3aed" }}>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+            {activeToday.length} job{activeToday.length > 1 ? "s" : ""} in progress
+          </div>
+        )}
       </div>
 
       <QuickActions />

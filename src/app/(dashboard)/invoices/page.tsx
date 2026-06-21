@@ -131,48 +131,48 @@ export default async function InvoicesPage({
           <Link key={inv.id} href={`/invoices/${inv.id}`}>
             <Card className="hover:shadow-sm transition-shadow cursor-pointer hover:border-primary/30">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 rounded-lg bg-slate-50 flex-shrink-0">
-                      <Receipt className="h-4 w-4 text-slate-500" />
-                    </div>
-                    <div className="min-w-0">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-slate-50 shrink-0 mt-0.5">
+                    <Receipt className="h-4 w-4 text-slate-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {/* Name + badge */}
+                    <div className="flex items-start justify-between gap-2 mb-1">
                       <p className="font-semibold text-slate-900 truncate">
                         {inv.customer.companyName ??
                           `${inv.customer.firstName} ${inv.customer.lastName}`}
                       </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-slate-400 font-mono">{inv.invoiceNumber}</span>
-                        {inv.inspection && (
-                          <span className="text-xs text-slate-400">
-                            · {inv.inspection.inspectionNumber}
+                      <Badge variant={STATUS_VARIANTS[inv.status] ?? "secondary"} className="shrink-0">
+                        {STATUS_LABELS[inv.status] ?? inv.status}
+                      </Badge>
+                    </div>
+                    {/* Invoice meta */}
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 mb-2">
+                      <span className="font-mono">{inv.invoiceNumber}</span>
+                      {inv.inspection && (
+                        <span>· {inv.inspection.inspectionNumber}</span>
+                      )}
+                      <span>· {formatDate(inv.createdAt)}</span>
+                    </div>
+                    {/* Amount row */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-900">{formatCurrency(inv.totalAmount)}</span>
+                        {inv.balanceDue > 0 && inv.balanceDue !== inv.totalAmount && (
+                          <span className="text-xs text-amber-600 ml-2">
+                            {formatCurrency(inv.balanceDue)} due
                           </span>
                         )}
-                        <span className="text-xs text-slate-400">
-                          · {formatDate(inv.createdAt)}
-                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {inv.dueDate && inv.status !== "PAID" && (
+                          <p className="text-xs text-slate-400">
+                            Due {formatDate(inv.dueDate)}
+                          </p>
+                        )}
+                        <ArrowUpRight className="h-4 w-4 text-slate-400" />
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-slate-900">{formatCurrency(inv.totalAmount)}</p>
-                      {inv.balanceDue > 0 && inv.balanceDue !== inv.totalAmount && (
-                        <p className="text-xs text-amber-600">
-                          {formatCurrency(inv.balanceDue)} due
-                        </p>
-                      )}
-                      {inv.dueDate && inv.status !== "PAID" && (
-                        <p className="text-xs text-slate-400">
-                          Due {formatDate(inv.dueDate)}
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant={STATUS_VARIANTS[inv.status] ?? "secondary"}>
-                      {STATUS_LABELS[inv.status] ?? inv.status}
-                    </Badge>
-                    <ArrowUpRight className="h-4 w-4 text-slate-400" />
                   </div>
                 </div>
               </CardContent>
