@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatPhone, formatCurrency } from "@/lib/utils";
+import { DeleteCustomerButton } from "@/components/customers/delete-customer-button";
 
 export default async function CustomerDetailPage({
   params,
@@ -68,30 +69,39 @@ export default async function CustomerDetailPage({
     FOLLOW_UP_REQUIRED: "text-blue-600",
   };
 
+  const customerDisplayName = customer.companyName ?? `${customer.firstName} ${customer.lastName}`;
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/customers" className="text-muted-foreground hover:text-foreground">
-            ← Customers
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-2xl font-bold text-foreground">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 text-sm text-muted-foreground">
+            <Link href="/customers" className="hover:text-foreground">Customers</Link>
+            <span>/</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
             {customer.firstName} {customer.lastName}
             {customer.companyName && (
-              <span className="text-lg font-normal text-muted-foreground ml-2">
+              <span className="text-base sm:text-lg font-normal text-muted-foreground ml-2">
                 — {customer.companyName}
               </span>
             )}
           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <DeleteCustomerButton customerId={customer.id} customerName={customerDisplayName} />
+          <Link
+            href={`/customers/${customer.id}/edit`}
+            className="px-3 py-2 text-sm font-medium border border-border rounded-lg hover:bg-muted transition-colors"
+          >
+            Edit
+          </Link>
           <Link
             href={`/scheduling/new?customerId=${customer.id}`}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
           >
-            + Schedule Appointment
+            + Schedule
           </Link>
         </div>
       </div>

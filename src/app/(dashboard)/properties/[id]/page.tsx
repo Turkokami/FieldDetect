@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
+import { DeletePropertyButton } from "@/components/properties/delete-property-button";
 
 export default async function PropertyDetailPage({
   params,
@@ -68,22 +69,31 @@ export default async function PropertyDetailPage({
     property.buildings.reduce((s, b) => s + b.units.length, 0);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/properties" className="text-muted-foreground hover:text-foreground text-sm">
-            ← Properties
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-2xl font-bold text-foreground">{property.name}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 text-sm text-muted-foreground">
+            <Link href="/properties" className="hover:text-foreground">Properties</Link>
+            <span>/</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{property.name}</h1>
         </div>
-        <Link
-          href={`/scheduling/new?propertyId=${property.id}&customerId=${property.customerId}`}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          + Schedule Inspection
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <DeletePropertyButton propertyId={property.id} propertyName={property.name} />
+          <Link
+            href={`/properties/${property.id}/edit`}
+            className="px-3 py-2 text-sm font-medium border border-border rounded-lg hover:bg-muted transition-colors"
+          >
+            Edit
+          </Link>
+          <Link
+            href={`/scheduling/new?propertyId=${property.id}&customerId=${property.customerId}`}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            + Schedule
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
