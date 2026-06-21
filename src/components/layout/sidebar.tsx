@@ -45,7 +45,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col h-full transition-all duration-300 shrink-0",
+        "hidden lg:flex flex-col h-full transition-all duration-300 shrink-0",
         collapsed ? "w-16" : "w-60"
       )}
       style={{ background: "linear-gradient(180deg, #0A0F1A 0%, #0D1A1F 100%)" }}

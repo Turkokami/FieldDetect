@@ -62,10 +62,10 @@ export function MobileNav() {
       {/* Drawer */}
       <div
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-72 flex flex-col transition-transform duration-300 ease-in-out lg:hidden",
+          "fixed top-0 left-0 z-50 h-full flex flex-col transition-transform duration-300 ease-in-out lg:hidden",
           open ? "translate-x-0" : "-translate-x-full"
         )}
-        style={{ background: "linear-gradient(180deg, #0A0F1A 0%, #0D1A1F 100%)" }}
+        style={{ width: "min(256px, 80vw)", background: "linear-gradient(180deg, #0A0F1A 0%, #0D1A1F 100%)" }}
       >
         {/* Header */}
         <div
