@@ -985,6 +985,114 @@ function AddUnitToProperty({ propertyId, buildingId, onAdded }: { propertyId: st
   );
 }
 
+// ─── BuildingHeader (inline rename + delete) ──────────────────────────────────
+
+function BuildingHeader({
+  building,
+  inspectedCount,
+  onRenamed,
+  onDeleted,
+}: {
+  building: Building;
+  inspectedCount: number;
+  onRenamed: (newName: string) => void;
+  onDeleted: () => void;
+}) {
+  const [mode, setMode] = useState<"view" | "rename" | "confirmDelete">("view");
+  const [name, setName] = useState(building.name);
+  const [saving, setSaving] = useState(false);
+
+  const rename = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === building.name) { setMode("view"); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/buildings/${building.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (res.ok) { onRenamed(trimmed); setMode("view"); }
+    } finally { setSaving(false); }
+  };
+
+  const deleteBuilding = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/buildings/${building.id}`, { method: "DELETE" });
+      if (res.ok) onDeleted();
+    } finally { setSaving(false); }
+  };
+
+  if (mode === "rename") {
+    return (
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") rename(); if (e.key === "Escape") setMode("view"); }}
+          autoFocus
+          className="flex-1 h-8 px-2.5 rounded-lg text-sm text-white focus:outline-none"
+          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(10,186,181,0.4)" }}
+        />
+        <button onClick={rename} disabled={saving || !name.trim()}
+          className="px-3 h-8 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+          style={{ background: "#0ABAB5" }}>
+          {saving ? "…" : "Save"}
+        </button>
+        <button onClick={() => { setName(building.name); setMode("view"); }}
+          className="px-2.5 h-8 rounded-lg text-xs" style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#64748b" }}>
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  if (mode === "confirmDelete") {
+    return (
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="text-xs text-red-400 flex-1">Delete &ldquo;{building.name}&rdquo;? Units move to standalone.</span>
+        <button onClick={deleteBuilding} disabled={saving}
+          className="px-3 h-7 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+          style={{ background: "#dc2626" }}>
+          {saving ? "…" : "Delete"}
+        </button>
+        <button onClick={() => setMode("view")}
+          className="px-2.5 h-7 rounded-lg text-xs" style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#64748b" }}>
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-sm font-semibold text-white">{building.name}</span>
+      <span className="text-xs" style={{ color: "#64748b" }}>
+        ({inspectedCount}/{building.units.length})
+      </span>
+      <div className="ml-auto flex items-center gap-1">
+        <button
+          onClick={() => setMode("rename")}
+          className="p-1.5 rounded-lg transition-colors"
+          style={{ color: "#64748b" }}
+          title="Rename building"
+        >
+          <PenLine className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => setMode("confirmDelete")}
+          className="p-1.5 rounded-lg transition-colors"
+          style={{ color: "#64748b" }}
+          title="Delete building"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── AddBuildingToProperty ────────────────────────────────────────────────────
 
 function AddBuildingToProperty({ propertyId, onAdded }: { propertyId: string; onAdded: () => Promise<void> }) {
@@ -1544,12 +1652,22 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
               {/* Unit grids by building */}
               {apt.property.buildings.map((building) => (
                 <div key={building.id} className="rounded-2xl p-4" style={DARK.card}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-semibold text-white">{building.name}</span>
-                    <span className="text-xs" style={{ color: "#64748b" }}>
-                      ({[...building.units].filter((u) => (inspMap.get(u.unitNumber)?.length ?? 0) > 0).length}/{building.units.length})
-                    </span>
-                  </div>
+                  <BuildingHeader
+                    building={building}
+                    inspectedCount={[...building.units].filter((u) => (inspMap.get(u.unitNumber)?.length ?? 0) > 0).length}
+                    onRenamed={(newName) => {
+                      setApt((prev) => ({
+                        ...prev,
+                        property: {
+                          ...prev.property,
+                          buildings: prev.property.buildings.map((b) =>
+                            b.id === building.id ? { ...b, name: newName } : b
+                          ),
+                        },
+                      }));
+                    }}
+                    onDeleted={refreshProperty}
+                  />
                   <div className="grid grid-cols-4 gap-2">
                     {[...building.units].sort((a, b) => naturalSort(a.unitNumber, b.unitNumber)).map((unit) => (
                       <UnitTile
