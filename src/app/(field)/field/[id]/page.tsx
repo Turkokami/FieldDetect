@@ -46,7 +46,9 @@ export default async function FieldJobPage({
         },
       },
       inspection: {
-        include: {
+        select: {
+          id: true,
+          summaryNotes: true,
           inspectionUnits: {
             include: { photos: true },
             orderBy: { sortOrder: "asc" },
