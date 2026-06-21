@@ -218,7 +218,7 @@ function UnitEditor({
     try {
       for (const det of detections) {
         if (det.inspUnitId) {
-          await fetch(`/api/inspection-units/${det.inspUnitId}`, {
+          const res = await fetch(`/api/inspection-units/${det.inspUnitId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -227,22 +227,30 @@ function UnitEditor({
               technicianNotes: det.notes || null,
             }),
           });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error("[saveAll PATCH]", err);
+          }
         } else {
-          await fetch(`/api/inspections/${inspectionId}/units`, {
+          const payload: Record<string, unknown> = {
+            unitNumber: det.unitNumber,
+            detectionResult: det.result,
+          };
+          if (det.location) payload.alertLocation = det.location;
+          if (det.notes) payload.technicianNotes = det.notes;
+
+          const res = await fetch(`/api/inspections/${inspectionId}/units`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              units: [{
-                unitNumber: det.unitNumber,
-                detectionResult: det.result,
-                alertLocation: det.location || null,
-                technicianNotes: det.notes || null,
-              }],
-            }),
+            body: JSON.stringify({ units: [payload] }),
           });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error("[saveAll POST]", err);
+          }
         }
       }
-      // Delete any existing units that were removed (inspUnitIds not in current detections)
+      // Delete any existing units that were removed
       const keptIds = new Set(detections.map((d) => d.inspUnitId).filter(Boolean));
       for (const eu of existingUnits) {
         if (!keptIds.has(eu.id)) {
