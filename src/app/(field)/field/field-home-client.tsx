@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { MapPin, Phone, Clock, ChevronRight, CheckCircle2, AlertTriangle, Navigation } from "lucide-react";
 
 type Appt = {
   id: string;
@@ -32,51 +33,43 @@ type Appt = {
   } | null;
 };
 
-const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string }> = {
-  SCHEDULED:           { label: "Scheduled",       dot: "#3b82f6", bg: "#1d3a6e" },
-  CONFIRMED:           { label: "Confirmed",        dot: "#6366f1", bg: "#1e1d4c" },
-  EN_ROUTE:            { label: "En Route",         dot: "#f59e0b", bg: "#3d2d00" },
-  ON_SITE:             { label: "On Site",          dot: "#f97316", bg: "#3d1c00" },
-  INSPECTION_STARTED:  { label: "In Progress",      dot: "#a855f7", bg: "#2d1040" },
-  INSPECTION_COMPLETE: { label: "Complete",         dot: "#22c55e", bg: "#052e16" },
-  REPORT_SENT:         { label: "Report Sent",      dot: "#0ABAB5", bg: "#002626" },
-  INVOICED:            { label: "Invoiced",         dot: "#0ea5e9", bg: "#002040" },
-  PAID:                { label: "Paid",             dot: "#10b981", bg: "#002a1a" },
-  NO_SHOW:             { label: "No Show",          dot: "#ef4444", bg: "#2a0a0a" },
+const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  SCHEDULED:           { label: "Scheduled",    color: "#3b82f6", bg: "rgba(59,130,246,0.12)"  },
+  CONFIRMED:           { label: "Confirmed",    color: "#6366f1", bg: "rgba(99,102,241,0.12)"  },
+  EN_ROUTE:            { label: "En Route",     color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
+  ON_SITE:             { label: "On Site",      color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
+  INSPECTION_STARTED:  { label: "In Progress",  color: "#a855f7", bg: "rgba(168,85,247,0.12)"  },
+  INSPECTION_COMPLETE: { label: "Complete",     color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
+  REPORT_SENT:         { label: "Report Sent",  color: "#0ABAB5", bg: "rgba(10,186,181,0.12)"  },
+  INVOICED:            { label: "Invoiced",     color: "#0ea5e9", bg: "rgba(14,165,233,0.12)"  },
+  PAID:                { label: "Paid",         color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
+  NO_SHOW:             { label: "No Show",      color: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
 };
 
-const RESULT_CONFIG: Record<string, { label: string; color: string }> = {
-  NEGATIVE:            { label: "Negative",        color: "#22c55e" },
-  POSITIVE_K9_ALERT:   { label: "K9 Alert",        color: "#ef4444" },
-  VISUAL_CONFIRMATION: { label: "Visual +",        color: "#dc2626" },
-  INCONCLUSIVE:        { label: "Inconclusive",    color: "#eab308" },
-  UNABLE_TO_INSPECT:   { label: "No Access",       color: "#64748b" },
-  ACCESS_DENIED:       { label: "Denied",          color: "#f97316" },
-  FOLLOW_UP_REQUIRED:  { label: "Follow-Up",       color: "#3b82f6" },
+const RESULT_CFG: Record<string, { label: string; color: string; emoji: string }> = {
+  NEGATIVE:            { label: "All Clear",    color: "#22c55e", emoji: "✅" },
+  POSITIVE_K9_ALERT:   { label: "K9 Alert",    color: "#ef4444", emoji: "🚨" },
+  VISUAL_CONFIRMATION: { label: "Visual +",    color: "#dc2626", emoji: "👁️" },
+  INCONCLUSIVE:        { label: "Inconclusive", color: "#eab308", emoji: "❓" },
+  UNABLE_TO_INSPECT:   { label: "No Access",   color: "#64748b", emoji: "🚫" },
+  ACCESS_DENIED:       { label: "Denied",      color: "#f97316", emoji: "⛔" },
+  FOLLOW_UP_REQUIRED:  { label: "Follow-Up",   color: "#3b82f6", emoji: "📋" },
 };
 
 const SERVICE_LABELS: Record<string, string> = {
-  BED_BUG_INSPECTION:    "Bed Bug Inspection",
-  BED_BUG_TREATMENT:     "Bed Bug Treatment",
-  RODENT_INSPECTION:     "Rodent Inspection",
-  GENERAL_PEST_INSPECTION: "General Pest Inspection",
-  FOLLOW_UP:             "Follow-Up",
-  OTHER:                 "Service Call",
+  BED_BUG_INSPECTION:       "Bed Bug Inspection",
+  BED_BUG_TREATMENT:        "Bed Bug Treatment",
+  RODENT_INSPECTION:        "Rodent Inspection",
+  GENERAL_PEST_INSPECTION:  "General Pest Inspection",
+  FOLLOW_UP:                "Follow-Up Inspection",
+  OTHER:                    "Service Call",
 };
 
-const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
-];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 function fmtTime(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-}
-
-function fmtDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 function mapsUrl(property: Appt["property"]) {
@@ -90,9 +83,162 @@ function isToday(dateStr: string) {
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
 }
 
-function isActiveJob(status: string) {
+function isActive(status: string) {
   return ["EN_ROUTE", "ON_SITE", "INSPECTION_STARTED"].includes(status);
 }
+
+function isDone(status: string) {
+  return ["INSPECTION_COMPLETE","REPORT_SENT","INVOICED","PAID"].includes(status);
+}
+
+function isActionable(status: string) {
+  return ["SCHEDULED","CONFIRMED","EN_ROUTE","ON_SITE","INSPECTION_STARTED"].includes(status);
+}
+
+// ─── Job Card ─────────────────────────────────────────────────────────────────
+
+function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast: boolean }) {
+  const st = STATUS_CFG[job.status] ?? STATUS_CFG.SCHEDULED;
+  const result = job.inspection?.overallResult ? RESULT_CFG[job.inspection.overallResult] : null;
+  const active = isActive(job.status);
+  const done = isDone(job.status);
+  const actionable = isActionable(job.status);
+  const customerName = job.customer.companyName ?? `${job.customer.firstName} ${job.customer.lastName}`;
+  const hasAlert = result && ["POSITIVE_K9_ALERT","VISUAL_CONFIRMATION"].includes(job.inspection?.overallResult ?? "");
+
+  return (
+    <div className="flex gap-3">
+      {/* Timeline spine */}
+      <div className="flex flex-col items-center shrink-0" style={{ width: 36 }}>
+        {/* Stop bubble */}
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shrink-0 border-2 z-10"
+          style={
+            done
+              ? { background: "rgba(34,197,94,0.15)", borderColor: "#22c55e", color: "#22c55e" }
+              : active
+              ? { background: st.color, borderColor: st.color, color: "#fff" }
+              : { background: "rgba(255,255,255,0.06)", borderColor: st.color, color: st.color }
+          }
+        >
+          {done ? <CheckCircle2 className="h-4 w-4" /> : stopNum}
+        </div>
+        {/* Connector line */}
+        {!isLast && (
+          <div className="flex-1 w-px mt-1" style={{ background: "rgba(255,255,255,0.08)", minHeight: 20 }} />
+        )}
+      </div>
+
+      {/* Card */}
+      <Link
+        href={`/field/${job.id}`}
+        className="flex-1 mb-4 rounded-2xl overflow-hidden transition-all active:scale-[0.98]"
+        style={{
+          background: active ? "rgba(10,186,181,0.05)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${active ? "rgba(10,186,181,0.35)" : "rgba(255,255,255,0.08)"}`,
+        }}
+      >
+        {/* Status bar */}
+        <div className="h-1" style={{ background: st.color, opacity: done ? 0.4 : 1 }} />
+
+        <div className="p-4">
+          {/* Time row */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Clock className="h-3.5 w-3.5 shrink-0" style={{ color: "#64748b" }} />
+              <span className="text-sm font-bold" style={{ color: st.color }}>
+                {fmtTime(job.scheduledDate)}
+                {job.scheduledEndTime && (
+                  <span className="font-normal text-slate-500"> – {fmtTime(job.scheduledEndTime)}</span>
+                )}
+                {!job.scheduledEndTime && job.estimatedMinutes && (
+                  <span className="font-normal text-slate-500"> · est. {job.estimatedMinutes}m</span>
+                )}
+              </span>
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                style={{ background: st.bg, color: st.color }}
+              >
+                {st.label}
+              </span>
+            </div>
+            {/* Quick actions */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {job.customer.phone && (
+                <a
+                  href={`tel:${job.customer.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  <Phone className="h-3.5 w-3.5" style={{ color: "#94a3b8" }} />
+                </a>
+              )}
+              <a
+                href={mapsUrl(job.property)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: "rgba(10,186,181,0.12)", border: "1px solid rgba(10,186,181,0.25)" }}
+              >
+                <Navigation className="h-3.5 w-3.5" style={{ color: "#0ABAB5" }} />
+              </a>
+            </div>
+          </div>
+
+          {/* Property + service */}
+          <div className="mb-2">
+            <div className="font-bold text-white text-base leading-snug">{job.property.name}</div>
+            <div className="text-xs font-medium mt-0.5" style={{ color: "#0ABAB5" }}>
+              {SERVICE_LABELS[job.serviceType] ?? job.serviceType}
+            </div>
+          </div>
+
+          {/* Address + customer */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <MapPin className="h-3 w-3 shrink-0 text-slate-500" />
+              <span className="truncate">{job.property.addressLine1}, {job.property.city}</span>
+            </div>
+            <div className="text-xs text-slate-500 truncate pl-4">{customerName}</div>
+          </div>
+
+          {/* Result badge */}
+          {result && (
+            <div
+              className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+              style={{ background: `${result.color}18`, color: result.color, border: `1px solid ${result.color}30` }}
+            >
+              <span>{result.emoji}</span>
+              {result.label}
+              {hasAlert && job.inspection?.totalPositive && job.inspection.totalPositive > 0 && (
+                <span className="font-bold">· {job.inspection.totalPositive} unit{job.inspection.totalPositive > 1 ? "s" : ""}</span>
+              )}
+            </div>
+          )}
+
+          {/* CTA */}
+          {actionable && (
+            <div
+              className="mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold"
+              style={
+                active
+                  ? { background: "linear-gradient(135deg, #0ABAB5, #0D9488)", color: "#fff" }
+                  : { background: "rgba(10,186,181,0.1)", border: "1px solid rgba(10,186,181,0.3)", color: "#0ABAB5" }
+              }
+            >
+              {active ? "Continue Inspection" : "Open Job"}
+              <ChevronRight className="h-4 w-4" />
+            </div>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function FieldHome({
   appointments,
@@ -108,16 +254,16 @@ export default function FieldHome({
   const router = useRouter();
   const now = new Date();
   const todayNum = now.getDate();
+  const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth();
+
   const [selectedDay, setSelectedDay] = useState<number | null>(
-    currentYear === now.getFullYear() && currentMonth === now.getMonth() ? todayNum : null
+    isCurrentMonth ? todayNum : null
   );
   const [calendarOpen, setCalendarOpen] = useState(true);
 
-  // Build calendar grid
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
 
-  // Map day → appointments
   const byDay = useMemo(() => {
     const map: Record<number, Appt[]> = {};
     for (const a of appointments) {
@@ -128,16 +274,21 @@ export default function FieldHome({
     return map;
   }, [appointments]);
 
-  // Jobs to display: all on selected day, or today's if nothing selected
-  const displayDay = selectedDay;
-  const shownJobs = displayDay
-    ? (byDay[displayDay] ?? [])
+  const shownJobs = selectedDay
+    ? (byDay[selectedDay] ?? [])
     : appointments.filter((a) => isToday(a.scheduledDate));
 
-  // Active job (for prominent CTA)
-  const activeJob = appointments.find((a) => isActiveJob(a.status));
+  const activeJob = appointments.find((a) => isActive(a.status));
 
-  // Navigate months
+  const todayCount = appointments.filter((a) => isToday(a.scheduledDate)).length;
+  const doneCount  = appointments.filter((a) => isDone(a.status)).length;
+  const alertCount = appointments.filter((a) =>
+    a.inspection?.overallResult === "POSITIVE_K9_ALERT" ||
+    a.inspection?.overallResult === "VISUAL_CONFIRMATION"
+  ).length;
+
+  const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
+
   function prevMonth() {
     const d = new Date(currentYear, currentMonth - 1, 1);
     router.push(`/field?year=${d.getFullYear()}&month=${d.getMonth()}`);
@@ -147,81 +298,92 @@ export default function FieldHome({
     router.push(`/field?year=${d.getFullYear()}&month=${d.getMonth()}`);
   }
 
-  const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth();
-
   return (
     <div className="min-h-screen" style={{ background: "#0A0F1A" }}>
-      {/* Header */}
-      <div
-        className="px-5 pt-14 pb-4"
-        style={{ background: "linear-gradient(180deg, #0D1A2A 0%, #0A0F1A 100%)" }}
-      >
-        <div className="flex items-center justify-between mb-1">
+
+      {/* ── Header ── */}
+      <div className="px-5 pt-12 pb-5" style={{ background: "linear-gradient(180deg, #0D1A2A 0%, #0A0F1A 100%)" }}>
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#0ABAB5" }}>
-              FieldDetect Tech
+            <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#0ABAB5" }}>
+              FieldDetect
             </div>
-            <div className="text-xl font-bold text-white mt-0.5">
-              {isCurrentMonth
-                ? `Good ${now.getHours() < 12 ? "morning" : now.getHours() < 17 ? "afternoon" : "evening"}`
-                : `${MONTHS[currentMonth]} ${currentYear}`}
+            <div className="text-2xl font-black text-white leading-tight">
+              {isCurrentMonth ? greeting : `${MONTHS[currentMonth]} ${currentYear}`}
             </div>
-            <div className="text-sm text-slate-400">{techName}</div>
+            <div className="text-sm mt-0.5 text-slate-400">{techName}</div>
           </div>
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+            className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
             style={{ background: "linear-gradient(135deg, #0ABAB5, #0D9488)" }}
           >
             🐾
           </div>
         </div>
 
-        {/* Quick stats */}
-        <div className="flex gap-3 mt-4">
-          <div className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "rgba(10,186,181,0.12)", border: "1px solid rgba(10,186,181,0.2)" }}>
-            <div className="text-2xl font-black text-white">
-              {appointments.filter((a) => isToday(a.scheduledDate)).length}
-            </div>
-            <div className="text-xs font-semibold" style={{ color: "#0ABAB5" }}>Today</div>
+        {/* Stats strip */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="rounded-2xl px-3 py-3 text-center" style={{ background: "rgba(10,186,181,0.12)", border: "1px solid rgba(10,186,181,0.22)" }}>
+            <div className="text-2xl font-black text-white">{todayCount}</div>
+            <div className="text-[11px] font-semibold mt-0.5" style={{ color: "#0ABAB5" }}>Today</div>
           </div>
-          <div className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="rounded-2xl px-3 py-3 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="text-2xl font-black text-white">{appointments.length}</div>
-            <div className="text-xs font-semibold text-slate-400">This Month</div>
+            <div className="text-[11px] font-semibold mt-0.5 text-slate-400">Month</div>
           </div>
-          <div className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="text-2xl font-black text-white">
-              {appointments.filter((a) => ["INSPECTION_COMPLETE","REPORT_SENT","INVOICED","PAID"].includes(a.status)).length}
-            </div>
-            <div className="text-xs font-semibold text-slate-400">Done</div>
+          <div className="rounded-2xl px-3 py-3 text-center" style={
+            alertCount > 0
+              ? { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)" }
+              : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }
+          }>
+            {alertCount > 0 ? (
+              <>
+                <div className="text-2xl font-black" style={{ color: "#ef4444" }}>{alertCount}</div>
+                <div className="text-[11px] font-semibold mt-0.5 flex items-center justify-center gap-0.5" style={{ color: "#ef4444" }}>
+                  <AlertTriangle className="h-2.5 w-2.5" /> Alerts
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-black text-white">{doneCount}</div>
+                <div className="text-[11px] font-semibold mt-0.5 text-slate-400">Done</div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Active job banner */}
+      {/* ── Active job banner ── */}
       {activeJob && (
-        <Link
-          href={`/field/${activeJob.id}`}
-          className="mx-4 mt-3 flex items-center justify-between rounded-2xl px-4 py-3 gap-3"
-          style={{ background: "linear-gradient(135deg, #0ABAB5, #0D9488)" }}
-        >
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-teal-100 uppercase tracking-wide">
-              {STATUS_CONFIG[activeJob.status]?.label ?? activeJob.status} 🔴
+        <div className="px-4 mt-1 mb-1">
+          <Link
+            href={`/field/${activeJob.id}`}
+            className="flex items-center justify-between rounded-2xl px-4 py-3.5 gap-3"
+            style={{ background: "linear-gradient(135deg, #0ABAB5 0%, #0D9488 100%)" }}
+          >
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-widest text-teal-100 mb-0.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse inline-block" />
+                {STATUS_CFG[activeJob.status]?.label ?? "Active"}
+              </div>
+              <div className="font-bold text-white truncate text-base">{activeJob.property.name}</div>
+              <div className="text-xs text-teal-100 truncate">{activeJob.property.addressLine1}, {activeJob.property.city}</div>
             </div>
-            <div className="font-bold text-white truncate">{activeJob.property.name}</div>
-            <div className="text-xs text-teal-100">{activeJob.property.addressLine1}</div>
-          </div>
-          <div className="flex-shrink-0 bg-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-bold">
-            Continue →
-          </div>
-        </Link>
+            <div className="shrink-0 flex items-center gap-2 bg-white/20 rounded-xl px-3 py-2 text-white text-sm font-bold">
+              Resume <ChevronRight className="h-4 w-4" />
+            </div>
+          </Link>
+        </div>
       )}
 
-      {/* Calendar */}
-      <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-        {/* Month nav */}
+      {/* ── Calendar ── */}
+      <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={prevMonth} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <button
+            onClick={prevMonth}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors text-lg"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
             ‹
           </button>
           <button
@@ -229,189 +391,129 @@ export default function FieldHome({
             className="flex items-center gap-2 text-sm font-bold text-white"
           >
             {MONTHS[currentMonth]} {currentYear}
-            <span className="text-xs text-slate-500">{calendarOpen ? "▲" : "▼"}</span>
+            <span className="text-xs text-slate-600">{calendarOpen ? "▲" : "▼"}</span>
           </button>
-          <button onClick={nextMonth} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <button
+            onClick={nextMonth}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors text-lg"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
             ›
           </button>
         </div>
 
-        {/* Day headers */}
-        {calendarOpen && <div className="grid grid-cols-7 px-2 pb-1">
-          {DAYS_SHORT.map((d) => (
-            <div key={d} className="text-center text-[10px] font-semibold text-slate-500 uppercase py-1">{d}</div>
-          ))}
-        </div>}
+        {calendarOpen && (
+          <>
+            <div className="grid grid-cols-7 px-2 pb-1">
+              {DAYS_SHORT.map((d) => (
+                <div key={d} className="text-center text-[10px] font-bold text-slate-600 uppercase py-1">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-0.5 px-2 pb-3">
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e-${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const jobs = byDay[day] ?? [];
+                const hasJobs = jobs.length > 0;
+                const isSelected = selectedDay === day;
+                const isTodayCell = isCurrentMonth && day === todayNum;
+                const hasAlert = jobs.some((j) =>
+                  j.inspection?.overallResult === "POSITIVE_K9_ALERT" ||
+                  j.inspection?.overallResult === "VISUAL_CONFIRMATION"
+                );
+                const hasActiveJob = jobs.some((j) => isActive(j.status));
 
-        {/* Day cells */}
-        {calendarOpen && <div className="grid grid-cols-7 gap-0.5 px-2 pb-3">
-          {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`empty-${i}`} />)}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const day = i + 1;
-            const jobs = byDay[day] ?? [];
-            const hasJobs = jobs.length > 0;
-            const isSelected = selectedDay === day;
-            const isTodayCell = isCurrentMonth && day === todayNum;
-            const hasAlert = jobs.some((j) => j.inspection?.overallResult === "POSITIVE_K9_ALERT" || j.inspection?.overallResult === "VISUAL_CONFIRMATION");
-            const hasActive = jobs.some((j) => isActiveJob(j.status));
-
-            return (
-              <button
-                key={day}
-                onClick={() => setSelectedDay(isSelected ? null : day)}
-                className="relative flex flex-col items-center py-1.5 rounded-xl transition-all active:scale-95"
-                style={
-                  isSelected
-                    ? { background: "#0ABAB5", color: "#fff" }
-                    : isTodayCell
-                    ? { background: "rgba(10,186,181,0.2)", color: "#0ABAB5" }
-                    : {}
-                }
-              >
-                <span className={`text-xs font-bold ${!isSelected && !isTodayCell ? "text-slate-300" : ""}`}>
-                  {day}
-                </span>
-                {hasJobs && (
-                  <div className="flex gap-0.5 mt-0.5">
-                    {hasAlert && <div className="w-1.5 h-1.5 rounded-full bg-red-400" />}
-                    {hasActive && <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />}
-                    {!hasAlert && !hasActive && <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.6)" : "#0ABAB5" }} />}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>}
+                return (
+                  <button
+                    key={day}
+                    onClick={() => setSelectedDay(isSelected && isTodayCell ? null : isSelected ? null : day)}
+                    className="relative flex flex-col items-center py-1.5 rounded-xl transition-all active:scale-95"
+                    style={
+                      isSelected
+                        ? { background: "#0ABAB5", color: "#fff" }
+                        : isTodayCell
+                        ? { background: "rgba(10,186,181,0.18)", color: "#0ABAB5" }
+                        : {}
+                    }
+                  >
+                    <span className={`text-xs font-bold ${!isSelected && !isTodayCell ? "text-slate-300" : ""}`}>
+                      {day}
+                    </span>
+                    {hasJobs && (
+                      <div className="flex gap-0.5 mt-0.5">
+                        {hasAlert
+                          ? <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                          : hasActiveJob
+                          ? <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                          : <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.7)" : "#0ABAB5" }} />}
+                        {jobs.length > 1 && (
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.5)" : "rgba(148,163,184,0.5)" }} />
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Job list */}
-      <div className="px-4 mt-5 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide">
-            {selectedDay
-              ? `Route — ${MONTHS[currentMonth]} ${selectedDay} · ${byDay[selectedDay]?.length ?? 0} stop${(byDay[selectedDay]?.length ?? 0) !== 1 ? "s" : ""}`
-              : `Today's Route · ${shownJobs.length} stop${shownJobs.length !== 1 ? "s" : ""}`}
-          </h2>
-          {selectedDay && (
-            <button onClick={() => setSelectedDay(null)} className="text-xs text-slate-500 hover:text-slate-300">
+      {/* ── Route list ── */}
+      <div className="px-4 mt-5 pb-6">
+        {/* Section header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-black text-white">
+              {selectedDay && !(isCurrentMonth && selectedDay === todayNum)
+                ? `${MONTHS[currentMonth]} ${selectedDay}`
+                : "Today's Route"}
+            </h2>
+            <div className="text-xs text-slate-500 mt-0.5">
+              {shownJobs.length === 0
+                ? "No jobs scheduled"
+                : `${shownJobs.length} stop${shownJobs.length !== 1 ? "s" : ""} · ${shownJobs.filter((j) => isDone(j.status)).length} complete`}
+            </div>
+          </div>
+          {selectedDay && !(isCurrentMonth && selectedDay === todayNum) && (
+            <button
+              onClick={() => setSelectedDay(isCurrentMonth ? todayNum : null)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors"
+              style={{ background: "rgba(10,186,181,0.1)", color: "#0ABAB5", border: "1px solid rgba(10,186,181,0.2)" }}
+            >
               Today
             </button>
           )}
         </div>
 
         {shownJobs.length === 0 ? (
-          <div className="text-center py-10">
-            <div className="text-4xl mb-2">🐾</div>
-            <div className="text-sm text-slate-500">No jobs scheduled</div>
+          <div
+            className="rounded-2xl px-6 py-12 flex flex-col items-center text-center"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4"
+              style={{ background: "rgba(10,186,181,0.1)", border: "1px solid rgba(10,186,181,0.2)" }}
+            >
+              🐾
+            </div>
+            <div className="font-semibold text-white mb-1">No jobs scheduled</div>
+            <div className="text-sm text-slate-500">
+              {selectedDay && !(isCurrentMonth && selectedDay === todayNum)
+                ? "Pick another day on the calendar"
+                : "Enjoy the day — nothing on the schedule"}
+            </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {shownJobs.map((job, idx) => {
-              const st = STATUS_CONFIG[job.status];
-              const result = job.inspection?.overallResult ? RESULT_CONFIG[job.inspection.overallResult] : null;
-              const active = isActiveJob(job.status);
-              const done = ["INSPECTION_COMPLETE","REPORT_SENT","INVOICED","PAID"].includes(job.status);
-              const customerName = job.customer.companyName ?? `${job.customer.firstName} ${job.customer.lastName}`;
-
-              return (
-                <Link
-                  key={job.id}
-                  href={`/field/${job.id}`}
-                  className="block rounded-2xl overflow-hidden transition-all active:scale-[0.98]"
-                  style={{ border: `1px solid ${active ? "rgba(10,186,181,0.4)" : "rgba(255,255,255,0.08)"}` }}
-                >
-                  {/* Top stripe */}
-                  <div
-                    className="h-1"
-                    style={{ background: st?.dot ?? "#334155" }}
-                  />
-                  <div className="p-4" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        {/* Time + stop number */}
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span
-                            className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0"
-                            style={done
-                              ? { background: "rgba(34,197,94,0.12)", color: "#22c55e" }
-                              : { background: "rgba(10,186,181,0.15)", color: "#0ABAB5" }}
-                          >
-                            {done ? "✓" : `Stop ${idx + 1}`}
-                          </span>
-                          <span className="text-xs font-bold" style={{ color: st?.dot ?? "#94a3b8" }}>
-                            {fmtTime(job.scheduledDate)}
-                          </span>
-                          <span
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: st?.bg ?? "rgba(255,255,255,0.08)", color: st?.dot ?? "#94a3b8" }}
-                          >
-                            {st?.label ?? job.status}
-                          </span>
-                          {result && (
-                            <span className="text-[10px] font-bold" style={{ color: result.color }}>
-                              {result.label}
-                            </span>
-                          )}
-                        </div>
-                        {/* Property */}
-                        <div className="font-bold text-white text-base truncate">{job.property.name}</div>
-                        <div className="text-xs text-slate-400 truncate">{customerName}</div>
-                        <div className="text-xs text-slate-500 mt-0.5 truncate">
-                          {job.property.addressLine1}, {job.property.city}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {SERVICE_LABELS[job.serviceType] ?? job.serviceType}
-                        </div>
-                      </div>
-
-                      {/* Right actions */}
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        {/* Directions */}
-                        <a
-                          href={mapsUrl(job.property)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl"
-                          style={{ background: "rgba(10,186,181,0.15)", color: "#0ABAB5" }}
-                        >
-                          📍 Map
-                        </a>
-                        {/* Call */}
-                        {job.customer.phone && (
-                          <a
-                            href={`tel:${job.customer.phone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl"
-                            style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8" }}
-                          >
-                            📞 Call
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Open job CTA */}
-                    {active && (
-                      <div
-                        className="mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white"
-                        style={{ background: "linear-gradient(135deg, #0ABAB5, #0D9488)" }}
-                      >
-                        Continue Inspection →
-                      </div>
-                    )}
-                    {job.status === "CONFIRMED" || job.status === "SCHEDULED" ? (
-                      <div
-                        className="mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold"
-                        style={{ background: "rgba(10,186,181,0.12)", color: "#0ABAB5", border: "1px solid rgba(10,186,181,0.3)" }}
-                      >
-                        Open Job →
-                      </div>
-                    ) : null}
-                  </div>
-                </Link>
-              );
-            })}
+          <div>
+            {shownJobs.map((job, idx) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                stopNum={idx + 1}
+                isLast={idx === shownJobs.length - 1}
+              />
+            ))}
           </div>
         )}
       </div>
