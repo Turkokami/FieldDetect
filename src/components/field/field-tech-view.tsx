@@ -216,6 +216,7 @@ function UnitEditor({
   const [photoTargetIdx, setPhotoTargetIdx] = useState<number>(0);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const buildDetections = useCallback((): LocalDetection[] => {
     if (existingUnits.length === 0) {
@@ -249,8 +250,10 @@ function UnitEditor({
     setDetections((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const saveAll = async () => {
+  const saveAll = async (): Promise<boolean> => {
     setSaving(true);
+    setSaveError(null);
+    let anyFailed = false;
     try {
       for (const det of detections) {
         if (det.inspUnitId) {
@@ -264,8 +267,10 @@ function UnitEditor({
             }),
           });
           if (!res.ok) {
+            anyFailed = true;
+            const errBody = await res.json().catch(() => ({}));
+            console.error("[saveAll PATCH]", errBody);
             enqueueSave({ url: `/api/inspection-units/${det.inspUnitId}`, method: "PATCH", body: JSON.stringify({ detectionResult: det.result, alertLocation: det.location || null, technicianNotes: det.notes || null }) });
-            console.error("[saveAll PATCH]", await res.json().catch(() => ({})));
           }
         } else {
           const payload: Record<string, unknown> = { unitNumber: det.unitNumber, detectionResult: det.result };
@@ -277,8 +282,10 @@ function UnitEditor({
             body: JSON.stringify({ units: [payload] }),
           });
           if (!res.ok) {
+            anyFailed = true;
+            const errBody = await res.json().catch(() => ({}));
+            console.error("[saveAll POST]", errBody);
             enqueueSave({ url: `/api/inspections/${inspectionId}/units`, method: "POST", body: JSON.stringify({ units: [payload] }) });
-            console.error("[saveAll POST]", await res.json().catch(() => ({})));
           }
         }
       }
@@ -288,7 +295,15 @@ function UnitEditor({
           await fetch(`/api/inspection-units/${eu.id}`, { method: "DELETE" });
         }
       }
+      if (anyFailed) {
+        setSaveError("Save failed — check your connection and try again.");
+      }
       await onSaved();
+      return !anyFailed;
+    } catch (err) {
+      console.error("[saveAll]", err);
+      setSaveError("Save failed — check your connection and try again.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -336,6 +351,15 @@ function UnitEditor({
           <X className="h-5 w-5" />
         </button>
       </div>
+
+      {/* Save error banner */}
+      {saveError && (
+        <div className="px-4 py-2.5 flex items-center gap-2 text-xs font-semibold shrink-0" style={{ background: "rgba(239,68,68,0.15)", borderBottom: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}>
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          {saveError}
+          <button onClick={() => setSaveError(null)} className="ml-auto" style={{ color: "#f87171" }}>✕</button>
+        </div>
+      )}
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto">
@@ -479,7 +503,7 @@ function UnitEditor({
       <div className="shrink-0 p-4 space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
         <div className="flex gap-2">
           <button
-            onClick={async () => { await saveAll(); onClose(); }}
+            onClick={async () => { const ok = await saveAll(); if (ok) onClose(); }}
             disabled={saving}
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
             style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)" }}
@@ -488,7 +512,7 @@ function UnitEditor({
           </button>
           {hasNext && (
             <button
-              onClick={async () => { await saveAll(); onNext(); }}
+              onClick={async () => { const ok = await saveAll(); if (ok) onNext(); }}
               disabled={saving}
               className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50"
               style={{ background: "#0ABAB5" }}
@@ -1049,7 +1073,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
     for (let i = currentNavIdx + 1; i < sortedForNav.length; i++) {
       if ((inspMap.get(sortedForNav[i].unitNumber)?.length ?? 0) === 0) return sortedForNav[i].unitNumber;
     }
-    return sortedForNav[currentNavIdx + 1]?.unitNumber ?? null;
+    return null;
   }, [currentNavIdx, sortedForNav, inspMap]);
 
   const refreshInspection = useCallback(async () => {
@@ -1522,6 +1546,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
       {/* ── Unit editor overlay ── */}
       {editingUnit && inspection && (
         <UnitEditor
+          key={editingUnit}
           baseUnitNumber={editingUnit}
           inspectionId={inspection.id}
           existingUnits={inspMap.get(editingUnit) ?? []}
