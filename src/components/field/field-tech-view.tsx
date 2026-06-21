@@ -51,6 +51,7 @@ export type TechAppointment = {
   actualEndTime: string | null;
   accessNotes: string | null;
   specialInstructions: string | null;
+  notes: string | null;
   customer: Customer;
   property: Property;
   technician: { firstName: string; lastName: string } | null;
@@ -803,6 +804,130 @@ function CompletionSummary({
   );
 }
 
+// ─── Office Note Panel ────────────────────────────────────────────────────────
+
+const QUICK_NOTES = [
+  "Running late — be there soon",
+  "Can't access property — need key/code",
+  "Tenant not home for unit access",
+  "Found issue — need office guidance",
+  "Schedule follow-up inspection",
+  "Inspection complete — all clear",
+];
+
+function OfficeNotePanel({
+  appointmentId,
+  techName,
+  existingNotes,
+  onClose,
+  onSent,
+}: {
+  appointmentId: string;
+  techName: string;
+  existingNotes: string | null;
+  onClose: () => void;
+  onSent: (updatedNotes: string) => void;
+}) {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const send = async (message: string) => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    setSending(true);
+    try {
+      const now = new Date();
+      const timestamp = now.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+      const entry = `[${timestamp} · ${techName}] ${trimmed}`;
+      const updated = existingNotes ? `${existingNotes}\n${entry}` : entry;
+      await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: updated }),
+      });
+      onSent(updated);
+      setText("");
+      setSent(true);
+      setTimeout(() => setSent(false), 2000);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const noteLines = existingNotes ? existingNotes.split("\n").filter(Boolean) : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0F1A" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+        <div>
+          <h2 className="font-bold text-white text-base">Message Office</h2>
+          <p className="text-xs mt-0.5" style={{ color: "#64748b" }}>Notes appear in the office appointment view</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "#64748b" }}>
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {/* Quick presets */}
+        <div className="px-4 pt-4 pb-3">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: "#64748b" }}>Quick Message</div>
+          <div className="space-y-2">
+            {QUICK_NOTES.map((note) => (
+              <button
+                key={note}
+                onClick={() => send(note)}
+                disabled={sending}
+                className="w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-40"
+                style={{ background: "rgba(10,186,181,0.08)", border: "1px solid rgba(10,186,181,0.2)", color: "#cbd5e1" }}
+              >
+                {note}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom note */}
+        <div className="px-4 pb-4">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#64748b" }}>Custom Note</div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Type a custom note to the office…"
+            rows={3}
+            className="w-full px-3 py-2 rounded-xl text-sm text-white focus:outline-none resize-none"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+          <button
+            onClick={() => send(text)}
+            disabled={!text.trim() || sending}
+            className="mt-2 w-full py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-40"
+            style={{ background: "#0ABAB5" }}
+          >
+            {sent ? "✓ Sent!" : sending ? "Sending…" : "Send to Office"}
+          </button>
+        </div>
+
+        {/* Previous notes */}
+        {noteLines.length > 0 && (
+          <div className="px-4 pb-6">
+            <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#64748b" }}>Previous Notes</div>
+            <div className="space-y-2">
+              {[...noteLines].reverse().map((line, i) => (
+                <div key={i} className="rounded-xl px-3 py-2.5 text-xs" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8" }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── AddUnitToProperty ────────────────────────────────────────────────────────
 
 function AddUnitToProperty({ propertyId, buildingId, onAdded }: { propertyId: string; buildingId: string | null; onAdded: (unitNumber: string) => Promise<void> }) {
@@ -997,6 +1122,8 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
   const [notesSaving, setNotesSaving] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [pendingSync, setPendingSync] = useState(0);
+  const [showOfficeNote, setShowOfficeNote] = useState(false);
+  const [officeNotes, setOfficeNotes] = useState<string | null>(initial.notes ?? null);
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Online/offline detection ──
@@ -1533,6 +1660,29 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
           )}
         </div>
       </div>
+
+      {/* ── Message Office floating button ── */}
+      {!isComplete && !showOfficeNote && (
+        <button
+          onClick={() => setShowOfficeNote(true)}
+          className="fixed z-30 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg font-semibold text-sm text-white"
+          style={{ bottom: "88px", right: "16px", background: "linear-gradient(135deg, #0ABAB5, #0D9488)" }}
+        >
+          ✉️ Message Office
+          {officeNotes && <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />}
+        </button>
+      )}
+
+      {/* ── Office Note Panel overlay ── */}
+      {showOfficeNote && (
+        <OfficeNotePanel
+          appointmentId={apt.id}
+          techName={apt.technician ? `${apt.technician.firstName} ${apt.technician.lastName}` : "Tech"}
+          existingNotes={officeNotes}
+          onClose={() => setShowOfficeNote(false)}
+          onSent={(updated) => { setOfficeNotes(updated); setShowOfficeNote(false); }}
+        />
+      )}
 
       {/* ── Signature overlay ── */}
       {showSignature && inspection && (

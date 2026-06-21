@@ -111,6 +111,7 @@ export default function FieldHome({
   const [selectedDay, setSelectedDay] = useState<number | null>(
     currentYear === now.getFullYear() && currentMonth === now.getMonth() ? todayNum : null
   );
+  const [calendarOpen, setCalendarOpen] = useState(true);
 
   // Build calendar grid
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -223,23 +224,27 @@ export default function FieldHome({
           <button onClick={prevMonth} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors" style={{ background: "rgba(255,255,255,0.05)" }}>
             ‹
           </button>
-          <div className="text-sm font-bold text-white">
+          <button
+            onClick={() => setCalendarOpen((o) => !o)}
+            className="flex items-center gap-2 text-sm font-bold text-white"
+          >
             {MONTHS[currentMonth]} {currentYear}
-          </div>
+            <span className="text-xs text-slate-500">{calendarOpen ? "▲" : "▼"}</span>
+          </button>
           <button onClick={nextMonth} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors" style={{ background: "rgba(255,255,255,0.05)" }}>
             ›
           </button>
         </div>
 
         {/* Day headers */}
-        <div className="grid grid-cols-7 px-2 pb-1">
+        {calendarOpen && <div className="grid grid-cols-7 px-2 pb-1">
           {DAYS_SHORT.map((d) => (
             <div key={d} className="text-center text-[10px] font-semibold text-slate-500 uppercase py-1">{d}</div>
           ))}
-        </div>
+        </div>}
 
         {/* Day cells */}
-        <div className="grid grid-cols-7 gap-0.5 px-2 pb-3">
+        {calendarOpen && <div className="grid grid-cols-7 gap-0.5 px-2 pb-3">
           {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`empty-${i}`} />)}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
@@ -276,7 +281,7 @@ export default function FieldHome({
               </button>
             );
           })}
-        </div>
+        </div>}
       </div>
 
       {/* Job list */}
@@ -284,12 +289,12 @@ export default function FieldHome({
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide">
             {selectedDay
-              ? `${MONTHS[currentMonth]} ${selectedDay} — ${byDay[selectedDay]?.length ?? 0} job${(byDay[selectedDay]?.length ?? 0) !== 1 ? "s" : ""}`
-              : `Today — ${shownJobs.length} job${shownJobs.length !== 1 ? "s" : ""}`}
+              ? `Route — ${MONTHS[currentMonth]} ${selectedDay} · ${byDay[selectedDay]?.length ?? 0} stop${(byDay[selectedDay]?.length ?? 0) !== 1 ? "s" : ""}`
+              : `Today's Route · ${shownJobs.length} stop${shownJobs.length !== 1 ? "s" : ""}`}
           </h2>
           {selectedDay && (
             <button onClick={() => setSelectedDay(null)} className="text-xs text-slate-500 hover:text-slate-300">
-              Clear
+              Today
             </button>
           )}
         </div>
@@ -301,10 +306,11 @@ export default function FieldHome({
           </div>
         ) : (
           <div className="space-y-3">
-            {shownJobs.map((job) => {
+            {shownJobs.map((job, idx) => {
               const st = STATUS_CONFIG[job.status];
               const result = job.inspection?.overallResult ? RESULT_CONFIG[job.inspection.overallResult] : null;
               const active = isActiveJob(job.status);
+              const done = ["INSPECTION_COMPLETE","REPORT_SENT","INVOICED","PAID"].includes(job.status);
               const customerName = job.customer.companyName ?? `${job.customer.firstName} ${job.customer.lastName}`;
 
               return (
@@ -322,8 +328,16 @@ export default function FieldHome({
                   <div className="p-4" style={{ background: "rgba(255,255,255,0.04)" }}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        {/* Time */}
+                        {/* Time + stop number */}
                         <div className="flex items-center gap-2 mb-1.5">
+                          <span
+                            className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0"
+                            style={done
+                              ? { background: "rgba(34,197,94,0.12)", color: "#22c55e" }
+                              : { background: "rgba(10,186,181,0.15)", color: "#0ABAB5" }}
+                          >
+                            {done ? "✓" : `Stop ${idx + 1}`}
+                          </span>
                           <span className="text-xs font-bold" style={{ color: st?.dot ?? "#94a3b8" }}>
                             {fmtTime(job.scheduledDate)}
                           </span>

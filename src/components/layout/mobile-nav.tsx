@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Menu, X, LayoutDashboard, Users, Building2, Calendar,
   ClipboardList, FileText, Receipt, Settings, Dog, MapPin, TrendingUp,
-  FileCheck, Bell,
+  FileCheck, Bell, Smartphone,
 } from "lucide-react";
 
 const navItems = [
@@ -117,6 +117,17 @@ export function MobileNav() {
               </Link>
             );
           })}
+          {/* Field View divider + link */}
+          <div className="pt-2 mt-1" style={{ borderTop: "1px solid rgba(10,186,181,0.15)" }}>
+            <Link
+              href="/field"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all"
+              style={{ borderLeft: "2px solid #0ABAB5", background: "rgba(10,186,181,0.08)", color: "#0ABAB5" }}
+            >
+              <Smartphone className="h-4.5 w-4.5 shrink-0" style={{ color: "#0ABAB5" }} />
+              <span>Field View</span>
+            </Link>
+          </div>
         </nav>
       </div>
     </>

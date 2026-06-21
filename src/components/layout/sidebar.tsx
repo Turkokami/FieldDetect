@@ -19,6 +19,7 @@ import {
   TrendingUp,
   FileCheck,
   Bell,
+  Smartphone,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -105,8 +106,24 @@ export function Sidebar() {
         })}
       </nav>
 
+      {/* Field View switch */}
+      <div className="px-2 py-2 shrink-0" style={{ borderTop: "1px solid rgba(10,186,181,0.1)" }}>
+        <Link
+          href="/field"
+          title={collapsed ? "Field View" : undefined}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 text-slate-400 hover:text-white",
+            collapsed && "justify-center px-2"
+          )}
+          style={{ borderLeft: "2px solid transparent", background: "rgba(10,186,181,0.06)" }}
+        >
+          <Smartphone className="h-4 w-4 shrink-0" style={{ color: "#0ABAB5" }} />
+          {!collapsed && <span style={{ color: "#0ABAB5" }}>Field View</span>}
+        </Link>
+      </div>
+
       {/* Collapse toggle */}
-      <div className="p-2 shrink-0" style={{ borderTop: "1px solid rgba(10,186,181,0.1)" }}>
+      <div className="p-2 shrink-0">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-white transition-colors"
