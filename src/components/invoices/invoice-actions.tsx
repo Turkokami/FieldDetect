@@ -173,10 +173,9 @@ export default function InvoiceActions({ invoice, remaining }: Props) {
                   <option value="CHECK">Check</option>
                   <option value="CREDIT_CARD">Credit Card</option>
                   <option value="DEBIT_CARD">Debit Card</option>
-                  <option value="ACH">ACH</option>
-                  <option value="VENMO">Venmo</option>
-                  <option value="ZELLE">Zelle</option>
-                  <option value="OTHER">Other</option>
+                  <option value="ACH">ACH / Bank Transfer</option>
+                  <option value="STRIPE">Card (Online)</option>
+                  <option value="OTHER">Venmo / Zelle / Other</option>
                 </select>
               </div>
               <div>

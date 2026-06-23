@@ -5,7 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 type Customer = { id: string; firstName: string; lastName: string; companyName: string | null };
 type Property = { id: string; name: string; addressLine1: string };
-type Appointment = { id: string; scheduledDate: string; serviceType: string; property: { name: string } };
+type Appointment = {
+  id: string;
+  scheduledDate: string;
+  serviceType: string;
+  property: { name: string };
+  inspection: { id: string; inspectionNumber: string } | null;
+};
 
 type LineItem = {
   description: string;
@@ -13,51 +19,105 @@ type LineItem = {
   unitPrice: string;
 };
 
+const SERVICE_LABELS: Record<string, string> = {
+  BED_BUG_INSPECTION:       "Bed Bug Inspection",
+  BED_BUG_TREATMENT:        "Bed Bug Treatment",
+  RODENT_INSPECTION:        "Rodent Inspection",
+  GENERAL_PEST_INSPECTION:  "General Pest Inspection",
+  FOLLOW_UP:                "Follow-Up Inspection",
+  OTHER:                    "Service Call",
+};
+
 function NewInvoiceForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const prefillCustomerId = searchParams.get("customerId") ?? "";
+  const prefillCustomerId    = searchParams.get("customerId")    ?? "";
   const prefillAppointmentId = searchParams.get("appointmentId") ?? "";
-  const prefillPropertyId = searchParams.get("propertyId") ?? "";
-  const prefillInspectionId = searchParams.get("inspectionId") ?? "";
+  const prefillPropertyId    = searchParams.get("propertyId")    ?? "";
+  const prefillInspectionId  = searchParams.get("inspectionId")  ?? "";
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [customers,    setCustomers]    = useState<Customer[]>([]);
+  const [properties,   setProperties]   = useState<Property[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  const [customerId, setCustomerId] = useState(prefillCustomerId);
-  const [propertyId, setPropertyId] = useState(prefillPropertyId);
+  const [customerId,    setCustomerId]    = useState(prefillCustomerId);
+  const [propertyId,    setPropertyId]    = useState(prefillPropertyId);
   const [appointmentId, setAppointmentId] = useState(prefillAppointmentId);
-  const [inspectionId, setInspectionId] = useState(prefillInspectionId);
+  const [inspectionId,  setInspectionId]  = useState(prefillInspectionId);
+  const [inspectionLabel, setInspectionLabel] = useState<string>("");
+
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d.toISOString().split("T")[0];
   });
   const [taxRate, setTaxRate] = useState("0");
-  const [notes, setNotes] = useState("");
+  const [notes,   setNotes]   = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { description: "", quantity: "1", unitPrice: "" },
   ]);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [error,  setError]  = useState("");
 
+  // Load all customers
   useEffect(() => {
-    fetch("/api/customers?pageSize=100")
+    fetch("/api/customers?pageSize=200")
       .then((r) => r.json())
       .then((d) => setCustomers(d.data ?? []));
   }, []);
 
+  // If prefilled with inspectionId, resolve its customer automatically
+  useEffect(() => {
+    if (!prefillInspectionId) return;
+    fetch(`/api/inspections/${prefillInspectionId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const insp = d.data;
+        if (!insp) return;
+        setInspectionLabel(`#${insp.inspectionNumber}`);
+        if (insp.property?.customer?.id && !prefillCustomerId) {
+          setCustomerId(insp.property.customer.id);
+        }
+        if (insp.property?.id && !prefillPropertyId) {
+          setPropertyId(insp.property.id);
+        }
+        // Pre-fill line item with service type if blank
+        const service = SERVICE_LABELS[insp.appointment?.serviceType] ?? "Inspection Service";
+        setLineItems((prev) => {
+          if (prev.length === 1 && !prev[0].description) {
+            return [{ description: service, quantity: "1", unitPrice: "" }];
+          }
+          return prev;
+        });
+      });
+  }, [prefillInspectionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load properties + appointments when customer changes
   useEffect(() => {
     if (!customerId) { setProperties([]); setAppointments([]); return; }
     Promise.all([
-      fetch(`/api/properties?customerId=${customerId}&pageSize=50`).then((r) => r.json()),
-      fetch(`/api/appointments?customerId=${customerId}&pageSize=50`).then((r) => r.json()),
+      fetch(`/api/properties?customerId=${customerId}&pageSize=100`).then((r) => r.json()),
+      fetch(`/api/appointments?customerId=${customerId}&pageSize=100`).then((r) => r.json()),
     ]).then(([pd, ad]) => {
       setProperties(pd.data ?? []);
       setAppointments(ad.data ?? []);
     });
   }, [customerId]);
+
+  // When an appointment is selected, automatically resolve its inspection ID
+  useEffect(() => {
+    if (!appointmentId) {
+      if (!prefillInspectionId) setInspectionId("");
+      return;
+    }
+    const apt = appointments.find((a) => a.id === appointmentId);
+    if (apt?.inspection) {
+      setInspectionId(apt.inspection.id);
+      setInspectionLabel(`#${apt.inspection.inspectionNumber}`);
+    } else {
+      if (!prefillInspectionId) setInspectionId("");
+    }
+  }, [appointmentId, appointments, prefillInspectionId]);
 
   const addLineItem = () => {
     setLineItems((items) => [...items, { description: "", quantity: "1", unitPrice: "" }]);
@@ -73,14 +133,13 @@ function NewInvoiceForm() {
     );
   };
 
-  const subtotal = lineItems.reduce((sum, item) => {
-    const qty = parseFloat(item.quantity) || 0;
-    const price = parseFloat(item.unitPrice) || 0;
-    return sum + qty * price;
+  const subtotal   = lineItems.reduce((sum, item) => {
+    return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0);
   }, 0);
-
-  const taxAmount = subtotal * (parseFloat(taxRate) / 100);
-  const total = subtotal + taxAmount;
+  // taxRate state is the percentage value (e.g. "8" for 8%); API also expects percentage
+  const taxPct     = parseFloat(taxRate) || 0;
+  const taxAmount  = subtotal * (taxPct / 100);
+  const total      = subtotal + taxAmount;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,11 +155,9 @@ function NewInvoiceForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId,
-          propertyId: propertyId || undefined,
-          appointmentId: appointmentId || undefined,
           inspectionId: inspectionId || undefined,
           dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-          taxRate: parseFloat(taxRate) / 100,
+          taxRate: taxPct,   // send as percentage (0–100); API divides by 100 internally
           notes: notes || undefined,
           lineItems: lineItems
             .filter((i) => i.description.trim())
@@ -128,8 +185,8 @@ function NewInvoiceForm() {
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="max-w-3xl mx-auto space-y-5">
+      <div className="flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground text-sm">
           ← Back
         </button>
@@ -137,21 +194,23 @@ function NewInvoiceForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Details */}
         <div className="bg-card border border-border rounded-xl p-6 space-y-4">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Details</h2>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            {/* Customer */}
+            <div className="col-span-2 sm:col-span-1">
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 Customer <span className="text-destructive">*</span>
               </label>
               <select
                 value={customerId}
-                onChange={(e) => { setCustomerId(e.target.value); setPropertyId(""); setAppointmentId(""); }}
+                onChange={(e) => { setCustomerId(e.target.value); setPropertyId(""); setAppointmentId(""); setInspectionId(prefillInspectionId); }}
                 required
                 className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
-                <option value="">Select customer...</option>
+                <option value="">Select customer…</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.firstName} {c.lastName}{c.companyName ? ` — ${c.companyName}` : ""}
@@ -160,7 +219,8 @@ function NewInvoiceForm() {
               </select>
             </div>
 
-            <div>
+            {/* Property */}
+            <div className="col-span-2 sm:col-span-1">
               <label className="block text-sm font-medium text-foreground mb-1.5">Property</label>
               <select
                 value={propertyId}
@@ -175,7 +235,8 @@ function NewInvoiceForm() {
               </select>
             </div>
 
-            <div>
+            {/* Linked Appointment */}
+            <div className="col-span-2 sm:col-span-1">
               <label className="block text-sm font-medium text-foreground mb-1.5">Linked Appointment</label>
               <select
                 value={appointmentId}
@@ -187,12 +248,19 @@ function NewInvoiceForm() {
                 {appointments.map((a) => (
                   <option key={a.id} value={a.id}>
                     {new Date(a.scheduledDate).toLocaleDateString()} — {a.property?.name}
+                    {a.inspection ? ` (Insp #${a.inspection.inspectionNumber})` : ""}
                   </option>
                 ))}
               </select>
+              {inspectionId && (
+                <p className="text-xs text-primary mt-1">
+                  ✓ Linked to inspection {inspectionLabel || inspectionId.slice(0, 8)}
+                </p>
+              )}
             </div>
 
-            <div>
+            {/* Due Date */}
+            <div className="col-span-2 sm:col-span-1">
               <label className="block text-sm font-medium text-foreground mb-1.5">Due Date</label>
               <input
                 type="date"
@@ -249,7 +317,7 @@ function NewInvoiceForm() {
                     <button
                       type="button"
                       onClick={() => removeLineItem(i)}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      className="text-muted-foreground hover:text-destructive transition-colors text-lg leading-none"
                     >
                       ×
                     </button>
@@ -275,7 +343,7 @@ function NewInvoiceForm() {
                 <span className="text-foreground">${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Tax (%)</span>
+                <span className="text-sm text-muted-foreground shrink-0">Tax (%)</span>
                 <input
                   type="number"
                   min="0"
@@ -295,6 +363,7 @@ function NewInvoiceForm() {
           </div>
         </div>
 
+        {/* Notes */}
         <div className="bg-card border border-border rounded-xl p-6">
           <label className="block text-sm font-medium text-foreground mb-1.5">Notes (visible to customer)</label>
           <textarea
@@ -302,7 +371,7 @@ function NewInvoiceForm() {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Payment terms, thank you message, etc."
             rows={3}
-            className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
           />
         </div>
 
@@ -323,7 +392,7 @@ function NewInvoiceForm() {
             disabled={saving}
             className="flex-1 h-10 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {saving ? "Creating..." : "Create Invoice"}
+            {saving ? "Creating…" : "Create Invoice"}
           </button>
         </div>
       </form>
@@ -333,7 +402,7 @@ function NewInvoiceForm() {
 
 export default function NewInvoicePage() {
   return (
-    <Suspense fallback={<div className="p-6 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
       <NewInvoiceForm />
     </Suspense>
   );
