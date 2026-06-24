@@ -16,7 +16,7 @@ export default async function RoutesPage({
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) return null;
 
-  const { view = "today" } = await searchParams;
+  const { view = "week" } = await searchParams;
 
   const now = new Date();
   const todayStart = new Date(now);
@@ -26,9 +26,9 @@ export default async function RoutesPage({
   const weekEnd = new Date(todayStart);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
-  const dateRange = view === "week"
-    ? { gte: todayStart, lt: weekEnd }
-    : { gte: todayStart, lt: todayEnd };
+  const dateRange = view === "today"
+    ? { gte: todayStart, lt: todayEnd }
+    : { gte: todayStart, lt: weekEnd };
 
   const [appointments, technicians] = await Promise.all([
     prisma.appointment.findMany({
@@ -79,16 +79,6 @@ export default async function RoutesPage({
         <div className="flex items-center gap-2">
           <div className="flex gap-1 bg-muted rounded-lg p-1">
             <Link
-              href="/routes?view=today"
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                view === "today"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Today
-            </Link>
-            <Link
               href="/routes?view=week"
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 view === "week"
@@ -97,6 +87,16 @@ export default async function RoutesPage({
               }`}
             >
               This Week
+            </Link>
+            <Link
+              href="/routes?view=today"
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                view === "today"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Today Only
             </Link>
           </div>
           <Link

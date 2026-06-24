@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   MapPin, Phone, Clock, ChevronRight, CheckCircle2,
-  AlertTriangle, Navigation, CalendarDays, X,
+  AlertTriangle, Navigation, CalendarDays, X, LayoutDashboard,
 } from "lucide-react";
 
 type Appt = {
@@ -302,7 +302,7 @@ export default function FieldHome({
   const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth();
 
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(true);
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
@@ -391,11 +391,22 @@ export default function FieldHome({
             </div>
             <div className="text-sm mt-0.5 text-slate-400">{techName}</div>
           </div>
-          <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
-            style={{ background: "linear-gradient(135deg, #0ABAB5, #0D9488)" }}
-          >
-            🐾
+          <div className="flex flex-col items-end gap-2">
+            {/* Office switch */}
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8" }}
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Office
+            </Link>
+            <div
+              className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
+              style={{ background: "linear-gradient(135deg, #0ABAB5, #0D9488)" }}
+            >
+              🐾
+            </div>
           </div>
         </div>
 
@@ -472,7 +483,15 @@ export default function FieldHome({
         >
           <span className="flex items-center gap-2" style={{ color: calendarOpen ? "#0ABAB5" : "#94a3b8" }}>
             <CalendarDays className="h-4 w-4" />
-            {calendarOpen ? `${MONTHS[currentMonth]} ${currentYear}` : "View Calendar"}
+            <span>{MONTHS[currentMonth]} {currentYear}</span>
+            {monthCount > 0 && (
+              <span
+                className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(10,186,181,0.2)", color: "#0ABAB5" }}
+              >
+                {monthCount} job{monthCount !== 1 ? "s" : ""}
+              </span>
+            )}
           </span>
           <span className="text-xs" style={{ color: "#475569" }}>{calendarOpen ? "▲" : "▼"}</span>
         </button>
@@ -537,14 +556,18 @@ export default function FieldHome({
                     {day}
                   </span>
                   {hasJobs && (
-                    <div className="flex gap-0.5 mt-0.5">
-                      {hasAlertDay
-                        ? <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                        : hasActiveJob
-                        ? <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-                        : <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.7)" : "#0ABAB5" }} />}
+                    <div className="flex items-center gap-0.5 mt-0.5">
+                      <div
+                        className={`w-2 h-2 rounded-full ${hasAlertDay ? "bg-red-400" : hasActiveJob ? "bg-yellow-400 animate-pulse" : ""}`}
+                        style={!hasAlertDay && !hasActiveJob ? { background: isSelected ? "rgba(255,255,255,0.85)" : "#0ABAB5" } : {}}
+                      />
                       {jobs.length > 1 && (
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.5)" : "rgba(148,163,184,0.5)" }} />
+                        <span
+                          className="text-[8px] font-black leading-none"
+                          style={{ color: isSelected ? "rgba(255,255,255,0.8)" : hasAlertDay ? "#f87171" : "#0ABAB5" }}
+                        >
+                          {jobs.length}
+                        </span>
                       )}
                     </div>
                   )}

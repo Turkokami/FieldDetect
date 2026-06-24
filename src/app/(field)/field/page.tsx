@@ -31,11 +31,11 @@ export default async function FieldHomePage({
     )
   );
 
-  // Get all jobs for this tech in the selected month + upcoming 60 days
+  // Get all jobs: technicians see only their own, admins/owners see all org jobs
   const appointments = await prisma.appointment.findMany({
     where: {
       organizationId: user.organizationId,
-      technicianId: user.id,
+      ...(user.role === "TECHNICIAN" ? { technicianId: user.id } : {}),
       scheduledDate: { gte: startOfMonth, lte: endOfRange },
       status: { not: "CANCELLED" },
     },
