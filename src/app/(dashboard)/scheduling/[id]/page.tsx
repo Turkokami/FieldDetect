@@ -7,8 +7,10 @@ import AppointmentActions from "@/components/scheduling/appointment-actions";
 
 export default async function AppointmentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ created?: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) return null;
@@ -17,6 +19,7 @@ export default async function AppointmentDetailPage({
   if (!user) return null;
 
   const { id } = await params;
+  const { created } = await searchParams;
   const appointment = await prisma.appointment.findFirst({
     where: { id, organizationId: user.organizationId },
     include: {
@@ -69,6 +72,11 @@ export default async function AppointmentDetailPage({
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {created && parseInt(created) > 1 && (
+        <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+          ✓ Recurring series created — <strong>{created} appointments</strong> scheduled.
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -126,6 +134,37 @@ export default async function AppointmentDetailPage({
                 <div>
                   <dt className="text-xs text-muted-foreground">Actual End</dt>
                   <dd className="text-sm text-foreground">{formatDateTime(appointment.actualEndTime)}</dd>
+                </div>
+              )}
+              {appointment.priority > 0 && (
+                <div>
+                  <dt className="text-xs text-muted-foreground">Priority</dt>
+                  <dd>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${appointment.priority >= 2 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}>
+                      {appointment.priority >= 2 ? "Urgent" : "High"}
+                    </span>
+                  </dd>
+                </div>
+              )}
+              {appointment.recurrence && (
+                <div>
+                  <dt className="text-xs text-muted-foreground">Recurrence</dt>
+                  <dd className="text-sm text-foreground">
+                    {appointment.recurrence.charAt(0) + appointment.recurrence.slice(1).toLowerCase()}
+                    {appointment.recurrenceEndDate && (
+                      <span className="text-muted-foreground"> until {formatDate(appointment.recurrenceEndDate)}</span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              {appointment.parentAppointmentId && (
+                <div>
+                  <dt className="text-xs text-muted-foreground">Part of series</dt>
+                  <dd>
+                    <Link href={`/scheduling/${appointment.parentAppointmentId}`} className="text-sm text-primary hover:underline">
+                      View first appointment →
+                    </Link>
+                  </dd>
                 </div>
               )}
             </dl>

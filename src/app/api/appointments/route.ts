@@ -22,7 +22,34 @@ const createAppointmentSchema = z.object({
   accessNotes: z.string().optional(),
   specialInstructions: z.string().optional(),
   priority: z.number().int().default(0),
+  recurrence: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "ANNUALLY"]).optional(),
+  recurrenceEndDate: z.string().datetime().optional(),
 });
+
+function nextRecurringDate(date: Date, frequency: string): Date {
+  const d = new Date(date);
+  switch (frequency) {
+    case "WEEKLY":    d.setDate(d.getDate() + 7); break;
+    case "BIWEEKLY":  d.setDate(d.getDate() + 14); break;
+    case "MONTHLY":   d.setMonth(d.getMonth() + 1); break;
+    case "QUARTERLY": d.setMonth(d.getMonth() + 3); break;
+    case "ANNUALLY":  d.setFullYear(d.getFullYear() + 1); break;
+  }
+  return d;
+}
+
+function buildRecurringSeries(start: Date, endTime: Date | null, frequency: string, seriesEnd: Date): Date[][] {
+  const pairs: Date[][] = [];
+  let cur = new Date(start);
+  const durationMs = endTime ? endTime.getTime() - start.getTime() : 0;
+
+  while (cur <= seriesEnd && pairs.length < 104) {
+    const curEnd = durationMs > 0 ? new Date(cur.getTime() + durationMs) : null;
+    pairs.push([new Date(cur), ...(curEnd ? [curEnd] : [])]);
+    cur = nextRecurringDate(cur, frequency);
+  }
+  return pairs;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -107,21 +134,57 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = createAppointmentSchema.parse(body);
 
+    const baseDate = new Date(validated.scheduledDate);
+    const baseEnd = validated.scheduledEndTime ? new Date(validated.scheduledEndTime) : null;
+    const { recurrence, recurrenceEndDate, ...baseFields } = validated;
+
+    if (recurrence && recurrenceEndDate) {
+      const seriesEnd = new Date(recurrenceEndDate);
+      const series = buildRecurringSeries(baseDate, baseEnd, recurrence, seriesEnd);
+
+      const parent = await prisma.$transaction(async (tx) => {
+        const first = await tx.appointment.create({
+          data: {
+            ...baseFields,
+            organizationId: user.organizationId,
+            scheduledDate: series[0][0],
+            scheduledEndTime: series[0][1] ?? null,
+            recurrence,
+            recurrenceEndDate: seriesEnd,
+          },
+          include: { customer: true, property: true, technician: true, k9Team: true },
+        });
+
+        if (series.length > 1) {
+          await tx.appointment.createMany({
+            data: series.slice(1).map(([d, end]) => ({
+              ...baseFields,
+              organizationId: user.organizationId,
+              scheduledDate: d,
+              scheduledEndTime: end ?? null,
+              recurrence,
+              recurrenceEndDate: seriesEnd,
+              parentAppointmentId: first.id,
+            })),
+          });
+        }
+        return first;
+      });
+
+      return NextResponse.json(
+        { data: parent, seriesCount: series.length },
+        { status: 201 }
+      );
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
-        ...validated,
+        ...baseFields,
         organizationId: user.organizationId,
-        scheduledDate: new Date(validated.scheduledDate),
-        scheduledEndTime: validated.scheduledEndTime
-          ? new Date(validated.scheduledEndTime)
-          : null,
+        scheduledDate: baseDate,
+        scheduledEndTime: baseEnd,
       },
-      include: {
-        customer: true,
-        property: true,
-        technician: true,
-        k9Team: true,
-      },
+      include: { customer: true, property: true, technician: true, k9Team: true },
     });
 
     return NextResponse.json({ data: appointment }, { status: 201 });

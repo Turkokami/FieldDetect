@@ -45,6 +45,9 @@ function NewAppointmentForm() {
   const [description, setDescription] = useState("");
   const [accessNotes, setAccessNotes] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [priority, setPriority] = useState("0");
+  const [recurrence, setRecurrence] = useState("");
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -73,6 +76,10 @@ function NewAppointmentForm() {
       setError("Customer, property, and date are required.");
       return;
     }
+    if (recurrence && !recurrenceEndDate) {
+      setError("Please set a 'Repeat Until' date for recurring appointments.");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -97,6 +104,11 @@ function NewAppointmentForm() {
           description: description || undefined,
           accessNotes: accessNotes || undefined,
           specialInstructions: specialInstructions || undefined,
+          priority: parseInt(priority),
+          recurrence: recurrence || undefined,
+          recurrenceEndDate: recurrence && recurrenceEndDate
+            ? new Date(`${recurrenceEndDate}T23:59:59`).toISOString()
+            : undefined,
         }),
       });
 
@@ -106,7 +118,7 @@ function NewAppointmentForm() {
       }
 
       const data = await res.json();
-      router.push(`/scheduling/${data.data.id}`);
+      router.push(`/scheduling/${data.data.id}${data.seriesCount > 1 ? `?created=${data.seriesCount}` : ""}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -228,6 +240,67 @@ function NewAppointmentForm() {
             <option value="360">6 hours</option>
             <option value="480">8 hours</option>
           </select>
+        </div>
+
+        {/* Priority */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">Priority</label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            <option value="0">Normal</option>
+            <option value="1">High</option>
+            <option value="2">Urgent</option>
+          </select>
+        </div>
+
+        {/* Recurrence */}
+        <div className="border border-border rounded-lg p-4 space-y-3 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="recurrence-toggle"
+              checked={!!recurrence}
+              onChange={(e) => { setRecurrence(e.target.checked ? "WEEKLY" : ""); setRecurrenceEndDate(""); }}
+              className="rounded"
+            />
+            <label htmlFor="recurrence-toggle" className="text-sm font-medium text-foreground cursor-pointer">
+              Recurring appointment
+            </label>
+          </div>
+          {recurrence && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Frequency</label>
+                <select
+                  value={recurrence}
+                  onChange={(e) => setRecurrence(e.target.value)}
+                  className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="BIWEEKLY">Every 2 Weeks</option>
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="QUARTERLY">Quarterly</option>
+                  <option value="ANNUALLY">Annually</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Repeat Until <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={recurrenceEndDate}
+                  onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                  min={scheduledDate}
+                  required={!!recurrence}
+                  className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Technician */}
