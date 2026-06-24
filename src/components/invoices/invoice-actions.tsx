@@ -9,6 +9,22 @@ type Invoice = {
   invoiceNumber: string;
 };
 
+function DownloadPDFButton({ invoiceId }: { invoiceId: string }) {
+  return (
+    <a
+      href={`/api/invoices/${invoiceId}/pdf`}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+    >
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      PDF
+    </a>
+  );
+}
+
 type Props = {
   invoice: Invoice;
   remaining: number;
@@ -100,6 +116,7 @@ export default function InvoiceActions({ invoice, remaining }: Props) {
 
   return (
     <>
+      <DownloadPDFButton invoiceId={invoice.id} />
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}

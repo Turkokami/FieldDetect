@@ -62,17 +62,17 @@ export default async function InvoiceDetailPage({
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/invoices" className="text-muted-foreground hover:text-foreground text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/invoices" className="text-muted-foreground hover:text-foreground text-sm shrink-0">
             ← Invoices
           </Link>
           <span className="text-muted-foreground">/</span>
-          <h1 className="text-2xl font-bold text-foreground">Invoice #{invoice.invoiceNumber}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">Invoice #{invoice.invoiceNumber}</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[invoice.status] ?? "bg-gray-100 text-gray-700"}`}>
             {invoice.status.replace(/_/g, " ")}
           </span>
@@ -83,8 +83,8 @@ export default async function InvoiceDetailPage({
       {/* Invoice Document */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {/* Invoice Header */}
-        <div className="p-8 border-b border-border bg-muted/30">
-          <div className="flex items-start justify-between">
+        <div className="p-6 md:p-8 border-b border-border bg-muted/30">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-2xl font-bold text-foreground">{invoice.organization.name}</div>
               {invoice.organization.addressLine1 && (
@@ -111,7 +111,7 @@ export default async function InvoiceDetailPage({
         </div>
 
         {/* Bill To & Details */}
-        <div className="p-8 grid grid-cols-2 gap-8 border-b border-border">
+        <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 border-b border-border">
           <div>
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
               Bill To
