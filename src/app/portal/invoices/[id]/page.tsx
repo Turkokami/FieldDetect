@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { ChevronLeft, CheckCircle2 } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import PortalPayButton from "@/components/portal/portal-pay-button";
 
 export const metadata = { title: "Invoice" };
 
@@ -20,8 +21,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export default async function PortalInvoiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ payment?: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
@@ -30,6 +33,7 @@ export default async function PortalInvoiceDetailPage({
   if (!customer) redirect("/sign-in");
 
   const { id } = await params;
+  const { payment } = await searchParams;
   const invoice = await prisma.invoice.findFirst({
     where: { id, customerId: customer.id },
     include: {
@@ -50,8 +54,18 @@ export default async function PortalInvoiceDetailPage({
 
   const org = invoice.organization;
 
+  const stripeConfigured = !!process.env.STRIPE_SECRET_KEY;
+
   return (
     <div className="space-y-6 max-w-2xl">
+      {payment === "success" && (
+        <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.3)" }}>
+          <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: "#16a34a" }} />
+          <p className="text-sm font-semibold" style={{ color: "#16a34a" }}>
+            Payment received — thank you! Your invoice will be updated shortly.
+          </p>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <Link href="/portal/invoices" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ChevronLeft className="h-4 w-4" />
@@ -205,17 +219,25 @@ export default async function PortalInvoiceDetailPage({
         </div>
       )}
 
-      {/* Contact for payment */}
       {!isPaid && remaining > 0 && (
         <div
-          className="rounded-xl p-5 text-center"
+          className="rounded-xl p-5 space-y-4"
           style={{ background: "rgba(10,186,181,0.08)", border: "1px solid rgba(10,186,181,0.2)" }}
         >
-          <p className="text-sm font-semibold" style={{ color: "#0ABAB5" }}>
-            Ready to pay? Contact {org.name} to arrange payment.
-          </p>
-          {org.phone && <p className="text-sm text-muted-foreground mt-1">{org.phone}</p>}
-          {org.email && <p className="text-sm text-muted-foreground">{org.email}</p>}
+          <div className="text-center">
+            <p className="text-sm font-semibold" style={{ color: "#0ABAB5" }}>
+              Balance due: {formatCurrency(remaining)}
+            </p>
+          </div>
+          {stripeConfigured ? (
+            <PortalPayButton invoiceId={id} />
+          ) : (
+            <div className="text-center space-y-1">
+              <p className="text-sm text-muted-foreground">Contact {org.name} to arrange payment.</p>
+              {org.phone && <p className="text-sm text-muted-foreground">{org.phone}</p>}
+              {org.email && <p className="text-sm text-muted-foreground">{org.email}</p>}
+            </div>
+          )}
         </div>
       )}
     </div>

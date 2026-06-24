@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatPhone, formatCurrency } from "@/lib/utils";
 import { DeleteCustomerButton } from "@/components/customers/delete-customer-button";
+import { CopyButton } from "@/components/ui/copy-button";
 
 export default async function CustomerDetailPage({
   params,
@@ -70,6 +71,8 @@ export default async function CustomerDetailPage({
   };
 
   const customerDisplayName = customer.companyName ?? `${customer.firstName} ${customer.lastName}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.fielddetect.com";
+  const portalJoinUrl = `${appUrl}/portal/join?c=${customer.id}`;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -222,6 +225,38 @@ export default async function CustomerDetailPage({
               <p className="text-sm text-foreground whitespace-pre-wrap">{customer.notes}</p>
             </div>
           )}
+
+          {/* Portal Access */}
+          <div className="bg-card border border-border rounded-xl p-5">
+            <h2 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">
+              Customer Portal
+            </h2>
+            {customer.clerkUserId ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                  Active
+                </span>
+                <span className="text-xs text-muted-foreground">Portal account linked</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                    Not activated
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Share this invite link with the customer so they can access their portal.
+                </p>
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/50 border border-border">
+                  <code className="text-xs text-foreground break-all flex-1 leading-relaxed">
+                    {portalJoinUrl}
+                  </code>
+                </div>
+                <CopyButton text={portalJoinUrl} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right column */}

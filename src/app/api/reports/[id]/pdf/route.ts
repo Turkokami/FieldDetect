@@ -53,11 +53,19 @@ export async function GET(
       where: { clerkUserId: userId },
       include: { organization: true },
     });
-    if (!user) return new NextResponse("User not found", { status: 404 });
+    const portalCustomer = user ? null : await prisma.customer.findUnique({
+      where: { clerkUserId: userId },
+    });
+    if (!user && !portalCustomer) return new NextResponse("Unauthorized", { status: 401 });
 
     const { id } = await params;
     const inspection = await prisma.inspection.findFirst({
-      where: { id, organizationId: user.organizationId },
+      where: {
+        id,
+        ...(user
+          ? { organizationId: user.organizationId }
+          : { property: { customerId: portalCustomer!.id } }),
+      },
       include: {
         property: {
           include: {
@@ -78,7 +86,7 @@ export async function GET(
 
     if (!inspection) return new NextResponse("Not found", { status: 404 });
 
-    const org = user.organization;
+    const org = user?.organization ?? await prisma.organization.findUniqueOrThrow({ where: { id: inspection.organizationId } });
     const customer = inspection.property.customer;
     const property = inspection.property;
     const units = inspection.inspectionUnits;

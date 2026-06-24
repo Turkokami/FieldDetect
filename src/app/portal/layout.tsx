@@ -18,7 +18,7 @@ export default async function PortalLayout({
     include: { organization: true },
   });
 
-  if (!customer) redirect("/dashboard");
+  if (!customer) return <>{children}</>;
 
   const org = customer.organization;
 
