@@ -248,3 +248,42 @@ export async function notifyInvoiceSent(
 ): Promise<void> {
   return notifyOnStatusChange(appointmentId, "INVOICED", { paymentUrl });
 }
+
+// Notify office (OWNER/ADMIN) users when a field tech sends a message
+export async function notifyOfficeNewMessage(
+  appointmentId: string,
+  message: string,
+  techName: string,
+): Promise<void> {
+  try {
+    const apt = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { property: { select: { name: true, city: true } } },
+    });
+    if (!apt) return;
+
+    const admins = await prisma.user.findMany({
+      where: { organizationId: apt.organizationId, role: { in: ["OWNER", "ADMIN"] }, isActive: true },
+      select: { email: true },
+    });
+    if (!admins.length) return;
+
+    const subject = `New field message from ${techName} – ${apt.property.name}`;
+    const html = wrap(`Message from ${techName} 💬`, `
+      <p style="color:#374151;margin:0 0 12px">A field technician sent a note from the job:</p>
+      <div style="background:#f0f9ff;border-left:4px solid #0ABAB5;padding:14px 16px;margin:0 0 20px;border-radius:0 8px 8px 0">
+        <div style="font-size:11px;color:#64748b;margin-bottom:4px">${apt.property.name}${apt.property.city ? `, ${apt.property.city}` : ""}</div>
+        <p style="margin:0;color:#1e293b;font-size:15px;font-weight:500">${message}</p>
+      </div>
+      <a href="${APP_URL}/messages" style="display:inline-block;background:#0ABAB5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">View in Messages →</a>
+    `);
+
+    if (resend) {
+      await Promise.all(admins.map((a) => resend!.emails.send({ from: FROM, to: a.email, subject, html })));
+    } else {
+      console.log(`[NOTIFY_OFFICE_MSG] Would email ${admins.length} admin(s): ${subject}`);
+    }
+  } catch (err) {
+    console.error("[NOTIFY_OFFICE_MESSAGE]", err);
+  }
+}

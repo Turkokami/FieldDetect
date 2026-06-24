@@ -959,24 +959,73 @@ function OfficeNotePanel({
 
 // ─── AddUnitToProperty ────────────────────────────────────────────────────────
 
-function AddUnitToProperty({ propertyId, buildingId, onAdded }: { propertyId: string; buildingId: string | null; onAdded: (unitNumber: string) => Promise<void> }) {
-  const [open, setOpen] = useState(false);
-  const [unitNumber, setUnitNumber] = useState("");
-  const [saving, setSaving] = useState(false);
+type AddUnitMode = "single" | "range" | "list";
 
-  const add = async () => {
-    const num = unitNumber.trim();
+function AddUnitToProperty({ propertyId, buildingId, onAdded }: {
+  propertyId: string;
+  buildingId: string | null;
+  onAdded: (unitNumber: string | null) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<AddUnitMode>("single");
+  const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const [singleNum, setSingleNum] = useState("");
+  const [rangePrefix, setRangePrefix] = useState("");
+  const [rangeStart, setRangeStart] = useState("1");
+  const [rangeEnd, setRangeEnd] = useState("10");
+  const [listText, setListText] = useState("");
+
+  const rangePreview = useMemo(() => {
+    const s = parseInt(rangeStart) || 1;
+    const e = parseInt(rangeEnd) || 1;
+    if (e < s || e - s > 199) return [];
+    const prefix = rangePrefix.trim();
+    return Array.from({ length: e - s + 1 }, (_, i) => {
+      const n = s + i;
+      return prefix ? `${prefix} ${n}` : String(n);
+    });
+  }, [rangePrefix, rangeStart, rangeEnd]);
+
+  const listUnits = useMemo(
+    () => listText.split("\n").map((l) => l.trim()).filter(Boolean),
+    [listText]
+  );
+
+  const addSingle = async () => {
+    const num = singleNum.trim();
     if (!num) return;
-    setSaving(true);
+    setSaving(true); setAddError(null);
     try {
       const res = await fetch(`/api/properties/${propertyId}/units`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ unitNumber: num, buildingId: buildingId ?? undefined }),
       });
-      if (res.ok) { setUnitNumber(""); setOpen(false); await onAdded(num); }
+      if (!res.ok) { setAddError("Failed to add unit. Try again."); return; }
+      setSingleNum(""); setOpen(false);
+      await onAdded(num);
     } finally { setSaving(false); }
   };
+
+  const addBulk = async (units: string[]) => {
+    if (!units.length) return;
+    setSaving(true); setAddError(null);
+    try {
+      const res = await fetch(`/api/properties/${propertyId}/units/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ units: units.map((unitNumber) => ({ unitNumber, buildingId: buildingId ?? undefined })) }),
+      });
+      if (!res.ok) { setAddError("Failed to add units. Try again."); return; }
+      setListText(""); setOpen(false);
+      await onAdded(null);
+    } finally { setSaving(false); }
+  };
+
+  const inputStyle = { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" } as React.CSSProperties;
+  const labelStyle = { color: "#64748b" } as React.CSSProperties;
 
   if (!open) {
     return (
@@ -985,31 +1034,159 @@ function AddUnitToProperty({ propertyId, buildingId, onAdded }: { propertyId: st
         className="w-full py-2 rounded-lg border border-dashed text-xs flex items-center justify-center gap-1.5 transition-colors"
         style={{ borderColor: "rgba(255,255,255,0.15)", color: "#64748b" }}
       >
-        <Plus className="h-3.5 w-3.5" /> Add Unit
+        <Plus className="h-3.5 w-3.5" /> Add Units
       </button>
     );
   }
 
   return (
-    <div className="flex gap-2">
-      <input
-        value={unitNumber}
-        onChange={(e) => setUnitNumber(e.target.value)}
-        placeholder="Unit # (e.g. 101)"
-        className="flex-1 h-8 px-3 rounded-lg text-sm text-white focus:outline-none"
-        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-        onKeyDown={(e) => e.key === "Enter" && add()}
-        autoFocus
-      />
-      <button onClick={add} disabled={!unitNumber.trim() || saving}
-        className="px-3 h-8 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-        style={{ background: "#0ABAB5" }}>
-        {saving ? "…" : "Add"}
-      </button>
-      <button onClick={() => { setOpen(false); setUnitNumber(""); }}
-        className="px-2 h-8 rounded-lg text-xs" style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#64748b" }}>
-        ✕
-      </button>
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0F1A" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+        <h2 className="font-bold text-white text-base">Add Units</h2>
+        <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg" style={{ color: "#64748b" }}>
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Mode tabs */}
+      <div className="flex gap-1.5 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        {(["single", "range", "list"] as AddUnitMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={mode === m
+              ? { background: "#0ABAB5", color: "#fff" }
+              : { background: "rgba(255,255,255,0.05)", color: "#64748b", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            {m.charAt(0).toUpperCase() + m.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {addError && (
+        <div className="mx-4 mt-3 px-3 py-2 rounded-lg text-xs font-medium shrink-0" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}>
+          {addError}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-4 pt-5 pb-8 space-y-4">
+
+        {/* ── Single ── */}
+        {mode === "single" && (
+          <>
+            <p className="text-xs" style={labelStyle}>Enter a unit number to add it.</p>
+            <input
+              value={singleNum}
+              onChange={(e) => setSingleNum(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addSingle()}
+              placeholder="Unit # (e.g. 101, Room 5, Suite A)"
+              autoFocus
+              className="w-full h-11 px-3 rounded-xl text-sm text-white focus:outline-none"
+              style={inputStyle}
+            />
+            <button
+              onClick={addSingle}
+              disabled={!singleNum.trim() || saving}
+              className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 active:scale-95 transition-all"
+              style={{ background: "#0ABAB5" }}
+            >
+              {saving ? "Adding…" : "Add Unit"}
+            </button>
+          </>
+        )}
+
+        {/* ── Range ── */}
+        {mode === "range" && (
+          <>
+            <p className="text-xs" style={labelStyle}>Generate a numbered sequence of units (max 200).</p>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={labelStyle}>Prefix (optional)</label>
+              <input
+                value={rangePrefix}
+                onChange={(e) => setRangePrefix(e.target.value)}
+                placeholder="Unit, Room, Apt… (leave blank for numbers only)"
+                className="w-full h-11 px-3 rounded-xl text-sm text-white focus:outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={labelStyle}>From</label>
+                <input
+                  value={rangeStart}
+                  onChange={(e) => setRangeStart(e.target.value)}
+                  type="number" min="1"
+                  className="w-full h-11 px-3 rounded-xl text-sm text-white focus:outline-none"
+                  style={inputStyle}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={labelStyle}>To</label>
+                <input
+                  value={rangeEnd}
+                  onChange={(e) => setRangeEnd(e.target.value)}
+                  type="number" min="1"
+                  className="w-full h-11 px-3 rounded-xl text-sm text-white focus:outline-none"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            {rangePreview.length > 0 && (
+              <div className="rounded-xl px-3.5 py-3" style={{ background: "rgba(10,186,181,0.06)", border: "1px solid rgba(10,186,181,0.2)" }}>
+                <div className="text-xs font-semibold mb-1" style={{ color: "#0ABAB5" }}>
+                  {rangePreview.length} unit{rangePreview.length !== 1 ? "s" : ""} will be added
+                </div>
+                <div className="text-xs" style={{ color: "#94a3b8" }}>
+                  {rangePreview.slice(0, 5).join(", ")}
+                  {rangePreview.length > 5 && <span style={{ color: "#64748b" }}> … +{rangePreview.length - 5} more</span>}
+                </div>
+              </div>
+            )}
+            {parseInt(rangeEnd) - parseInt(rangeStart) > 199 && (
+              <p className="text-xs" style={{ color: "#f87171" }}>Max 200 units per batch.</p>
+            )}
+            <button
+              onClick={() => addBulk(rangePreview)}
+              disabled={!rangePreview.length || saving}
+              className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 active:scale-95 transition-all"
+              style={{ background: "#0ABAB5" }}
+            >
+              {saving ? "Adding…" : `Add ${rangePreview.length || 0} Unit${rangePreview.length !== 1 ? "s" : ""}`}
+            </button>
+          </>
+        )}
+
+        {/* ── List ── */}
+        {mode === "list" && (
+          <>
+            <p className="text-xs" style={labelStyle}>Type or paste unit numbers, one per line.</p>
+            <textarea
+              value={listText}
+              onChange={(e) => setListText(e.target.value)}
+              placeholder={"101\n102\n103\n104A\n104B"}
+              rows={10}
+              className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none resize-none font-mono"
+              style={inputStyle}
+            />
+            {listUnits.length > 0 && (
+              <p className="text-xs font-medium" style={{ color: "#0ABAB5" }}>
+                {listUnits.length} unit{listUnits.length !== 1 ? "s" : ""} ready to add
+              </p>
+            )}
+            <button
+              onClick={() => addBulk(listUnits)}
+              disabled={!listUnits.length || saving}
+              className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 active:scale-95 transition-all"
+              style={{ background: "#0ABAB5" }}
+            >
+              {saving ? "Adding…" : `Add ${listUnits.length || 0} Unit${listUnits.length !== 1 ? "s" : ""}`}
+            </button>
+          </>
+        )}
+
+      </div>
     </div>
   );
 }
@@ -1712,7 +1889,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
                       <AddUnitToProperty
                         propertyId={apt.property.id}
                         buildingId={building.id}
-                        onAdded={async (unitNumber) => { await refreshProperty(); setEditingUnit(unitNumber); }}
+                        onAdded={async (unitNumber) => { await refreshProperty(); if (unitNumber) setEditingUnit(unitNumber); }}
                       />
                     </div>
                   )}
@@ -1739,7 +1916,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
                     <AddUnitToProperty
                       propertyId={apt.property.id}
                       buildingId={null}
-                      onAdded={async (unitNumber) => { await refreshProperty(); setEditingUnit(unitNumber); }}
+                      onAdded={async (unitNumber) => { await refreshProperty(); if (unitNumber) setEditingUnit(unitNumber); }}
                     />
                   )}
                 </div>

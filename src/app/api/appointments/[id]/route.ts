@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { notifyOnStatusChange } from "@/lib/notify";
+import { notifyOnStatusChange, notifyOfficeNewMessage } from "@/lib/notify";
 
 const updateAppointmentSchema = z.object({
   technicianId: z.string().optional().nullable(),
@@ -131,9 +131,19 @@ export async function PATCH(
       include: { customer: true, property: true, technician: true, k9Team: true },
     });
 
-    // Fire-and-forget — status notification must never block the response
+    // Fire-and-forget — must never block the response
     if (validated.status) {
       notifyOnStatusChange(id, validated.status).catch(() => {});
+    }
+
+    // Notify office when a field tech (non-admin) sends a new message
+    if (validated.notes && user.role === "TECHNICIAN") {
+      const lines = validated.notes.split("\n").filter(Boolean);
+      const lastLine = lines[lines.length - 1] ?? "";
+      const match = lastLine.match(/^\[[^\]·]+·\s*([^\]]+)\]\s(.+)$/);
+      const techName = match ? match[1].trim() : `${user.firstName} ${user.lastName}`;
+      const message = match ? match[2].trim() : lastLine;
+      notifyOfficeNewMessage(id, message, techName).catch(() => {});
     }
 
     return NextResponse.json({ data: appointment });
