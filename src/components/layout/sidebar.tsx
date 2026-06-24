@@ -20,6 +20,7 @@ import {
   FileCheck,
   Bell,
   Smartphone,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -34,12 +35,13 @@ const navItems = [
   { label: "Estimates",   href: "/estimates",   icon: FileCheck },
   { label: "Invoices",    href: "/invoices",    icon: Receipt },
   { label: "Routes",      href: "/routes",      icon: MapPin },
+  { label: "Messages",    href: "/messages",    icon: MessageSquare },
   { label: "Analytics",   href: "/analytics",   icon: TrendingUp },
   { label: "K9 Teams",    href: "/k9teams",     icon: Dog },
   { label: "Settings",    href: "/settings",    icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -96,11 +98,28 @@ export function Sidebar() {
                 borderLeft: "2px solid transparent",
               }}
             >
-              <Icon
-                className="h-4.5 w-4.5 shrink-0"
-                style={{ color: isActive ? "#0ABAB5" : undefined }}
-              />
-              {!collapsed && <span>{item.label}</span>}
+              <span className="relative shrink-0">
+                <Icon
+                  className="h-4.5 w-4.5"
+                  style={{ color: isActive ? "#0ABAB5" : undefined }}
+                />
+                {collapsed && item.href === "/messages" && unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                )}
+              </span>
+              {!collapsed && (
+                <span className="flex-1 flex items-center justify-between gap-2">
+                  {item.label}
+                  {item.href === "/messages" && unreadMessages > 0 && (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white leading-none"
+                      style={{ background: "#dc2626" }}
+                    >
+                      {unreadMessages > 99 ? "99+" : unreadMessages}
+                    </span>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}

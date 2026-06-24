@@ -16,9 +16,18 @@ export default async function DashboardLayout({
   if (user?.role === "TECHNICIAN") redirect("/field");
   if (user?.role === "CUSTOMER") redirect("/portal");
 
+  const unreadMessages = user
+    ? await prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*) as count FROM appointments
+        WHERE organization_id = ${user.organizationId}
+          AND notes IS NOT NULL
+          AND (office_notes_read_at IS NULL OR office_notes_read_at < updated_at)
+      `.then(([r]) => Number(r.count))
+    : 0;
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
+      <Sidebar unreadMessages={unreadMessages} />
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <Topbar />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>

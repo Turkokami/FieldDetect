@@ -479,6 +479,7 @@ model Appointment {
   recurrenceEndDate        DateTime?
   parentAppointmentId      String?
   notes                    String?
+  officeNotesReadAt        DateTime?
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 
