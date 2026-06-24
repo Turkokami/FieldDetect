@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ProfilePhotoUpload } from "@/components/team/profile-photo-upload";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import Link from "next/link";
 
 export const metadata = { title: "Team" };
 
@@ -142,7 +143,10 @@ export default async function TeamPage() {
                   canEdit={canEdit}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-foreground text-sm">{dog.name}</div>
+                  <Link href={`/k9teams/dogs/${dog.id}`}
+                    className="font-semibold text-foreground text-sm hover:text-primary transition-colors">
+                    {dog.name}
+                  </Link>
                   <div className="text-xs text-muted-foreground mt-0.5">{dog.teamName}</div>
                   {dog.breed && (
                     <div className="text-xs text-muted-foreground">{dog.breed}</div>
@@ -163,6 +167,10 @@ export default async function TeamPage() {
                       </span>
                     </div>
                   )}
+                  <Link href={`/k9teams/dogs/${dog.id}`}
+                    className="text-xs mt-2 block transition-colors" style={{ color: "#0ABAB5" }}>
+                    View profile →
+                  </Link>
                 </div>
               </div>
             ))}

@@ -177,6 +177,10 @@ export default async function K9TeamDetailPage({
                         {dog.notes && (
                           <div className="text-xs text-muted-foreground italic mt-1 border-t border-border/50 pt-1">{dog.notes}</div>
                         )}
+                        <Link href={`/k9teams/dogs/${dog.id}`}
+                          className="text-xs mt-2 block transition-colors" style={{ color: "#0ABAB5" }}>
+                          Full profile →
+                        </Link>
                       </div>
                     </div>
                   </div>

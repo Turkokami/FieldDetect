@@ -10,6 +10,10 @@ const patchSchema = z.object({
   certifiedUntil: z.string().datetime().optional().nullable(),
   notes: z.string().optional().nullable(),
   photoUrl: z.string().url().optional().nullable(),
+  foodBrand: z.string().optional().nullable(),
+  foodType: z.string().optional().nullable(),
+  mannerisms: z.string().optional().nullable(),
+  extras: z.string().optional().nullable(),
 });
 
 async function resolveDog(dogId: string, orgId: string) {
@@ -51,6 +55,10 @@ export async function PATCH(
         }),
         ...(validated.notes !== undefined && { notes: validated.notes }),
         ...(validated.photoUrl !== undefined && { photoUrl: validated.photoUrl }),
+        ...(validated.foodBrand !== undefined && { foodBrand: validated.foodBrand }),
+        ...(validated.foodType !== undefined && { foodType: validated.foodType }),
+        ...(validated.mannerisms !== undefined && { mannerisms: validated.mannerisms }),
+        ...(validated.extras !== undefined && { extras: validated.extras }),
       },
     });
 

@@ -296,13 +296,104 @@ model K9Dog {
   photoUrl            String?
   isActive            Boolean   @default(true)
   notes               String?
+  foodBrand           String?
+  foodType            String?
+  mannerisms          String?
+  extras              String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  k9Team      K9Team      @relation(fields: [k9TeamId], references: [id])
-  inspections Inspection[]
+  k9Team         K9Team                @relation(fields: [k9TeamId], references: [id])
+  inspections    Inspection[]
+  vaccinations   K9Vaccination[]
+  certifications K9Certification[]
+  vetAppointments     K9VetAppointment[]
+  groomingAppointments K9GroomingAppointment[]
+  insurancePayments   K9InsurancePayment[]
 
   @@map("k9_dogs")
+}
+
+model K9Vaccination {
+  id              String    @id @default(cuid())
+  dogId           String
+  vaccineName     String
+  dateGiven       DateTime
+  nextDueDate     DateTime?
+  administeredBy  String?
+  batchNumber     String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("k9_vaccinations")
+}
+
+model K9Certification {
+  id          String    @id @default(cuid())
+  dogId       String
+  name        String
+  certNumber  String?
+  issuedBy    String?
+  issueDate   DateTime?
+  expiresAt   DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("k9_certifications")
+}
+
+model K9VetAppointment {
+  id               String    @id @default(cuid())
+  dogId            String
+  date             DateTime
+  vetName          String?
+  clinic           String?
+  reason           String
+  cost             Decimal?  @db.Decimal(10, 2)
+  notes            String?
+  followUpNeeded   Boolean   @default(false)
+  followUpDate     DateTime?
+  createdAt        DateTime  @default(now())
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("k9_vet_appointments")
+}
+
+model K9GroomingAppointment {
+  id           String    @id @default(cuid())
+  dogId        String
+  date         DateTime
+  groomerName  String?
+  services     String?
+  cost         Decimal?  @db.Decimal(10, 2)
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("k9_grooming_appointments")
+}
+
+model K9InsurancePayment {
+  id            String    @id @default(cuid())
+  dogId         String
+  provider      String
+  policyNumber  String?
+  amount        Decimal   @db.Decimal(10, 2)
+  coverageType  String?
+  dueDate       DateTime?
+  paidDate      DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("k9_insurance_payments")
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────
