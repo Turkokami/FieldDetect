@@ -3,7 +3,10 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Phone, Clock, ChevronRight, CheckCircle2, AlertTriangle, Navigation } from "lucide-react";
+import {
+  MapPin, Phone, Clock, ChevronRight, CheckCircle2,
+  AlertTriangle, Navigation, CalendarDays, X,
+} from "lucide-react";
 
 type Appt = {
   id: string;
@@ -66,6 +69,7 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 function fmtTime(dateStr: string) {
@@ -95,7 +99,24 @@ function isActionable(status: string) {
   return ["SCHEDULED","CONFIRMED","EN_ROUTE","ON_SITE","INSPECTION_STARTED"].includes(status);
 }
 
-// ─── Job Card ─────────────────────────────────────────────────────────────────
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  if (dt.getTime() === today.getTime()) {
+    return `Today · ${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
+  }
+  if (dt.getTime() === tomorrow.getTime()) {
+    return `Tomorrow · ${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
+  }
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+// ─── Job Card ──────────────────────────────────────────────────────────────────
 
 function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast: boolean }) {
   const st = STATUS_CFG[job.status] ?? STATUS_CFG.SCHEDULED;
@@ -110,7 +131,6 @@ function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast:
     <div className="flex gap-3">
       {/* Timeline spine */}
       <div className="flex flex-col items-center shrink-0" style={{ width: 36 }}>
-        {/* Stop bubble */}
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shrink-0 border-2 z-10"
           style={
@@ -123,7 +143,6 @@ function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast:
         >
           {done ? <CheckCircle2 className="h-4 w-4" /> : stopNum}
         </div>
-        {/* Connector line */}
         {!isLast && (
           <div className="flex-1 w-px mt-1" style={{ background: "rgba(255,255,255,0.08)", minHeight: 20 }} />
         )}
@@ -134,25 +153,27 @@ function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast:
         href={`/field/${job.id}`}
         className="flex-1 mb-4 rounded-2xl overflow-hidden transition-all active:scale-[0.98]"
         style={{
-          background: active ? "rgba(10,186,181,0.05)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${active ? "rgba(10,186,181,0.35)" : "rgba(255,255,255,0.08)"}`,
+          background: active
+            ? "rgba(10,186,181,0.06)"
+            : "rgba(255,255,255,0.04)",
+          border: `1px solid ${active ? "rgba(10,186,181,0.3)" : hasAlert ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.08)"}`,
         }}
       >
         {/* Status bar */}
-        <div className="h-1" style={{ background: st.color, opacity: done ? 0.4 : 1 }} />
+        <div className="h-0.5" style={{ background: st.color, opacity: done ? 0.4 : 1 }} />
 
         <div className="p-4">
-          {/* Time row */}
+          {/* Time + status row */}
           <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <Clock className="h-3.5 w-3.5 shrink-0" style={{ color: "#64748b" }} />
-              <span className="text-sm font-bold" style={{ color: st.color }}>
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <span className="flex items-center gap-1.5 text-sm font-bold" style={{ color: st.color }}>
+                <Clock className="h-3.5 w-3.5 shrink-0" style={{ color: "#64748b" }} />
                 {fmtTime(job.scheduledDate)}
                 {job.scheduledEndTime && (
                   <span className="font-normal text-slate-500"> – {fmtTime(job.scheduledEndTime)}</span>
                 )}
                 {!job.scheduledEndTime && job.estimatedMinutes && (
-                  <span className="font-normal text-slate-500"> · est. {job.estimatedMinutes}m</span>
+                  <span className="font-normal text-slate-500"> · {job.estimatedMinutes}m</span>
                 )}
               </span>
               <span
@@ -168,7 +189,7 @@ function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast:
                 <a
                   href={`tel:${job.customer.phone}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center"
                   style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
                   <Phone className="h-3.5 w-3.5" style={{ color: "#94a3b8" }} />
@@ -179,7 +200,7 @@ function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast:
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full flex items-center justify-center"
                 style={{ background: "rgba(10,186,181,0.12)", border: "1px solid rgba(10,186,181,0.25)" }}
               >
                 <Navigation className="h-3.5 w-3.5" style={{ color: "#0ABAB5" }} />
@@ -238,6 +259,30 @@ function JobCard({ job, stopNum, isLast }: { job: Appt; stopNum: number; isLast:
   );
 }
 
+// ─── Date group separator ─────────────────────────────────────────────────────
+
+function DateHeader({ label }: { label: string }) {
+  const isToday = label.startsWith("Today");
+  const isTomorrow = label.startsWith("Tomorrow");
+  return (
+    <div className="flex items-center gap-3 mb-3">
+      <div
+        className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg"
+        style={
+          isToday
+            ? { background: "rgba(10,186,181,0.15)", color: "#0ABAB5" }
+            : isTomorrow
+            ? { background: "rgba(99,102,241,0.12)", color: "#818cf8" }
+            : { background: "rgba(255,255,255,0.06)", color: "#64748b" }
+        }
+      >
+        {label}
+      </div>
+      <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function FieldHome({
@@ -256,32 +301,59 @@ export default function FieldHome({
   const todayNum = now.getDate();
   const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth();
 
-  const [selectedDay, setSelectedDay] = useState<number | null>(
-    isCurrentMonth ? todayNum : null
-  );
-  const [calendarOpen, setCalendarOpen] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
 
+  // Only calendar month appointments go in byDay (avoid cross-month day number collision)
   const byDay = useMemo(() => {
     const map: Record<number, Appt[]> = {};
     for (const a of appointments) {
-      const d = new Date(a.scheduledDate).getDate();
-      if (!map[d]) map[d] = [];
-      map[d].push(a);
+      const d = new Date(a.scheduledDate);
+      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+        const day = d.getDate();
+        if (!map[day]) map[day] = [];
+        map[day].push(a);
+      }
     }
     return map;
+  }, [appointments, currentYear, currentMonth]);
+
+  // Upcoming = today onwards, sorted by time, excluding fully-done statuses
+  const upcomingJobs = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return appointments
+      .filter((a) => new Date(a.scheduledDate) >= startOfToday)
+      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
   }, [appointments]);
 
-  const shownJobs = selectedDay
-    ? (byDay[selectedDay] ?? [])
-    : appointments.filter((a) => isToday(a.scheduledDate));
+  // Group upcoming by date
+  const groupedUpcoming = useMemo(() => {
+    const groups: { key: string; label: string; jobs: Appt[] }[] = [];
+    const map: Record<string, { key: string; label: string; jobs: Appt[] }> = {};
+    for (const job of upcomingJobs) {
+      const d = new Date(job.scheduledDate);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!map[key]) {
+        const entry = { key, label: dayLabel(job.scheduledDate), jobs: [] as Appt[] };
+        map[key] = entry;
+        groups.push(entry);
+      }
+      map[key].jobs.push(job);
+    }
+    return groups;
+  }, [upcomingJobs]);
+
+  // Jobs shown when a specific calendar day is selected
+  const selectedDayJobs = selectedDay ? (byDay[selectedDay] ?? []) : [];
 
   const activeJob = appointments.find((a) => isActive(a.status));
 
-  const todayCount = appointments.filter((a) => isToday(a.scheduledDate)).length;
-  const doneCount  = appointments.filter((a) => isDone(a.status)).length;
+  const todayCount = isCurrentMonth ? (byDay[todayNum]?.length ?? 0) : 0;
+  const monthCount = Object.values(byDay).flat().length;
   const alertCount = appointments.filter((a) =>
     a.inspection?.overallResult === "POSITIVE_K9_ALERT" ||
     a.inspection?.overallResult === "VISUAL_CONFIRMATION"
@@ -298,14 +370,20 @@ export default function FieldHome({
     router.push(`/field?year=${d.getFullYear()}&month=${d.getMonth()}`);
   }
 
+  const selectedDayStr = selectedDay
+    ? new Date(currentYear, currentMonth, selectedDay).toLocaleDateString("en-US", {
+        weekday: "short", month: "short", day: "numeric",
+      })
+    : null;
+
   return (
     <div className="min-h-screen" style={{ background: "#0A0F1A" }}>
 
       {/* ── Header ── */}
       <div className="px-5 pt-12 pb-5" style={{ background: "linear-gradient(180deg, #0D1A2A 0%, #0A0F1A 100%)" }}>
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#0ABAB5" }}>
+            <div className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: "#0ABAB5" }}>
               FieldDetect
             </div>
             <div className="text-2xl font-black text-white leading-tight">
@@ -328,14 +406,17 @@ export default function FieldHome({
             <div className="text-[11px] font-semibold mt-0.5" style={{ color: "#0ABAB5" }}>Today</div>
           </div>
           <div className="rounded-2xl px-3 py-3 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="text-2xl font-black text-white">{appointments.length}</div>
-            <div className="text-[11px] font-semibold mt-0.5 text-slate-400">Month</div>
+            <div className="text-2xl font-black text-white">{upcomingJobs.length}</div>
+            <div className="text-[11px] font-semibold mt-0.5 text-slate-400">Upcoming</div>
           </div>
-          <div className="rounded-2xl px-3 py-3 text-center" style={
-            alertCount > 0
-              ? { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)" }
-              : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }
-          }>
+          <div
+            className="rounded-2xl px-3 py-3 text-center"
+            style={
+              alertCount > 0
+                ? { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)" }
+                : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }
+            }
+          >
             {alertCount > 0 ? (
               <>
                 <div className="text-2xl font-black" style={{ color: "#ef4444" }}>{alertCount}</div>
@@ -345,8 +426,8 @@ export default function FieldHome({
               </>
             ) : (
               <>
-                <div className="text-2xl font-black text-white">{doneCount}</div>
-                <div className="text-[11px] font-semibold mt-0.5 text-slate-400">Done</div>
+                <div className="text-2xl font-black text-white">{monthCount}</div>
+                <div className="text-[11px] font-semibold mt-0.5 text-slate-400">Month</div>
               </>
             )}
           </div>
@@ -355,7 +436,7 @@ export default function FieldHome({
 
       {/* ── Active job banner ── */}
       {activeJob && (
-        <div className="px-4 mt-1 mb-1">
+        <div className="px-4 mt-3">
           <Link
             href={`/field/${activeJob.id}`}
             className="flex items-center justify-between rounded-2xl px-4 py-3.5 gap-3"
@@ -376,147 +457,184 @@ export default function FieldHome({
         </div>
       )}
 
-      {/* ── Calendar ── */}
-      <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="flex items-center justify-between px-4 py-3">
-          <button
-            onClick={prevMonth}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors text-lg"
-            style={{ background: "rgba(255,255,255,0.05)" }}
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => setCalendarOpen((o) => !o)}
-            className="flex items-center gap-2 text-sm font-bold text-white"
-          >
-            {MONTHS[currentMonth]} {currentYear}
-            <span className="text-xs text-slate-600">{calendarOpen ? "▲" : "▼"}</span>
-          </button>
-          <button
-            onClick={nextMonth}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors text-lg"
-            style={{ background: "rgba(255,255,255,0.05)" }}
-          >
-            ›
-          </button>
-        </div>
-
-        {calendarOpen && (
-          <>
-            <div className="grid grid-cols-7 px-2 pb-1">
-              {DAYS_SHORT.map((d) => (
-                <div key={d} className="text-center text-[10px] font-bold text-slate-600 uppercase py-1">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-0.5 px-2 pb-3">
-              {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e-${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const jobs = byDay[day] ?? [];
-                const hasJobs = jobs.length > 0;
-                const isSelected = selectedDay === day;
-                const isTodayCell = isCurrentMonth && day === todayNum;
-                const hasAlert = jobs.some((j) =>
-                  j.inspection?.overallResult === "POSITIVE_K9_ALERT" ||
-                  j.inspection?.overallResult === "VISUAL_CONFIRMATION"
-                );
-                const hasActiveJob = jobs.some((j) => isActive(j.status));
-
-                return (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedDay(isSelected && isTodayCell ? null : isSelected ? null : day)}
-                    className="relative flex flex-col items-center py-1.5 rounded-xl transition-all active:scale-95"
-                    style={
-                      isSelected
-                        ? { background: "#0ABAB5", color: "#fff" }
-                        : isTodayCell
-                        ? { background: "rgba(10,186,181,0.18)", color: "#0ABAB5" }
-                        : {}
-                    }
-                  >
-                    <span className={`text-xs font-bold ${!isSelected && !isTodayCell ? "text-slate-300" : ""}`}>
-                      {day}
-                    </span>
-                    {hasJobs && (
-                      <div className="flex gap-0.5 mt-0.5">
-                        {hasAlert
-                          ? <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                          : hasActiveJob
-                          ? <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-                          : <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.7)" : "#0ABAB5" }} />}
-                        {jobs.length > 1 && (
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.5)" : "rgba(148,163,184,0.5)" }} />
-                        )}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
+      {/* ── Calendar toggle ── */}
+      <div className="px-4 mt-4">
+        <button
+          onClick={() => {
+            setCalendarOpen((o) => !o);
+            if (calendarOpen) setSelectedDay(null);
+          }}
+          className="w-full flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition-all"
+          style={{
+            background: calendarOpen ? "rgba(10,186,181,0.08)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${calendarOpen ? "rgba(10,186,181,0.25)" : "rgba(255,255,255,0.08)"}`,
+          }}
+        >
+          <span className="flex items-center gap-2" style={{ color: calendarOpen ? "#0ABAB5" : "#94a3b8" }}>
+            <CalendarDays className="h-4 w-4" />
+            {calendarOpen ? `${MONTHS[currentMonth]} ${currentYear}` : "View Calendar"}
+          </span>
+          <span className="text-xs" style={{ color: "#475569" }}>{calendarOpen ? "▲" : "▼"}</span>
+        </button>
       </div>
 
-      {/* ── Route list ── */}
+      {/* ── Calendar ── */}
+      {calendarOpen && (
+        <div className="mx-4 mt-2 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <button
+              onClick={prevMonth}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors text-lg"
+              style={{ background: "rgba(255,255,255,0.05)" }}
+            >
+              ‹
+            </button>
+            <span className="text-sm font-bold text-white">
+              {MONTHS[currentMonth]} {currentYear}
+            </span>
+            <button
+              onClick={nextMonth}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors text-lg"
+              style={{ background: "rgba(255,255,255,0.05)" }}
+            >
+              ›
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 px-2 pb-1">
+            {DAYS_SHORT.map((d) => (
+              <div key={d} className="text-center text-[10px] font-bold text-slate-600 uppercase py-1">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5 px-2 pb-3">
+            {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e-${i}`} />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const jobs = byDay[day] ?? [];
+              const hasJobs = jobs.length > 0;
+              const isSelected = selectedDay === day;
+              const isTodayCell = isCurrentMonth && day === todayNum;
+              const hasAlertDay = jobs.some((j) =>
+                j.inspection?.overallResult === "POSITIVE_K9_ALERT" ||
+                j.inspection?.overallResult === "VISUAL_CONFIRMATION"
+              );
+              const hasActiveJob = jobs.some((j) => isActive(j.status));
+
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(isSelected ? null : day)}
+                  className="relative flex flex-col items-center py-1.5 rounded-xl transition-all active:scale-95"
+                  style={
+                    isSelected
+                      ? { background: "#0ABAB5", color: "#fff" }
+                      : isTodayCell
+                      ? { background: "rgba(10,186,181,0.18)", color: "#0ABAB5" }
+                      : {}
+                  }
+                >
+                  <span className={`text-xs font-bold ${!isSelected && !isTodayCell ? "text-slate-300" : ""}`}>
+                    {day}
+                  </span>
+                  {hasJobs && (
+                    <div className="flex gap-0.5 mt-0.5">
+                      {hasAlertDay
+                        ? <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                        : hasActiveJob
+                        ? <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                        : <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.7)" : "#0ABAB5" }} />}
+                      {jobs.length > 1 && (
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: isSelected ? "rgba(255,255,255,0.5)" : "rgba(148,163,184,0.5)" }} />
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Job List ── */}
       <div className="px-4 mt-5 pb-6">
+
         {/* Section header */}
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-black text-white">
-              {selectedDay && !(isCurrentMonth && selectedDay === todayNum)
-                ? `${MONTHS[currentMonth]} ${selectedDay}`
-                : "Today's Route"}
+              {selectedDay ? selectedDayStr : "Upcoming Jobs"}
             </h2>
             <div className="text-xs text-slate-500 mt-0.5">
-              {shownJobs.length === 0
-                ? "No jobs scheduled"
-                : `${shownJobs.length} stop${shownJobs.length !== 1 ? "s" : ""} · ${shownJobs.filter((j) => isDone(j.status)).length} complete`}
+              {selectedDay
+                ? selectedDayJobs.length === 0
+                  ? "No jobs on this day"
+                  : `${selectedDayJobs.length} stop${selectedDayJobs.length !== 1 ? "s" : ""}`
+                : upcomingJobs.length === 0
+                ? "No upcoming jobs scheduled"
+                : `${upcomingJobs.length} job${upcomingJobs.length !== 1 ? "s" : ""} scheduled`}
             </div>
           </div>
-          {selectedDay && !(isCurrentMonth && selectedDay === todayNum) && (
+          {selectedDay && (
             <button
-              onClick={() => setSelectedDay(isCurrentMonth ? todayNum : null)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors"
-              style={{ background: "rgba(10,186,181,0.1)", color: "#0ABAB5", border: "1px solid rgba(10,186,181,0.2)" }}
+              onClick={() => setSelectedDay(null)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors"
+              style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.1)" }}
             >
-              Today
+              <X className="h-3 w-3" /> Clear
             </button>
           )}
         </div>
 
-        {shownJobs.length === 0 ? (
-          <div
-            className="rounded-2xl px-6 py-12 flex flex-col items-center text-center"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4"
-              style={{ background: "rgba(10,186,181,0.1)", border: "1px solid rgba(10,186,181,0.2)" }}
-            >
-              🐾
+        {/* Selected day jobs */}
+        {selectedDay ? (
+          selectedDayJobs.length === 0 ? (
+            <EmptyState message="No jobs scheduled for this day" sub="Pick another day on the calendar" />
+          ) : (
+            <div>
+              {selectedDayJobs.map((job, idx) => (
+                <JobCard key={job.id} job={job} stopNum={idx + 1} isLast={idx === selectedDayJobs.length - 1} />
+              ))}
             </div>
-            <div className="font-semibold text-white mb-1">No jobs scheduled</div>
-            <div className="text-sm text-slate-500">
-              {selectedDay && !(isCurrentMonth && selectedDay === todayNum)
-                ? "Pick another day on the calendar"
-                : "Enjoy the day — nothing on the schedule"}
-            </div>
-          </div>
+          )
         ) : (
-          <div>
-            {shownJobs.map((job, idx) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                stopNum={idx + 1}
-                isLast={idx === shownJobs.length - 1}
-              />
-            ))}
-          </div>
+          /* Upcoming jobs grouped by date */
+          upcomingJobs.length === 0 ? (
+            <EmptyState
+              message="No upcoming jobs"
+              sub="Check back when new appointments are scheduled"
+            />
+          ) : (
+            <div>
+              {groupedUpcoming.map((group) => (
+                <div key={group.key} className="mb-2">
+                  <DateHeader label={group.label} />
+                  {group.jobs.map((job, idx) => (
+                    <JobCard key={job.id} job={job} stopNum={idx + 1} isLast={idx === group.jobs.length - 1} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
+    </div>
+  );
+}
+
+function EmptyState({ message, sub }: { message: string; sub: string }) {
+  return (
+    <div
+      className="rounded-2xl px-6 py-12 flex flex-col items-center text-center"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4"
+        style={{ background: "rgba(10,186,181,0.1)", border: "1px solid rgba(10,186,181,0.2)" }}
+      >
+        🐾
+      </div>
+      <div className="font-semibold text-white mb-1">{message}</div>
+      <div className="text-sm text-slate-500">{sub}</div>
     </div>
   );
 }

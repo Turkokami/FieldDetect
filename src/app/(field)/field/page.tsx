@@ -23,13 +23,20 @@ export default async function FieldHomePage({
 
   const startOfMonth = new Date(year, month, 1);
   const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
+  // Extend range so upcoming jobs in the next 60 days are always visible
+  const endOfRange = new Date(
+    Math.max(
+      endOfMonth.getTime(),
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() + 60, 23, 59, 59).getTime()
+    )
+  );
 
-  // Get all jobs for this tech in the selected month
+  // Get all jobs for this tech in the selected month + upcoming 60 days
   const appointments = await prisma.appointment.findMany({
     where: {
       organizationId: user.organizationId,
       technicianId: user.id,
-      scheduledDate: { gte: startOfMonth, lte: endOfMonth },
+      scheduledDate: { gte: startOfMonth, lte: endOfRange },
       status: { not: "CANCELLED" },
     },
     include: {
