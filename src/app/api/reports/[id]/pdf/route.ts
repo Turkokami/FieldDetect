@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatDateTime, formatPhone } from "@/lib/utils";
+import React from "react";
+import { pdf } from "@react-pdf/renderer";
+import type { DocumentProps } from "@react-pdf/renderer";
+import { InspectionPDF } from "@/components/reports/inspection-pdf";
 
 const DETECTION_LABEL: Record<string, string> = {
   NEGATIVE: "Negative — No Detection",
@@ -59,6 +63,8 @@ export async function GET(
     if (!user && !portalCustomer) return new NextResponse("Unauthorized", { status: 401 });
 
     const { id } = await params;
+    const format = req.nextUrl.searchParams.get("format");
+
     const inspection = await prisma.inspection.findFirst({
       where: {
         id,
@@ -90,6 +96,108 @@ export async function GET(
     const customer = inspection.property.customer;
     const property = inspection.property;
     const units = inspection.inspectionUnits;
+
+    // ── PDF output (default) ─────────────────────────────────────────────────
+    if (format !== "html") {
+      const element = React.createElement(InspectionPDF, {
+        org: {
+          name: org.name,
+          addressLine1: org.addressLine1 ?? null,
+          city: org.city ?? null,
+          state: org.state ?? null,
+          phone: org.phone ?? null,
+          email: org.email ?? null,
+          licenseNumber: org.licenseNumber ?? null,
+          logoUrl: org.logoUrl ?? null,
+        },
+        customer: {
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          companyName: customer.companyName ?? null,
+          phone: customer.phone ?? null,
+          email: customer.email ?? null,
+        },
+        property: {
+          name: property.name,
+          addressLine1: property.addressLine1,
+          addressLine2: property.addressLine2 ?? null,
+          city: property.city,
+          state: property.state,
+          zip: property.zip,
+        },
+        inspection: {
+          inspectionNumber: inspection.inspectionNumber,
+          serviceType: inspection.serviceType,
+          overallResult: inspection.overallResult ?? null,
+          totalUnitsInspected: inspection.totalUnitsInspected,
+          totalPositive: inspection.totalPositive,
+          totalNegative: inspection.totalNegative,
+          totalInconclusive: inspection.totalInconclusive,
+          totalInaccessible: inspection.totalInaccessible,
+          startTime: inspection.startTime ?? null,
+          endTime: inspection.endTime ?? null,
+          weather: inspection.weather ?? null,
+          temperature: inspection.temperature ?? null,
+          summaryNotes: inspection.summaryNotes ?? null,
+          recommendations: inspection.recommendations ?? null,
+          followUpRequired: inspection.followUpRequired,
+          followUpDate: inspection.followUpDate ?? null,
+          treatmentReferral: inspection.treatmentReferral,
+          customerSignature: inspection.customerSignature ?? null,
+          signedAt: inspection.signedAt ?? null,
+        },
+        technician: {
+          firstName: inspection.technician.firstName,
+          lastName: inspection.technician.lastName,
+        },
+        k9Dog: inspection.k9Dog
+          ? {
+              name: inspection.k9Dog.name,
+              breed: inspection.k9Dog.breed ?? null,
+              certificationNumber: inspection.k9Dog.certificationNumber ?? null,
+            }
+          : null,
+        units: units.map((u) => ({
+          id: u.id,
+          unitNumber: u.unitNumber,
+          buildingName: u.buildingName ?? null,
+          floor: u.floor ?? null,
+          unitType: u.unitType,
+          detectionResult: u.detectionResult,
+          alertLocation: u.alertLocation ?? null,
+          severityLevel: u.severityLevel ?? null,
+          visualEvidence: u.visualEvidence,
+          visualNotes: u.visualNotes ?? null,
+          technicianNotes: u.technicianNotes ?? null,
+          recommendations: u.recommendations ?? null,
+          followUpRequired: u.followUpRequired,
+          followUpDate: u.followUpDate ?? null,
+          photos: u.photos.map((ph) => ({
+            url: ph.url,
+            filename: ph.filename,
+            caption: ph.caption ?? null,
+          })),
+        })),
+      });
+
+      const pdfStream = await pdf(element as React.ReactElement<DocumentProps>).toBuffer();
+      const chunks: Buffer[] = [];
+      for await (const chunk of pdfStream) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as any));
+      }
+      const pdfBuffer = Buffer.concat(chunks);
+
+      return new NextResponse(pdfBuffer, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="report-${inspection.inspectionNumber}.pdf"`,
+          "Cache-Control": "private, max-age=300",
+        },
+      });
+    }
+
+    // ── HTML output (format=html) ─────────────────────────────────────────────
     const positiveUnits = units.filter((u) => ALERT_RESULTS.has(u.detectionResult));
     const inconclusiveUnits = units.filter((u) => u.detectionResult === "INCONCLUSIVE" || u.detectionResult === "FOLLOW_UP_REQUIRED");
     const allPhotos = units.flatMap((u) => u.photos);
