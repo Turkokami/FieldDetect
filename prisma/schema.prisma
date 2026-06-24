@@ -533,6 +533,9 @@ model Inspection {
   reportGeneratedAt   DateTime?
   reportUrl           String?
   internalNotes       String?
+  customerRating      Int?
+  customerFeedback    String?
+  reviewRequestedAt   DateTime?
   metadata            Json            @default("{}")
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt

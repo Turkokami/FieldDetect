@@ -5,6 +5,7 @@ import { SchedulingCalendar } from "@/components/scheduling/scheduling-calendar"
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import BookingRequests from "@/components/scheduling/booking-requests";
 
 export const metadata = { title: "Scheduling" };
 
@@ -19,7 +20,8 @@ export default async function SchedulingPage() {
   const rangeStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const rangeEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0, 23, 59, 59);
 
-  const appointments = await prisma.appointment.findMany({
+  const [appointments, bookingRequests] = await Promise.all([
+  prisma.appointment.findMany({
     where: {
       organizationId: user.organizationId,
       scheduledDate: { gte: rangeStart, lte: rangeEnd },
@@ -31,7 +33,16 @@ export default async function SchedulingPage() {
       k9Team: { select: { id: true, name: true } },
     },
     orderBy: { scheduledDate: "asc" },
-  });
+  }),
+  prisma.appointment.findMany({
+    where: { organizationId: user.organizationId, status: "REQUESTED" },
+    include: {
+      customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+      property: { select: { name: true, addressLine1: true, city: true, state: true } },
+    },
+    orderBy: { scheduledDate: "asc" },
+  }),
+  ]);
 
   const technicians = await prisma.user.findMany({
     where: {
@@ -56,6 +67,10 @@ export default async function SchedulingPage() {
           </Link>
         </Button>
       </div>
+
+      {bookingRequests.length > 0 && (
+        <BookingRequests requests={JSON.parse(JSON.stringify(bookingRequests))} />
+      )}
 
       <SchedulingCalendar
         initialAppointments={JSON.parse(JSON.stringify(appointments))}

@@ -5,6 +5,7 @@ import SettingsForm from "@/components/settings/settings-form";
 import UsersTable from "@/components/settings/users-table";
 import NotificationTemplates from "@/components/settings/notification-templates";
 import BillingSection from "@/components/settings/billing-section";
+import BookingLinkCard from "@/components/settings/booking-link-card";
 
 export const metadata = { title: "Settings" };
 
@@ -66,6 +67,14 @@ export default async function SettingsPage({
         <h2 className="text-lg font-semibold text-foreground mb-4">Organization</h2>
         <SettingsForm org={org} canEdit={canEdit} />
       </div>
+
+      {/* Booking Link */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Booking Page</h2>
+          <BookingLinkCard slug={org.slug} />
+        </div>
+      )}
 
       {/* Billing */}
       {canEdit && (
