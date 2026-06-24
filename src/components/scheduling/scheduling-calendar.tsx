@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { AppointmentSlidePanel } from "@/components/scheduling/appointment-slide-panel";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventDropArg, EventClickArg, DatesSetArg, EventInput } from "@fullcalendar/core";
-import { format, startOfWeek, addWeeks, addDays, isSameDay, isToday, isTomorrow } from "date-fns";
+import {
+  format, startOfWeek, addDays, isSameDay, isToday, isTomorrow,
+  addMonths, subMonths, startOfMonth, endOfMonth,
+} from "date-fns";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -48,6 +51,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type ViewMode = "day" | "week" | "month";
 
 type Technician = { id: string; firstName: string; lastName: string; avatarUrl: string | null };
 
@@ -103,7 +108,7 @@ function toEvent(apt: Appointment, techColorMap: Record<string, string>): EventI
   };
 }
 
-function dayLabel(date: Date): string {
+function dayHeaderLabel(date: Date): string {
   if (isToday(date)) return "Today";
   if (isTomorrow(date)) return "Tomorrow";
   return format(date, "EEE, MMM d");
@@ -114,172 +119,248 @@ function initials(apt: Appointment): string {
   return "—";
 }
 
-// ─── Mobile week list view ────────────────────────────────────────────────────
+// ─── Shared appointment row card ──────────────────────────────────────────────
 
-function MobileScheduleView({
-  appointments,
-  weekStart,
+function AppointmentRow({
+  apt,
   techColorMap,
-  onPrevWeek,
-  onNextWeek,
   onSelect,
 }: {
-  appointments: Appointment[];
-  weekStart: Date;
+  apt: Appointment;
   techColorMap: Record<string, string>;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
   onSelect: (id: string) => void;
 }) {
-  const weekEnd = addDays(weekStart, 6);
-
-  // Build 7-day slots
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-  // Group appointments into their day slot
-  const byDay = new Map<string, Appointment[]>();
-  for (const apt of appointments) {
-    const d = format(new Date(apt.scheduledDate), "yyyy-MM-dd");
-    if (!byDay.has(d)) byDay.set(d, []);
-    byDay.get(d)!.push(apt);
-  }
-  // Sort within each day
-  for (const list of byDay.values()) {
-    list.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
-  }
-
-  const totalThisWeek = appointments.filter((a) => {
-    const d = new Date(a.scheduledDate);
-    return d >= weekStart && d <= weekEnd;
-  }).length;
+  const start = new Date(apt.scheduledDate);
+  const statusColor = STATUS_COLORS[apt.status] ?? "#64748b";
+  const techColor = apt.technician
+    ? (techColorMap[apt.technician.id] ?? "#64748b")
+    : statusColor;
+  const cancelled = apt.status === "CANCELLED";
+  const customerName = apt.customer.companyName ?? `${apt.customer.firstName} ${apt.customer.lastName}`;
+  const endMin = apt.estimatedMinutes ?? 60;
+  const endTime = apt.scheduledEndTime
+    ? new Date(apt.scheduledEndTime)
+    : new Date(start.getTime() + endMin * 60_000);
 
   return (
-    <div className="space-y-0">
-      {/* Week nav header */}
-      <div className="flex items-center justify-between px-1 pb-3">
-        <button
-          onClick={onPrevWeek}
-          className="h-9 w-9 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <div className="text-center">
-          <div className="font-semibold text-foreground text-sm">
-            {format(weekStart, "MMM d")} – {format(weekEnd, isToday(weekStart) || format(weekStart, "MMM") === format(weekEnd, "MMM") ? "d, yyyy" : "MMM d, yyyy")}
+    <button
+      onClick={() => onSelect(apt.id)}
+      className="w-full text-left rounded-xl overflow-hidden flex transition-all active:scale-[0.98] hover:shadow-sm"
+      style={{ border: "1px solid var(--color-border, rgba(0,0,0,0.1))" }}
+    >
+      <div className="w-1 shrink-0" style={{ background: techColor }} />
+      <div className="flex-1 px-3 py-2.5 bg-card min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className={`font-semibold text-sm text-foreground truncate ${cancelled ? "line-through opacity-50" : ""}`}>
+              {customerName}
+            </div>
+            <div className="text-xs text-muted-foreground truncate mt-0.5">
+              {apt.property.name}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {totalThisWeek} job{totalThisWeek !== 1 ? "s" : ""} this week
-          </div>
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5"
+            style={{ background: `${statusColor}20`, color: statusColor }}
+          >
+            {STATUS_LABELS[apt.status] ?? apt.status}
+          </span>
         </div>
-        <button
-          onClick={onNextWeek}
-          className="h-9 w-9 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <span className="text-xs font-medium text-muted-foreground">
+            {format(start, "h:mm a")}
+            {" – "}
+            {format(endTime, "h:mm a")}
+          </span>
+          {apt.technician && (
+            <div className="flex items-center gap-1">
+              <div
+                className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                style={{ background: techColor }}
+              >
+                {initials(apt)}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {apt.technician.firstName} {apt.technician.lastName}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── Mobile Day View ──────────────────────────────────────────────────────────
+
+function MobileDayView({
+  date, appointments, techColorMap, onSelect,
+}: {
+  date: Date;
+  appointments: Appointment[];
+  techColorMap: Record<string, string>;
+  onSelect: (id: string) => void;
+}) {
+  const dayAppts = useMemo(() =>
+    appointments
+      .filter((a) => isSameDay(new Date(a.scheduledDate), date))
+      .sort((a, b) => +new Date(a.scheduledDate) - +new Date(b.scheduledDate)),
+    [appointments, date]
+  );
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3 px-1">
+        <div
+          className="text-xs font-semibold uppercase tracking-wide"
+          style={{ color: isToday(date) ? "#0ABAB5" : undefined }}
         >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+          {isToday(date) ? "Today" : format(date, "EEEE, MMMM d, yyyy")}
+        </div>
+        <div className="flex-1 h-px bg-border" />
+        {dayAppts.length > 0 && (
+          <span className="text-xs text-muted-foreground">{dayAppts.length} job{dayAppts.length !== 1 ? "s" : ""}</span>
+        )}
       </div>
 
-      {/* Day sections */}
-      <div className="space-y-4">
-        {days.map((day) => {
-          const key = format(day, "yyyy-MM-dd");
-          const dayApts = byDay.get(key) ?? [];
-          const todayDay = isToday(day);
+      {dayAppts.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card py-12 text-center">
+          <div className="text-2xl mb-2">📋</div>
+          <p className="text-sm font-medium text-foreground">No jobs scheduled</p>
+          <p className="text-xs text-muted-foreground mt-1">Nothing on the schedule for this day</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {dayAppts.map((apt) => (
+            <AppointmentRow key={apt.id} apt={apt} techColorMap={techColorMap} onSelect={onSelect} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
+// ─── Mobile Week View ─────────────────────────────────────────────────────────
+
+function MobileWeekView({
+  weekStart, appointments, techColorMap, onSelect,
+}: {
+  weekStart: Date;
+  appointments: Appointment[];
+  techColorMap: Record<string, string>;
+  onSelect: (id: string) => void;
+}) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const byDay = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
+    for (const apt of appointments) {
+      const d = format(new Date(apt.scheduledDate), "yyyy-MM-dd");
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(apt);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => +new Date(a.scheduledDate) - +new Date(b.scheduledDate));
+    }
+    return map;
+  }, [appointments]);
+
+  return (
+    <div className="space-y-4">
+      {days.map((day) => {
+        const key = format(day, "yyyy-MM-dd");
+        const dayAppts = byDay.get(key) ?? [];
+        const todayDay = isToday(day);
+
+        return (
+          <div key={key}>
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <div
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: todayDay ? "#0ABAB5" : undefined }}
+              >
+                {dayHeaderLabel(day)}
+              </div>
+              {todayDay && <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#0ABAB5" }} />}
+              <div className="flex-1 h-px bg-border" />
+              {dayAppts.length > 0 && (
+                <span className="text-xs text-muted-foreground">{dayAppts.length}</span>
+              )}
+            </div>
+
+            {dayAppts.length === 0 ? (
+              <div className="px-1 py-2 text-xs text-muted-foreground">No jobs</div>
+            ) : (
+              <div className="space-y-2">
+                {dayAppts.map((apt) => (
+                  <AppointmentRow key={apt.id} apt={apt} techColorMap={techColorMap} onSelect={onSelect} />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Mobile Month View (agenda) ───────────────────────────────────────────────
+
+function MobileMonthView({
+  monthDate, appointments, techColorMap, onSelect,
+}: {
+  monthDate: Date;
+  appointments: Appointment[];
+  techColorMap: Record<string, string>;
+  onSelect: (id: string) => void;
+}) {
+  const grouped = useMemo(() => {
+    const map: Record<string, Appointment[]> = {};
+    for (const a of appointments) {
+      const key = format(new Date(a.scheduledDate), "yyyy-MM-dd");
+      if (!map[key]) map[key] = [];
+      map[key].push(a);
+    }
+    for (const list of Object.values(map)) {
+      list.sort((a, b) => +new Date(a.scheduledDate) - +new Date(b.scheduledDate));
+    }
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [appointments]);
+
+  return (
+    <div className="space-y-4">
+      {appointments.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card py-12 text-center">
+          <div className="text-2xl mb-2">📅</div>
+          <p className="text-sm font-medium text-foreground">No jobs this month</p>
+          <p className="text-xs text-muted-foreground mt-1">{format(monthDate, "MMMM yyyy")} is clear</p>
+        </div>
+      ) : (
+        grouped.map(([dateKey, dayAppts]) => {
+          const date = new Date(dateKey + "T12:00:00");
+          const todayDay = isToday(date);
           return (
-            <div key={key}>
-              {/* Day header */}
+            <div key={dateKey}>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <div
                   className="text-xs font-semibold uppercase tracking-wide"
                   style={{ color: todayDay ? "#0ABAB5" : undefined }}
                 >
-                  {dayLabel(day)}
+                  {isToday(date) ? "Today" : isTomorrow(date) ? "Tomorrow" : format(date, "EEE, MMM d")}
                 </div>
-                {todayDay && (
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#0ABAB5" }} />
-                )}
+                {todayDay && <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#0ABAB5" }} />}
                 <div className="flex-1 h-px bg-border" />
-                {dayApts.length > 0 && (
-                  <span className="text-xs text-muted-foreground">{dayApts.length}</span>
-                )}
+                <span className="text-xs text-muted-foreground">{dayAppts.length}</span>
               </div>
-
-              {dayApts.length === 0 ? (
-                <div className="px-1 py-2 text-xs text-muted-foreground">No jobs</div>
-              ) : (
-                <div className="space-y-2">
-                  {dayApts.map((apt) => {
-                    const start = new Date(apt.scheduledDate);
-                    const statusColor = STATUS_COLORS[apt.status] ?? "#64748b";
-                    const techColor = apt.technician
-                      ? (techColorMap[apt.technician.id] ?? "#64748b")
-                      : statusColor;
-                    const cancelled = apt.status === "CANCELLED";
-                    const customerName = apt.customer.companyName ?? `${apt.customer.firstName} ${apt.customer.lastName}`;
-                    const endMin = apt.estimatedMinutes ?? 60;
-                    const endTime = apt.scheduledEndTime
-                      ? new Date(apt.scheduledEndTime)
-                      : new Date(start.getTime() + endMin * 60_000);
-
-                    return (
-                      <button
-                        key={apt.id}
-                        onClick={() => onSelect(apt.id)}
-                        className="w-full text-left rounded-xl overflow-hidden flex transition-all active:scale-[0.98]"
-                        style={{ border: "1px solid var(--color-border, rgba(0,0,0,0.1))" }}
-                      >
-                        {/* Color stripe */}
-                        <div className="w-1 shrink-0" style={{ background: techColor }} />
-
-                        <div className="flex-1 px-3 py-2.5 bg-card min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className={`font-semibold text-sm text-foreground truncate ${cancelled ? "line-through opacity-50" : ""}`}>
-                                {customerName}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate mt-0.5">
-                                {apt.property.name}
-                              </div>
-                            </div>
-                            <span
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5"
-                              style={{ background: `${statusColor}20`, color: statusColor }}
-                            >
-                              {STATUS_LABELS[apt.status] ?? apt.status}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="text-xs font-medium text-muted-foreground">
-                              {format(start, "h:mm a")}
-                              {" – "}
-                              {format(endTime, "h:mm a")}
-                            </span>
-                            {apt.technician && (
-                              <div className="flex items-center gap-1">
-                                <div
-                                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
-                                  style={{ background: techColor }}
-                                >
-                                  {initials(apt)}
-                                </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {apt.technician.firstName} {apt.technician.lastName}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="space-y-2">
+                {dayAppts.map((apt) => (
+                  <AppointmentRow key={apt.id} apt={apt} techColorMap={techColorMap} onSelect={onSelect} />
+                ))}
+              </div>
             </div>
           );
-        })}
-      </div>
+        })
+      )}
     </div>
   );
 }
@@ -295,16 +376,16 @@ export function SchedulingCalendar({
 }) {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [view, setView] = useState<ViewMode>("week");
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [saving, setSaving] = useState(false);
   const [selectedAptId, setSelectedAptId] = useState<string | null>(null);
   const rangeRef = useRef<{ start: Date; end: Date } | null>(null);
+  const calRef = useRef<FullCalendar>(null);
 
-  // Mobile week navigation state — start on Monday of current week
-  const [mobileWeekStart, setMobileWeekStart] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 })
-  );
+  // Mobile navigation: single canonical date for all views
+  const [mobileDate, setMobileDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   const techColorMap: Record<string, string> = {};
   technicians.forEach((t, i) => { techColorMap[t.id] = TECH_COLORS[i % TECH_COLORS.length]; });
@@ -330,15 +411,31 @@ export function SchedulingCalendar({
     }
   }, []);
 
-  // Fetch when mobile week changes
+  // Compute the mobile date range based on current view + date
+  const mobileRange = useMemo(() => {
+    let start: Date, end: Date;
+    if (view === "day") {
+      start = new Date(mobileDate.getFullYear(), mobileDate.getMonth(), mobileDate.getDate());
+      end = new Date(mobileDate.getFullYear(), mobileDate.getMonth(), mobileDate.getDate(), 23, 59, 59);
+    } else if (view === "week") {
+      const ws = startOfWeek(mobileDate, { weekStartsOn: 1 });
+      start = ws;
+      end = new Date(addDays(ws, 6));
+      end.setHours(23, 59, 59);
+    } else {
+      start = startOfMonth(mobileDate);
+      end = endOfMonth(mobileDate);
+      end.setHours(23, 59, 59);
+    }
+    return { start, end };
+  }, [mobileDate, view]);
+
+  // Fetch when mobile range changes
   useEffect(() => {
     if (!mounted || !isMobile) return;
-    const start = mobileWeekStart;
-    const end = addDays(mobileWeekStart, 6);
-    end.setHours(23, 59, 59);
-    rangeRef.current = { start, end };
-    fetchRange(start, end);
-  }, [mobileWeekStart, mounted, isMobile, fetchRange]);
+    rangeRef.current = mobileRange;
+    fetchRange(mobileRange.start, mobileRange.end);
+  }, [mobileRange, mounted, isMobile, fetchRange]);
 
   const handleDatesSet = useCallback(
     (arg: DatesSetArg) => {
@@ -387,17 +484,45 @@ export function SchedulingCalendar({
 
   const cancelMove = () => { pendingMove?.revert(); setPendingMove(null); };
 
+  // Handle view toggle — desktop uses FullCalendar API, mobile re-renders
+  const handleViewChange = (v: ViewMode) => {
+    setView(v);
+    if (!isMobile && calRef.current) {
+      const fcView = v === "day" ? "timeGridDay" : v === "week" ? "timeGridWeek" : "dayGridMonth";
+      calRef.current.getApi().changeView(fcView);
+    }
+  };
+
+  const navigatePrev = () => {
+    if (view === "day") setMobileDate((d) => addDays(d, -1));
+    else if (view === "week") setMobileDate((d) => addDays(d, -7));
+    else setMobileDate((d) => subMonths(d, 1));
+  };
+
+  const navigateNext = () => {
+    if (view === "day") setMobileDate((d) => addDays(d, 1));
+    else if (view === "week") setMobileDate((d) => addDays(d, 7));
+    else setMobileDate((d) => addMonths(d, 1));
+  };
+
+  // Label for mobile navigation header
+  const mobilePeriodLabel = useMemo(() => {
+    if (view === "day") {
+      return isToday(mobileDate)
+        ? "Today"
+        : isTomorrow(mobileDate)
+        ? "Tomorrow"
+        : format(mobileDate, "EEE, MMM d, yyyy");
+    }
+    if (view === "week") {
+      const ws = startOfWeek(mobileDate, { weekStartsOn: 1 });
+      const we = addDays(ws, 6);
+      return `${format(ws, "MMM d")} – ${format(we, format(ws, "MMM") === format(we, "MMM") ? "d, yyyy" : "MMM d, yyyy")}`;
+    }
+    return format(mobileDate, "MMMM yyyy");
+  }, [mobileDate, view]);
+
   const events = appointments.map((a) => toEvent(a, techColorMap));
-
-  const goToPrevWeek = () => setMobileWeekStart((w) => addWeeks(w, -1));
-  const goToNextWeek = () => setMobileWeekStart((w) => addWeeks(w, 1));
-
-  // Filter appointments for the current mobile week
-  const mobileWeekEnd = addDays(mobileWeekStart, 6);
-  const mobileAppointments = appointments.filter((a) => {
-    const d = new Date(a.scheduledDate);
-    return d >= mobileWeekStart && d <= mobileWeekEnd;
-  });
 
   if (!mounted) {
     return (
@@ -409,7 +534,47 @@ export function SchedulingCalendar({
 
   return (
     <>
-      {/* ── Mobile list view ── */}
+      {/* ── View toggle (shared for both desktop and mobile) ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center bg-muted rounded-lg p-1 gap-0.5">
+          {(["day", "week", "month"] as ViewMode[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => handleViewChange(v)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                view === v
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile period navigator */}
+        {isMobile && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={navigatePrev}
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-semibold text-foreground px-2 min-w-[140px] text-center">
+              {mobilePeriodLabel}
+            </span>
+            <button
+              onClick={navigateNext}
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Mobile views ── */}
       {isMobile && (
         <div className="space-y-3">
           {/* Technician legend */}
@@ -424,7 +589,6 @@ export function SchedulingCalendar({
             </div>
           )}
 
-          {/* Schedule New Job button for mobile */}
           <Link
             href="/scheduling/new"
             className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold text-white"
@@ -434,14 +598,30 @@ export function SchedulingCalendar({
             Schedule New Job
           </Link>
 
-          <MobileScheduleView
-            appointments={mobileAppointments}
-            weekStart={mobileWeekStart}
-            techColorMap={techColorMap}
-            onPrevWeek={goToPrevWeek}
-            onNextWeek={goToNextWeek}
-            onSelect={setSelectedAptId}
-          />
+          {view === "day" && (
+            <MobileDayView
+              date={mobileDate}
+              appointments={appointments}
+              techColorMap={techColorMap}
+              onSelect={setSelectedAptId}
+            />
+          )}
+          {view === "week" && (
+            <MobileWeekView
+              weekStart={startOfWeek(mobileDate, { weekStartsOn: 1 })}
+              appointments={appointments}
+              techColorMap={techColorMap}
+              onSelect={setSelectedAptId}
+            />
+          )}
+          {view === "month" && (
+            <MobileMonthView
+              monthDate={mobileDate}
+              appointments={appointments}
+              techColorMap={techColorMap}
+              onSelect={setSelectedAptId}
+            />
+          )}
         </div>
       )}
 
@@ -460,8 +640,9 @@ export function SchedulingCalendar({
           )}
           <div className="p-3 fc-wrapper">
             <FullCalendar
+              ref={calRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }}
+              headerToolbar={{ left: "prev,next today", center: "title", right: "" }}
               initialView="timeGridWeek"
               events={events}
               editable
