@@ -22,7 +22,7 @@ export default async function DashboardLayout({
         WHERE organization_id = ${user.organizationId}
           AND notes IS NOT NULL
           AND (office_notes_read_at IS NULL OR office_notes_read_at < updated_at)
-      `.then(([r]) => Number(r.count))
+      `.then(([r]) => Number(r.count)).catch(() => 0)
     : 0;
 
   return (
