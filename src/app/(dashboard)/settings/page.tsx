@@ -4,15 +4,24 @@ import { notFound } from "next/navigation";
 import SettingsForm from "@/components/settings/settings-form";
 import UsersTable from "@/components/settings/users-table";
 import NotificationTemplates from "@/components/settings/notification-templates";
+import BillingSection from "@/components/settings/billing-section";
 
-export default async function SettingsPage() {
+export const metadata = { title: "Settings" };
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ billing?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) return null;
 
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) notFound();
 
-  const [org, users, templates] = await Promise.all([
+  const sp = await searchParams;
+
+  const [org, users, templates, pendingInvites] = await Promise.all([
     prisma.organization.findUnique({ where: { id: user.organizationId } }),
     prisma.user.findMany({
       where: { organizationId: user.organizationId, isActive: true },
@@ -21,6 +30,15 @@ export default async function SettingsPage() {
     prisma.notificationTemplate.findMany({
       where: { organizationId: user.organizationId },
       orderBy: [{ type: "asc" }, { channel: "asc" }],
+    }),
+    prisma.staffInvitation.findMany({
+      where: {
+        organizationId: user.organizationId,
+        acceptedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, email: true, role: true, createdAt: true, expiresAt: true },
     }),
   ]);
 
@@ -37,16 +55,39 @@ export default async function SettingsPage() {
         </p>
       </div>
 
+      {sp.billing === "success" && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700 font-medium">
+          ✅ Subscription activated! Your plan is now live.
+        </div>
+      )}
+
       {/* Organization Settings */}
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4">Organization</h2>
         <SettingsForm org={org} canEdit={canEdit} />
       </div>
 
+      {/* Billing */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Billing & Plan</h2>
+          <BillingSection
+            plan={org.plan}
+            stripeSubStatus={org.stripeSubStatus}
+            hasStripeCustomer={!!org.stripeCustomerId}
+          />
+        </div>
+      )}
+
       {/* Team Members */}
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4">Team Members</h2>
-        <UsersTable users={users} currentUserId={user.id} canManage={canEdit} />
+        <UsersTable
+          users={JSON.parse(JSON.stringify(users))}
+          currentUserId={user.id}
+          canManage={canEdit}
+          pendingInvites={JSON.parse(JSON.stringify(pendingInvites))}
+        />
       </div>
 
       {/* Notification Templates */}

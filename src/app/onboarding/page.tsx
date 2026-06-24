@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
@@ -10,11 +10,47 @@ const STEPS = [
 ];
 
 export default function OnboardingPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [checkingInvite, setCheckingInvite] = useState(true);
+
+  // Auto-accept pending invite if one exists for this email
+  useEffect(() => {
+    if (!isLoaded || !user) return;
+    const email = user.primaryEmailAddress?.emailAddress;
+    if (!email) { setCheckingInvite(false); return; }
+
+    fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Send empty body — server checks for invite first
+      body: JSON.stringify({}),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.inviteAccepted) {
+            const role = data.data?.user?.role;
+            router.push(role === "TECHNICIAN" ? "/field" : "/dashboard");
+            return;
+          }
+        }
+        setCheckingInvite(false);
+      })
+      .catch(() => setCheckingInvite(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
+
+  if (!isLoaded || checkingInvite) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F4FFFE" }}>
+        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "#0ABAB5", borderTopColor: "transparent" }} />
+      </div>
+    );
+  }
   const [form, setForm] = useState({
     companyName: "",
     phone: "",

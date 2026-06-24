@@ -20,6 +20,64 @@ export async function POST(req: NextRequest) {
     const clerkUser = await currentUser();
     if (!clerkUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+    const primaryEmail = clerkUser.emailAddresses.find(
+      (e) => e.id === clerkUser.primaryEmailAddressId
+    )?.emailAddress ?? "";
+
+    // Check for a pending staff invitation for this email
+    const pendingInvite = await prisma.staffInvitation.findFirst({
+      where: {
+        email: primaryEmail,
+        acceptedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { organization: true },
+    });
+
+    if (pendingInvite) {
+      // Skip org creation — join the inviting org
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.user.deleteMany({
+          where: {
+            email: primaryEmail,
+            organizationId: pendingInvite.organizationId,
+            clerkUserId: { startsWith: "pending_" },
+          },
+        });
+
+        const user = await tx.user.upsert({
+          where: { clerkUserId: userId },
+          update: {
+            organizationId: pendingInvite.organizationId,
+            role: pendingInvite.role as "ADMIN" | "DISPATCHER" | "TECHNICIAN",
+            email: primaryEmail,
+            firstName: clerkUser.firstName ?? "",
+            lastName: clerkUser.lastName ?? "",
+            avatarUrl: clerkUser.imageUrl,
+            isActive: true,
+          },
+          create: {
+            clerkUserId: userId,
+            organizationId: pendingInvite.organizationId,
+            email: primaryEmail,
+            firstName: clerkUser.firstName ?? "",
+            lastName: clerkUser.lastName ?? "",
+            avatarUrl: clerkUser.imageUrl,
+            role: pendingInvite.role as "ADMIN" | "DISPATCHER" | "TECHNICIAN",
+          },
+        });
+
+        await tx.staffInvitation.update({
+          where: { id: pendingInvite.id },
+          data: { acceptedAt: new Date() },
+        });
+
+        return { org: pendingInvite.organization, user };
+      });
+
+      return NextResponse.json({ data: result, inviteAccepted: true }, { status: 201 });
+    }
+
     const body = await req.json();
     const validated = schema.parse(body);
 
@@ -60,10 +118,6 @@ export async function POST(req: NextRequest) {
           },
         });
       }
-
-      const primaryEmail = clerkUser.emailAddresses.find(
-        (e) => e.id === clerkUser.primaryEmailAddressId
-      )?.emailAddress ?? "";
 
       const user = await tx.user.upsert({
         where: { clerkUserId: userId },

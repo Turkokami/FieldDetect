@@ -198,11 +198,15 @@ model Organization {
   licenseNumber     String?
   insuranceInfo     String?
   taxId             String?
-  stripeAccountId   String?
-  stripeCustomerId  String?
-  settings          Json     @default("{}")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  stripeAccountId      String?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  stripeSubStatus      String?
+  plan                 String   @default("TRIAL")
+  trialEndsAt          DateTime?
+  settings             Json     @default("{}")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   users                 User[]
   customers             Customer[]
@@ -214,6 +218,7 @@ model Organization {
   k9Teams               K9Team[]
   serviceAreas          ServiceArea[]
   notificationTemplates NotificationTemplate[]
+  staffInvitations      StaffInvitation[]
 
   @@map("organizations")
 }
@@ -767,6 +772,26 @@ model EstimateLineItem {
   estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
 
   @@map("estimate_line_items")
+}
+
+// ─── Staff Invitations ────────────────────────────────────────────────────────
+
+model StaffInvitation {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String
+  role           String    @default("TECHNICIAN")
+  token          String    @unique @default(cuid())
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  invitedById    String?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([token])
+  @@map("staff_invitations")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

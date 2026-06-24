@@ -82,14 +82,19 @@ export async function POST(req: Request) {
         break;
       }
 
-      case "invoice.paid": {
-        // Stripe subscription invoices (for SaaS billing)
-        const stripeInvoice = event.data.object as Stripe.Invoice;
-        const customerId = stripeInvoice.customer as string;
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        const customerId = sub.customer as string;
+        const plan = (sub.metadata?.plan ?? "professional").toUpperCase();
 
         await prisma.organization.updateMany({
           where: { stripeCustomerId: customerId },
-          data: { settings: { plan: "PROFESSIONAL" } },
+          data: {
+            plan,
+            stripeSubscriptionId: sub.id,
+            stripeSubStatus: sub.status,
+          },
         });
         break;
       }
@@ -100,7 +105,26 @@ export async function POST(req: Request) {
 
         await prisma.organization.updateMany({
           where: { stripeCustomerId: customerId },
-          data: { settings: { plan: "TRIAL" } },
+          data: {
+            plan: "TRIAL",
+            stripeSubscriptionId: null,
+            stripeSubStatus: "canceled",
+          },
+        });
+        break;
+      }
+
+      case "invoice.paid": {
+        const stripeInvoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
+        const subId = stripeInvoice.subscription as string | null;
+        if (!subId) break;
+
+        const sub = await stripe.subscriptions.retrieve(subId);
+        const plan = (sub.metadata?.plan ?? "professional").toUpperCase();
+
+        await prisma.organization.updateMany({
+          where: { stripeSubscriptionId: subId },
+          data: { plan, stripeSubStatus: "active" },
         });
         break;
       }

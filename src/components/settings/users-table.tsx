@@ -13,6 +13,14 @@ type User = {
   avatarUrl: string | null;
 };
 
+type PendingInvite = {
+  id: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  expiresAt: string;
+};
+
 const ROLE_LABELS: Record<string, string> = {
   OWNER: "Owner",
   ADMIN: "Admin",
@@ -33,18 +41,21 @@ export default function UsersTable({
   users,
   currentUserId,
   canManage,
+  pendingInvites = [],
 }: {
   users: User[];
   currentUserId: string;
   canManage: boolean;
+  pendingInvites?: PendingInvite[];
 }) {
   const router = useRouter();
   const [updating, setUpdating] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", firstName: "", lastName: "", role: "TECHNICIAN" });
+  const [inviteForm, setInviteForm] = useState({ email: "", role: "TECHNICIAN" });
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
+  const [revoking, setRevoking] = useState<string | null>(null);
 
   const updateRole = async (userId: string, role: string) => {
     setUpdating(userId);
@@ -81,20 +92,31 @@ export default function UsersTable({
     setInviteError("");
     setInviteSuccess("");
     try {
-      const res = await fetch("/api/users", {
+      const res = await fetch("/api/staff/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(inviteForm),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to add team member");
-      setInviteSuccess(`${inviteForm.firstName} ${inviteForm.lastName} added successfully.`);
-      setInviteForm({ email: "", firstName: "", lastName: "", role: "TECHNICIAN" });
+      if (!res.ok) throw new Error(data.error ?? "Failed to send invitation");
+      setInviteSuccess(`Invitation sent to ${inviteForm.email}.`);
+      setInviteForm({ email: "", role: "TECHNICIAN" });
       router.refresh();
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : "Failed");
     } finally {
       setInviting(false);
+    }
+  };
+
+  const revokeInvite = async (id: string) => {
+    if (!confirm("Revoke this invitation?")) return;
+    setRevoking(id);
+    try {
+      await fetch(`/api/staff/invite/${id}`, { method: "DELETE" });
+      router.refresh();
+    } finally {
+      setRevoking(null);
     }
   };
 
@@ -118,49 +140,33 @@ export default function UsersTable({
         <div className="bg-card border border-border rounded-xl p-5">
           <h3 className="text-sm font-bold text-foreground mb-4">Add Team Member</h3>
           <form onSubmit={handleInvite} className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              They'll receive an email with a link to create their account and join your team.
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">First Name *</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Email *</label>
                 <input
-                  type="text"
-                  value={inviteForm.firstName}
-                  onChange={(e) => setInviteForm((f) => ({ ...f, firstName: e.target.value }))}
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
                   required
+                  placeholder="technician@example.com"
                   className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Last Name *</label>
-                <input
-                  type="text"
-                  value={inviteForm.lastName}
-                  onChange={(e) => setInviteForm((f) => ({ ...f, lastName: e.target.value }))}
-                  required
+                <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Role *</label>
+                <select
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value }))}
                   className={inputClass}
-                />
+                >
+                  <option value="TECHNICIAN">Technician</option>
+                  <option value="DISPATCHER">Dispatcher</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Email *</label>
-              <input
-                type="email"
-                value={inviteForm.email}
-                onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
-                required
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Role *</label>
-              <select
-                value={inviteForm.role}
-                onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value }))}
-                className={inputClass}
-              >
-                <option value="TECHNICIAN">Technician</option>
-                <option value="DISPATCHER">Dispatcher</option>
-                <option value="ADMIN">Admin</option>
-              </select>
             </div>
             {inviteError && <p className="text-sm text-red-600">{inviteError}</p>}
             {inviteSuccess && <p className="text-sm text-green-600">{inviteSuccess}</p>}
@@ -178,10 +184,57 @@ export default function UsersTable({
                 className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
                 style={{ background: "#0ABAB5" }}
               >
-                {inviting ? "Adding…" : "Add Member"}
+                {inviting ? "Sending…" : "Send Invitation"}
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {pendingInvites.length > 0 && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-border bg-amber-50/50">
+            <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+              Pending Invitations ({pendingInvites.length})
+            </span>
+          </div>
+          <table className="w-full">
+            <tbody>
+              {pendingInvites.map((inv) => (
+                <tr key={inv.id} className="border-b border-border/50 last:border-0">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-medium text-amber-600 shrink-0">
+                        ?
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-foreground">{inv.email}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Expires {new Date(inv.expiresAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">
+                      Invited · {ROLE_LABELS[inv.role] ?? inv.role}
+                    </span>
+                  </td>
+                  {canManage && (
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={() => revokeInvite(inv.id)}
+                        disabled={revoking === inv.id}
+                        className="text-xs text-destructive hover:underline disabled:opacity-50"
+                      >
+                        Revoke
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
