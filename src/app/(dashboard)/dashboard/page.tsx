@@ -5,6 +5,7 @@ import { DashboardStats } from "@/components/dashboard/stats-cards";
 import { RecentAppointments } from "@/components/dashboard/recent-appointments";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { GettingStarted } from "@/components/dashboard/getting-started";
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, format } from "date-fns";
 import Link from "next/link";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -197,7 +198,12 @@ export default async function DashboardPage() {
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) redirect("/onboarding");
 
-  const data = await getDashboardData(user.organizationId);
+  const [data, k9TeamCount, propertyCount, appointmentCount] = await Promise.all([
+    getDashboardData(user.organizationId),
+    prisma.k9Team.count({ where: { organizationId: user.organizationId, isActive: true } }),
+    prisma.property.count({ where: { organizationId: user.organizationId, isActive: true } }),
+    prisma.appointment.count({ where: { organizationId: user.organizationId } }),
+  ]);
 
   const today = new Date();
   const totalUnitResults = data.detectionBreakdown.reduce((s, d) => s + d._count, 0);
@@ -231,6 +237,13 @@ export default async function DashboardPage() {
       </div>
 
       <QuickActions />
+
+      <GettingStarted
+        hasK9Team={k9TeamCount > 0}
+        hasProperty={propertyCount > 0}
+        hasAppointment={appointmentCount > 0}
+        orgId={user.organizationId}
+      />
 
       {/* KPI row */}
       <DashboardStats

@@ -9,6 +9,7 @@ const updateUserSchema = z.object({
   phone: z.string().optional().nullable(),
   role: z.enum(["ADMIN", "DISPATCHER", "TECHNICIAN"]).optional(),
   isActive: z.boolean().optional(),
+  avatarUrl: z.string().url().optional().nullable(),
 });
 
 export async function GET(

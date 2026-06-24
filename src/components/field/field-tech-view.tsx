@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1450,6 +1451,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
       if (synced > 0) {
         setPendingSync(0);
         await refreshInspection();
+        toast.success(`${synced} result${synced > 1 ? "s" : ""} synced`);
       }
     };
     const handleOffline = () => setIsOnline(false);

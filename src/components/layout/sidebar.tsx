@@ -21,6 +21,7 @@ import {
   Bell,
   Smartphone,
   MessageSquare,
+  UsersRound,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -38,6 +39,7 @@ const navItems = [
   { label: "Messages",    href: "/messages",    icon: MessageSquare },
   { label: "Analytics",   href: "/analytics",   icon: TrendingUp },
   { label: "K9 Teams",    href: "/k9teams",     icon: Dog },
+  { label: "Team",        href: "/team",        icon: UsersRound },
   { label: "Settings",    href: "/settings",    icon: Settings },
 ];
 
@@ -140,6 +142,15 @@ export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
           {!collapsed && <span style={{ color: "#0ABAB5" }}>Field View</span>}
         </Link>
       </div>
+
+      {/* Legal links */}
+      {!collapsed && (
+        <div className="px-4 pb-2 shrink-0 flex items-center gap-3">
+          <Link href="/terms" className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors">Terms</Link>
+          <span className="text-slate-700 text-[10px]">·</span>
+          <Link href="/privacy" className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors">Privacy</Link>
+        </div>
+      )}
 
       {/* Collapse toggle */}
       <div className="p-2 shrink-0">

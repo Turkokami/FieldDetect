@@ -89,3 +89,44 @@ export async function PATCH(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    if (!["OWNER", "ADMIN"].includes(user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const invoice = await prisma.invoice.findFirst({
+      where: { id, organizationId: user.organizationId },
+      include: { _count: { select: { payments: true } } },
+    });
+    if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    if (invoice._count.payments > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete an invoice that has recorded payments" },
+        { status: 409 }
+      );
+    }
+
+    await prisma.$transaction([
+      prisma.invoiceLineItem.deleteMany({ where: { invoiceId: id } }),
+      prisma.invoice.delete({ where: { id } }),
+    ]);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[INVOICE_DELETE]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

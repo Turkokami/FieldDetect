@@ -76,7 +76,11 @@ export default async function InvoiceDetailPage({
           <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[invoice.status] ?? "bg-gray-100 text-gray-700"}`}>
             {invoice.status.replace(/_/g, " ")}
           </span>
-          <InvoiceActions invoice={invoice} remaining={remaining} />
+          <InvoiceActions
+            invoice={invoice}
+            remaining={remaining}
+            canDelete={["OWNER", "ADMIN"].includes(user.role)}
+          />
         </div>
       </div>
 
