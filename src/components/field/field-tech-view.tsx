@@ -251,12 +251,14 @@ function UnitEditor({
     setDetections((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const saveAll = async (): Promise<boolean> => {
+  const saveAll = async (): Promise<{ success: boolean; updatedDetections: LocalDetection[] }> => {
     setSaving(true);
     setSaveError(null);
     let anyFailed = false;
+    const newDetections = detections.map((d) => ({ ...d }));
     try {
-      for (const det of detections) {
+      for (let i = 0; i < detections.length; i++) {
+        const det = detections[i];
         if (det.inspUnitId) {
           const res = await fetch(`/api/inspection-units/${det.inspUnitId}`, {
             method: "PATCH",
@@ -287,10 +289,14 @@ function UnitEditor({
             const errBody = await res.json().catch(() => ({}));
             console.error("[saveAll POST]", errBody);
             enqueueSave({ url: `/api/inspections/${inspectionId}/units`, method: "POST", body: JSON.stringify({ units: [payload] }) });
+          } else {
+            const body = await res.json().catch(() => ({}));
+            const createdId = body?.data?.[0]?.id as string | undefined;
+            if (createdId) newDetections[i] = { ...newDetections[i], inspUnitId: createdId };
           }
         }
       }
-      const keptIds = new Set(detections.map((d) => d.inspUnitId).filter(Boolean));
+      const keptIds = new Set(newDetections.map((d) => d.inspUnitId).filter(Boolean));
       for (const eu of existingUnits) {
         if (!keptIds.has(eu.id)) {
           await fetch(`/api/inspection-units/${eu.id}`, { method: "DELETE" });
@@ -299,12 +305,13 @@ function UnitEditor({
       if (anyFailed) {
         setSaveError("Save failed — check your connection and try again.");
       }
+      setDetections(newDetections);
       await onSaved();
-      return !anyFailed;
+      return { success: !anyFailed, updatedDetections: newDetections };
     } catch (err) {
       console.error("[saveAll]", err);
       setSaveError("Save failed — check your connection and try again.");
-      return false;
+      return { success: false, updatedDetections: detections };
     } finally {
       setSaving(false);
     }
@@ -313,14 +320,22 @@ function UnitEditor({
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const det = detections[photoTargetIdx];
-    if (!det.inspUnitId) { alert("Save the detection result first, then add photos."); return; }
+
+    let unitId = detections[photoTargetIdx]?.inspUnitId;
+
+    if (!unitId) {
+      const { success, updatedDetections } = await saveAll();
+      if (!success) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
+      unitId = updatedDetections[photoTargetIdx]?.inspUnitId ?? null;
+      if (!unitId) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
+    }
+
     setUploading(true);
     try {
       const uploaded = await startUpload([file]);
       if (!uploaded?.[0]) return;
       const { ufsUrl, key, name } = uploaded[0];
-      await fetch(`/api/inspection-units/${det.inspUnitId}/photos`, {
+      await fetch(`/api/inspection-units/${unitId}/photos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: ufsUrl, key, filename: name }),
@@ -426,61 +441,55 @@ function UnitEditor({
               </div>
 
               {/* Photos */}
-              {det.inspUnitId && (
-                <div className="px-4 pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
-                      Photos{photos.length > 0 ? ` (${photos.length})` : ""}
-                    </span>
+              <div className="px-4 pb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
+                    Photos{photos.length > 0 ? ` (${photos.length})` : ""}
+                  </span>
+                  <button
+                    onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
+                    disabled={uploading || saving}
+                    className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg disabled:opacity-50"
+                    style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", background: "rgba(255,255,255,0.04)" }}
+                  >
+                    <Camera className="h-3 w-3" />
+                    {uploading && photoTargetIdx === idx ? "Uploading…" : saving && photoTargetIdx === idx ? "Saving…" : "Add Photo"}
+                  </button>
+                </div>
+                {photos.length > 0 ? (
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {photos.map((ph) => (
+                      <div key={ph.id} className="relative aspect-square rounded-lg overflow-hidden group" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ph.url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => deletePhoto(ph.id, det.inspUnitId!)}
+                          className="absolute inset-0 bg-black/60 hidden group-active:flex items-center justify-center"
+                        >
+                          <Trash2 className="h-4 w-4 text-white" />
+                        </button>
+                      </div>
+                    ))}
                     <button
                       onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
-                      disabled={uploading}
-                      className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg disabled:opacity-50"
-                      style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", background: "rgba(255,255,255,0.04)" }}
+                      className="aspect-square rounded-lg border-2 border-dashed flex items-center justify-center"
+                      style={{ borderColor: "rgba(255,255,255,0.15)" }}
                     >
-                      <Camera className="h-3 w-3" />
-                      {uploading && photoTargetIdx === idx ? "Uploading…" : "Add Photo"}
+                      <Plus className="h-4 w-4" style={{ color: "#64748b" }} />
                     </button>
                   </div>
-                  {photos.length > 0 ? (
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {photos.map((ph) => (
-                        <div key={ph.id} className="relative aspect-square rounded-lg overflow-hidden group" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={ph.url} alt="" className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => deletePhoto(ph.id, det.inspUnitId!)}
-                            className="absolute inset-0 bg-black/60 hidden group-active:flex items-center justify-center"
-                          >
-                            <Trash2 className="h-4 w-4 text-white" />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
-                        className="aspect-square rounded-lg border-2 border-dashed flex items-center justify-center"
-                        style={{ borderColor: "rgba(255,255,255,0.15)" }}
-                      >
-                        <Plus className="h-4 w-4" style={{ color: "#64748b" }} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
-                      className="w-full h-16 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 transition-colors"
-                      style={{ borderColor: "rgba(255,255,255,0.12)", color: "#64748b" }}
-                    >
-                      <Camera className="h-4 w-4" />
-                      <span className="text-xs">Add photo</span>
-                    </button>
-                  )}
-                </div>
-              )}
-              {!det.inspUnitId && (
-                <p className="px-4 pb-4 text-xs" style={{ color: "#64748b" }}>
-                  Save detection first to attach photos.
-                </p>
-              )}
+                ) : (
+                  <button
+                    onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
+                    disabled={uploading || saving}
+                    className="w-full h-16 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    style={{ borderColor: "rgba(255,255,255,0.12)", color: "#64748b" }}
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span className="text-xs">{!det.inspUnitId ? "Add photo (auto-saves first)" : "Add photo"}</span>
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
@@ -496,32 +505,52 @@ function UnitEditor({
             Add Detection (2nd alert location)
           </button>
         </div>
-      </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
-
-      {/* Footer */}
-      <div className="shrink-0 p-4 space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
-        <div className="flex gap-2">
+        {/* Save buttons inside scroll area — always reachable even when keyboard is open */}
+        <div className="px-4 pb-6 pt-1 flex gap-2">
           <button
-            onClick={async () => { const ok = await saveAll(); if (ok) onClose(); }}
+            onClick={async () => { const { success } = await saveAll(); if (success) onClose(); }}
             disabled={saving}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-            style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)" }}
+            className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 active:scale-95 transition-all"
+            style={{ border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)" }}
           >
             {saving ? "Saving…" : "Save & Close"}
           </button>
           {hasNext && (
             <button
-              onClick={async () => { const ok = await saveAll(); if (ok) onNext(); }}
+              onClick={async () => { const { success } = await saveAll(); if (success) onNext(); }}
               disabled={saving}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all"
               style={{ background: "#0ABAB5" }}
             >
               {saving ? "Saving…" : <><span>Save & Next</span> <ArrowRight className="h-4 w-4" /></>}
             </button>
           )}
         </div>
+      </div>
+
+      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
+
+      {/* Footer — secondary save strip pinned at bottom (above keyboard on some devices) */}
+      <div className="shrink-0 px-4 py-3 flex gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(10,15,26,0.95)", paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
+        <button
+          onClick={async () => { const { success } = await saveAll(); if (success) onClose(); }}
+          disabled={saving}
+          className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+          style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)" }}
+        >
+          {saving ? "Saving…" : "Save & Close"}
+        </button>
+        {hasNext && (
+          <button
+            onClick={async () => { const { success } = await saveAll(); if (success) onNext(); }}
+            disabled={saving}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ background: "#0ABAB5" }}
+          >
+            {saving ? "Saving…" : <><span>Save & Next</span> <ArrowRight className="h-4 w-4" /></>}
+          </button>
+        )}
       </div>
     </div>
   );

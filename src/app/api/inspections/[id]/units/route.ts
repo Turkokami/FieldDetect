@@ -85,13 +85,14 @@ export async function POST(
         await tx.inspectionUnit.deleteMany({ where: { inspectionId: id } });
       }
 
-      const created = await tx.inspectionUnit.createMany({
+      const created = await tx.inspectionUnit.createManyAndReturn({
         data: validated.units.map((unit) => ({
           ...unit,
           inspectionId: id,
           followUpDate: unit.followUpDate ? new Date(unit.followUpDate) : null,
           inspectedAt: new Date(),
         })),
+        select: { id: true, unitNumber: true },
       });
 
       // Recompute totals
