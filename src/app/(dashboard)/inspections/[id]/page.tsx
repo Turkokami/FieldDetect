@@ -43,11 +43,18 @@ export default async function InspectionPage({
 
   if (!inspection) notFound();
 
+  const availableDogs = await prisma.k9Dog.findMany({
+    where: { k9Team: { organizationId: user.organizationId }, isActive: true },
+    select: { id: true, name: true, breed: true, k9TeamId: true, k9Team: { select: { name: true } } },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <InspectionDetail
       inspection={JSON.parse(JSON.stringify(inspection))}
       currentUserId={user.id}
       currentUserRole={user.role}
+      availableDogs={JSON.parse(JSON.stringify(availableDogs))}
     />
   );
 }

@@ -3,23 +3,11 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { Receipt, Plus, ArrowUpRight } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { Plus } from "lucide-react";
+import { InvoiceListClient } from "@/components/invoices/invoice-list-client";
 
 export const metadata = { title: "Invoices" };
-
-const STATUS_VARIANTS: Record<string, "default" | "secondary" | "success" | "warning" | "destructive" | "info"> = {
-  DRAFT: "secondary",
-  SENT: "info",
-  VIEWED: "info",
-  PARTIALLY_PAID: "warning",
-  PAID: "success",
-  OVERDUE: "destructive",
-  CANCELLED: "secondary",
-  REFUNDED: "secondary",
-};
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Draft",
@@ -125,74 +113,7 @@ export default async function InvoicesPage({
         ))}
       </div>
 
-      {/* Invoice list */}
-      <div className="space-y-2">
-        {invoices.map((inv) => (
-          <Link key={inv.id} href={`/invoices/${inv.id}`}>
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer hover:border-primary/30">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-slate-50 shrink-0 mt-0.5">
-                    <Receipt className="h-4 w-4 text-slate-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {/* Name + badge */}
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <p className="font-semibold text-slate-900 truncate">
-                        {inv.customer.companyName ??
-                          `${inv.customer.firstName} ${inv.customer.lastName}`}
-                      </p>
-                      <Badge variant={STATUS_VARIANTS[inv.status] ?? "secondary"} className="shrink-0">
-                        {STATUS_LABELS[inv.status] ?? inv.status}
-                      </Badge>
-                    </div>
-                    {/* Invoice meta */}
-                    <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 mb-2">
-                      <span className="font-mono">{inv.invoiceNumber}</span>
-                      {inv.inspection && (
-                        <span>· {inv.inspection.inspectionNumber}</span>
-                      )}
-                      <span>· {formatDate(inv.createdAt)}</span>
-                    </div>
-                    {/* Amount row */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-bold text-slate-900">{formatCurrency(inv.totalAmount)}</span>
-                        {inv.balanceDue > 0 && inv.balanceDue !== inv.totalAmount && (
-                          <span className="text-xs text-amber-600 ml-2">
-                            {formatCurrency(inv.balanceDue)} due
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {inv.dueDate && inv.status !== "PAID" && (
-                          <p className="text-xs text-slate-400">
-                            Due {formatDate(inv.dueDate)}
-                          </p>
-                        )}
-                        <ArrowUpRight className="h-4 w-4 text-slate-400" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      {invoices.length === 0 && (
-        <div className="text-center py-16">
-          <Receipt className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">No invoices found</p>
-          <Button asChild className="mt-4">
-            <Link href="/invoices/new">
-              <Plus className="h-4 w-4" />
-              Create Invoice
-            </Link>
-          </Button>
-        </div>
-      )}
+      <InvoiceListClient invoices={JSON.parse(JSON.stringify(invoices))} />
     </div>
   );
 }

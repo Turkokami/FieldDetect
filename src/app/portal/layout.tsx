@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-import { FileText, Receipt, LayoutDashboard } from "lucide-react";
+import { FileText, Receipt, LayoutDashboard, Calendar } from "lucide-react";
 
 export default async function PortalLayout({
   children,
@@ -55,6 +55,13 @@ export default async function PortalLayout({
           >
             <FileText className="h-3.5 w-3.5" />
             Reports
+          </Link>
+          <Link
+            href="/portal/appointments"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            Appointments
           </Link>
           <Link
             href="/portal/invoices"

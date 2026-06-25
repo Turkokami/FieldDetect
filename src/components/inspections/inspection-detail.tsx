@@ -26,10 +26,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+type AvailableDog = {
+  id: string;
+  name: string;
+  breed: string | null;
+  k9Team: { name: string };
+};
+
 interface InspectionDetailProps {
   inspection: Record<string, unknown>;
   currentUserId: string;
   currentUserRole: string;
+  availableDogs?: AvailableDog[];
 }
 
 const DETECTION_COLORS: Record<string, string> = {
@@ -52,10 +60,13 @@ const DETECTION_LABEL: Record<string, string> = {
   FOLLOW_UP_REQUIRED: "Follow-Up Required",
 };
 
-export function InspectionDetail({ inspection, currentUserId, currentUserRole }: InspectionDetailProps) {
+export function InspectionDetail({ inspection, currentUserId, currentUserRole, availableDogs = [] }: InspectionDetailProps) {
   const router = useRouter();
   const [showAddUnits, setShowAddUnits] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
+  const [showAssignDog, setShowAssignDog] = useState(false);
+  const [selectedDogId, setSelectedDogId] = useState<string>("");
+  const [assigningDog, setAssigningDog] = useState(false);
 
   const insp = inspection as {
     id: string;
@@ -75,7 +86,8 @@ export function InspectionDetail({ inspection, currentUserId, currentUserRole }:
     followUpDate?: string;
     treatmentReferral: boolean;
     weather?: string;
-    k9Dog?: { name: string; breed?: string };
+    k9DogId?: string | null;
+    k9Dog?: { id: string; name: string; breed?: string };
     k9Team?: { name: string };
     technician: { firstName: string; lastName: string };
     property: {
@@ -94,6 +106,23 @@ export function InspectionDetail({ inspection, currentUserId, currentUserRole }:
 
   const isComplete = !!insp.endTime;
   const canEdit = !isComplete || ["OWNER", "ADMIN"].includes(currentUserRole);
+
+  const assignDog = async () => {
+    setAssigningDog(true);
+    try {
+      const res = await fetch(`/api/inspections/${insp.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ k9DogId: selectedDogId || null }),
+      });
+      if (!res.ok) { toast.error("Failed to assign dog"); return; }
+      toast.success(selectedDogId ? "Dog assigned" : "Dog removed");
+      setShowAssignDog(false);
+      router.refresh();
+    } finally {
+      setAssigningDog(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -211,14 +240,27 @@ export function InspectionDetail({ inspection, currentUserId, currentUserRole }:
                   {insp.technician.firstName} {insp.technician.lastName}
                 </span>
               </div>
-              {insp.k9Dog && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500 flex items-center gap-1">
-                    <Dog className="h-3 w-3" /> K9
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 flex items-center gap-1">
+                  <Dog className="h-3 w-3" /> K9
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-sm">
+                    {insp.k9Dog ? insp.k9Dog.name : <span className="text-slate-400 italic">Unassigned</span>}
                   </span>
-                  <span className="font-medium">{insp.k9Dog.name}</span>
+                  {canEdit && availableDogs.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setSelectedDogId(insp.k9DogId ?? "");
+                        setShowAssignDog(true);
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      {insp.k9Dog ? "Change" : "Assign"}
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
               {insp.weather && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">Weather</span>
@@ -396,6 +438,44 @@ export function InspectionDetail({ inspection, currentUserId, currentUserRole }:
             router.refresh();
           }}
         />
+      )}
+
+      {showAssignDog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900">Assign K9 Dog</h2>
+            <div>
+              <label className="text-sm text-slate-600 block mb-1.5">Select dog</label>
+              <select
+                value={selectedDogId}
+                onChange={(e) => setSelectedDogId(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="">— None —</option>
+                {availableDogs.map((dog) => (
+                  <option key={dog.id} value={dog.id}>
+                    {dog.name}{dog.breed ? ` (${dog.breed})` : ""} · {dog.k9Team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setShowAssignDog(false)}
+                className="px-4 py-2 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={assignDog}
+                disabled={assigningDog}
+                className="px-4 py-2 text-sm rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {assigningDog ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -198,11 +198,21 @@ export default async function DashboardPage() {
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) redirect("/onboarding");
 
-  const [data, k9TeamCount, propertyCount, appointmentCount] = await Promise.all([
+  const now30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const [data, k9TeamCount, propertyCount, appointmentCount, expiringCerts] = await Promise.all([
     getDashboardData(user.organizationId),
     prisma.k9Team.count({ where: { organizationId: user.organizationId, isActive: true } }),
     prisma.property.count({ where: { organizationId: user.organizationId, isActive: true } }),
     prisma.appointment.count({ where: { organizationId: user.organizationId } }),
+    prisma.handlerCertification.findMany({
+      where: {
+        expiresAt: { not: null, lte: now30 },
+        user: { organizationId: user.organizationId, isActive: true },
+      },
+      include: { user: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: { expiresAt: "asc" },
+      take: 10,
+    }),
   ]);
 
   const today = new Date();
@@ -412,6 +422,45 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Handler Cert Alerts */}
+      {expiringCerts.length > 0 && (
+        <div className="rounded-xl border overflow-hidden"
+          style={{ borderColor: "rgba(220,38,38,0.3)", background: "rgba(220,38,38,0.04)" }}>
+          <div className="px-5 py-3 flex items-center justify-between border-b"
+            style={{ borderColor: "rgba(220,38,38,0.15)" }}>
+            <div className="text-sm font-semibold" style={{ color: "#dc2626" }}>
+              ⚠️ Handler Certifications Expiring
+            </div>
+            <Link href="/team" className="text-xs font-medium" style={{ color: "#dc2626" }}>
+              Manage →
+            </Link>
+          </div>
+          <div className="divide-y" style={{ borderColor: "rgba(220,38,38,0.1)" }}>
+            {expiringCerts.map((c) => {
+              const expired = c.expiresAt && new Date(c.expiresAt) < new Date();
+              return (
+                <div key={c.id} className="flex items-center justify-between px-5 py-2.5 gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Link href={`/team/handlers/${c.user.id}`}
+                      className="text-sm font-medium text-foreground hover:underline shrink-0">
+                      {c.user.firstName} {c.user.lastName}
+                    </Link>
+                    <span className="text-sm text-muted-foreground truncate">— {c.name}</span>
+                  </div>
+                  <span className="text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full"
+                    style={expired
+                      ? { background: "rgba(220,38,38,0.1)", color: "#dc2626" }
+                      : { background: "rgba(202,138,4,0.1)", color: "#ca8a04" }}>
+                    {expired ? "Expired" : "Expiring Soon"}
+                    {c.expiresAt && ` · ${new Date(c.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Upcoming & Invoices */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

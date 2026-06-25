@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, Upload } from "lucide-react";
+import { useUploadThing } from "@/lib/uploadthing-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -388,25 +389,31 @@ function CertificationsTab({ handler, canEdit }: { handler: Handler; canEdit: bo
 
 function PhotosTab({ handler, canEdit }: { handler: Handler; canEdit: boolean }) {
   const router = useRouter();
-  const [urlInput, setUrlInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const { startUpload } = useUploadThing("profilePhoto");
 
-  const addPhoto = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!urlInput.trim()) return;
-    setLoading(true);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
     try {
-      const updated = [...handler.handlerPhotos, urlInput.trim()];
+      const uploaded = await startUpload([file]);
+      const url = uploaded?.[0]?.url;
+      if (!url) { toast.error("Upload failed"); return; }
+
+      const updated = [...handler.handlerPhotos, url];
       const res = await fetch(`/api/users/${handler.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ handlerPhotos: updated }),
       });
-      if (!res.ok) { toast.error("Failed to save"); return; }
-      setUrlInput("");
+      if (!res.ok) { toast.error("Failed to save photo"); return; }
       toast.success("Photo added");
       router.refresh();
-    } finally { setLoading(false); }
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const removePhoto = async (url: string) => {
@@ -423,8 +430,16 @@ function PhotosTab({ handler, canEdit }: { handler: Handler; canEdit: boolean })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Handler Photos</h2>
+        {canEdit && (
+          <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${uploading ? "opacity-50 pointer-events-none" : ""}`}
+            style={{ background: "rgba(10,186,181,0.1)", color: "#0ABAB5" }}>
+            <Upload className="h-3.5 w-3.5" />
+            {uploading ? "Uploading…" : "Upload Photo"}
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={uploading} />
+          </label>
+        )}
       </div>
 
       {handler.handlerPhotos.length === 0 ? (
@@ -446,25 +461,6 @@ function PhotosTab({ handler, canEdit }: { handler: Handler; canEdit: boolean })
             </div>
           ))}
         </div>
-      )}
-
-      {canEdit && (
-        <form onSubmit={addPhoto} className="flex gap-2 mt-2">
-          <input
-            className={inputCls + " flex-1"}
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="Paste photo URL..."
-          />
-          <button
-            type="submit"
-            disabled={loading || !urlInput.trim()}
-            className="px-4 h-10 rounded-md text-white text-sm font-medium disabled:opacity-50 transition-colors"
-            style={{ background: "linear-gradient(135deg,#0ABAB5,#0D9488)" }}
-          >
-            Add
-          </button>
-        </form>
       )}
     </div>
   );
