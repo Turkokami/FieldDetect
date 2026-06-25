@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Menu, X, LayoutDashboard, Users, Building2, Calendar,
   ClipboardList, FileText, Receipt, Settings, Dog, MapPin, TrendingUp,
-  FileCheck, Bell, Smartphone,
+  FileCheck, Bell, Smartphone, MessageSquare, UsersRound,
 } from "lucide-react";
 
 const navItems = [
@@ -21,8 +21,10 @@ const navItems = [
   { label: "Estimates",   href: "/estimates",   icon: FileCheck },
   { label: "Invoices",    href: "/invoices",    icon: Receipt },
   { label: "Routes",      href: "/routes",      icon: MapPin },
+  { label: "Messages",    href: "/messages",    icon: MessageSquare },
   { label: "Analytics",   href: "/analytics",   icon: TrendingUp },
   { label: "K9 Teams",    href: "/k9teams",     icon: Dog },
+  { label: "Team",        href: "/team",        icon: UsersRound },
   { label: "Settings",    href: "/settings",    icon: Settings },
 ];
 
