@@ -1633,7 +1633,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
   const isPre = !isEnRoute && !isCheckedIn && !isComplete;
   const dog = apt.k9Team?.dogs[0];
   const handler = apt.k9Team?.members.find((m) => m.isPrimary);
-  const mapsUrl = `https://maps.apple.com/?q=${encodeURIComponent(`${apt.property.addressLine1} ${apt.property.city} ${apt.property.state}`)}`;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${apt.property.addressLine1} ${apt.property.city} ${apt.property.state}`)}`;
 
   // Show completion summary if done
   if (completionData) {

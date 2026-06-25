@@ -78,7 +78,7 @@ function fmtTime(dateStr: string) {
 
 function mapsUrl(property: Appt["property"]) {
   const q = encodeURIComponent(`${property.addressLine1}, ${property.city}, ${property.state} ${property.zip ?? ""}`);
-  return `https://maps.apple.com/?q=${q}`;
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
 
 function isToday(dateStr: string) {
