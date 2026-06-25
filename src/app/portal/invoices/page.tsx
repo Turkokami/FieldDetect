@@ -18,6 +18,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   REFUNDED:        { label: "Refunded",        color: "#64748b" },
 };
 
+const UNPAID = new Set(["SENT", "VIEWED", "PARTIALLY_PAID", "OVERDUE"]);
+
 export default async function PortalInvoicesPage() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
@@ -30,11 +32,22 @@ export default async function PortalInvoicesPage() {
     orderBy: { issueDate: "desc" },
   });
 
+  const unpaidTotal = invoices
+    .filter((i) => UNPAID.has(i.status))
+    .reduce((sum, i) => sum + Number(i.balanceDue), 0);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Invoices</h1>
-        <p className="text-sm text-muted-foreground mt-1">{invoices.length} total invoices</p>
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Invoices</h1>
+          <p className="text-sm text-muted-foreground mt-1">{invoices.length} total invoice{invoices.length !== 1 ? "s" : ""}</p>
+        </div>
+        {unpaidTotal > 0 && (
+          <div className="rounded-xl px-4 py-2.5 text-sm font-semibold" style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
+            Outstanding: {formatCurrency(unpaidTotal)}
+          </div>
+        )}
       </div>
 
       {invoices.length === 0 ? (
@@ -48,46 +61,46 @@ export default async function PortalInvoicesPage() {
             {invoices.map((inv) => {
               const cfg = STATUS_CONFIG[inv.status] ?? { label: inv.status, color: "#64748b" };
               const isOverdue = inv.status === "OVERDUE";
+              const canPay = UNPAID.has(inv.status) && Number(inv.balanceDue) > 0 && inv.paymentToken;
               return (
-                <Link
-                  key={inv.id}
-                  href={`/portal/invoices/${inv.id}`}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors group"
-                >
+                <div key={inv.id} className="flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors">
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                     style={{ background: `${cfg.color}1a` }}
                   >
-                    <Receipt className="h-4.5 w-4.5" style={{ color: cfg.color }} />
+                    <Receipt className="h-4 w-4" style={{ color: cfg.color }} />
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <Link href={`/portal/invoices/${inv.id}`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-foreground">{inv.invoiceNumber}</span>
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs text-muted-foreground">Issued {formatDate(inv.issueDate)}</span>
                       {inv.dueDate && (
-                        <>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <span className={`text-xs ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                            Due {formatDate(inv.dueDate)}
-                          </span>
-                        </>
+                        <span className={`text-xs ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                          · Due {formatDate(inv.dueDate)}
+                        </span>
                       )}
                     </div>
-                  </div>
+                  </Link>
 
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold text-foreground">{formatCurrency(Number(inv.totalAmount))}</div>
-                    <span
-                      className="text-xs font-semibold"
-                      style={{ color: cfg.color }}
-                    >
-                      {cfg.label}
-                    </span>
+                  <div className="text-right shrink-0 flex items-center gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-foreground">{formatCurrency(Number(inv.totalAmount))}</div>
+                      <span className="text-xs font-semibold" style={{ color: cfg.color }}>{cfg.label}</span>
+                    </div>
+                    {canPay && (
+                      <Link
+                        href={`/pay/${inv.paymentToken}`}
+                        className="inline-block text-xs font-bold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+                        style={{ background: "linear-gradient(135deg,#0ABAB5,#0D9488)" }}
+                      >
+                        Pay Now
+                      </Link>
+                    )}
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>

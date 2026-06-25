@@ -229,7 +229,15 @@ export default async function PortalInvoiceDetailPage({
               Balance due: {formatCurrency(remaining)}
             </p>
           </div>
-          {stripeConfigured ? (
+          {invoice.paymentToken ? (
+            <a
+              href={`/pay/${invoice.paymentToken}`}
+              className="block w-full py-3 rounded-xl text-white font-semibold text-sm text-center transition-opacity hover:opacity-90"
+              style={{ background: "linear-gradient(135deg,#0ABAB5,#0D9488)" }}
+            >
+              Pay with Card →
+            </a>
+          ) : stripeConfigured ? (
             <PortalPayButton invoiceId={id} />
           ) : (
             <div className="text-center space-y-1">

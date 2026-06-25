@@ -720,6 +720,7 @@ model Invoice {
   terms            String?
   stripeInvoiceId  String?
   stripePaymentUrl String?
+  paymentToken     String?   @unique
   sentAt           DateTime?
   viewedAt         DateTime?
   paidAt           DateTime?
