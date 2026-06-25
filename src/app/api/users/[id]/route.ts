@@ -10,6 +10,9 @@ const updateUserSchema = z.object({
   role: z.enum(["ADMIN", "DISPATCHER", "TECHNICIAN"]).optional(),
   isActive: z.boolean().optional(),
   avatarUrl: z.string().url().optional().nullable(),
+  handlerNotes: z.string().optional().nullable(),
+  specialties: z.array(z.string()).optional(),
+  handlerPhotos: z.array(z.string()).optional(),
 });
 
 export async function GET(

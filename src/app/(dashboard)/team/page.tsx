@@ -1,10 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ProfilePhotoUpload } from "@/components/team/profile-photo-upload";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
 import Link from "next/link";
+import { format } from "date-fns";
+import { ProfilePhotoUpload } from "@/components/team/profile-photo-upload";
+import { TeamTabs } from "@/components/team/team-tabs";
 
 export const metadata = { title: "Team" };
 
@@ -13,6 +13,17 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
   TECHNICIAN: "Technician",
   DISPATCHER: "Dispatcher",
+};
+
+const SPECIALTY_LABELS: Record<string, string> = {
+  bed_bug: "Bed Bug",
+  rodent: "Rodent",
+  goose: "Goose",
+  termite: "Termite",
+  general: "General Pest",
+  narcotics: "Narcotics",
+  explosives: "Explosives",
+  search_rescue: "Search & Rescue",
 };
 
 export default async function TeamPage() {
@@ -36,8 +47,14 @@ export default async function TeamPage() {
         phone: true,
         role: true,
         avatarUrl: true,
+        specialties: true,
+        handlerNotes: true,
         createdAt: true,
         _count: { select: { inspectionsPerformed: true } },
+        handlerCertifications: {
+          select: { id: true, name: true, expiresAt: true },
+          orderBy: { expiresAt: "asc" },
+        },
       },
     }),
     prisma.k9Team.findMany({
@@ -62,121 +79,42 @@ export default async function TeamPage() {
 
   const dogs = k9teams.flatMap((t) => t.dogs.map((d) => ({ ...d, teamName: t.name })));
 
+  const handlersData = members.map((m) => ({
+    id: m.id,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    email: m.email,
+    phone: m.phone,
+    role: m.role,
+    roleLabel: ROLE_LABELS[m.role] ?? m.role,
+    avatarUrl: m.avatarUrl,
+    specialties: m.specialties,
+    specialtyLabels: m.specialties.map((s) => SPECIALTY_LABELS[s] ?? s),
+    handlerNotes: m.handlerNotes,
+    inspectionCount: m._count.inspectionsPerformed,
+    certifications: m.handlerCertifications.map((c) => ({
+      ...c,
+      expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
+    })),
+    isSelf: m.id === currentUser.id,
+  }));
+
+  const dogsData = dogs.map((d) => ({
+    id: d.id,
+    name: d.name,
+    breed: d.breed,
+    certificationNumber: d.certificationNumber,
+    certifiedUntil: d.certifiedUntil ? d.certifiedUntil.toISOString() : null,
+    photoUrl: d.photoUrl,
+    teamName: d.teamName,
+  }));
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Team</h1>
-        <p className="text-sm text-muted-foreground mt-1">Handlers, staff, and K9 partners</p>
-      </div>
-
-      {/* Team Members */}
-      <section>
-        <h2 className="text-base font-semibold text-foreground mb-4">
-          Team Members
-          <span className="ml-2 text-sm font-normal text-muted-foreground">({members.length})</span>
-        </h2>
-
-        {members.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl px-5 py-10 text-center text-muted-foreground text-sm">
-            No team members yet
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {members.map((m) => (
-              <div key={m.id} className="bg-card border border-border rounded-xl p-4 flex items-start gap-4">
-                <ProfilePhotoUpload
-                  entityId={m.id}
-                  entityType="user"
-                  currentPhotoUrl={m.avatarUrl}
-                  displayName={`${m.firstName} ${m.lastName}`}
-                  canEdit={canEdit || currentUser.id === m.id}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-foreground text-sm truncate">
-                    {m.firstName} {m.lastName}
-                    {m.id === currentUser.id && (
-                      <span className="ml-1.5 text-[10px] font-medium text-primary">(you)</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                      style={{ background: "rgba(10,186,181,0.12)", color: "#0ABAB5" }}
-                    >
-                      {ROLE_LABELS[m.role] ?? m.role}
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1.5 truncate">{m.email}</div>
-                  {m.phone && (
-                    <div className="text-xs text-muted-foreground truncate">{m.phone}</div>
-                  )}
-                  <div className="text-xs text-muted-foreground mt-1.5">
-                    {m._count.inspectionsPerformed} inspection{m._count.inspectionsPerformed !== 1 ? "s" : ""}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* K9 Dogs */}
-      <section>
-        <h2 className="text-base font-semibold text-foreground mb-4">
-          K9 Dogs
-          <span className="ml-2 text-sm font-normal text-muted-foreground">({dogs.length})</span>
-        </h2>
-
-        {dogs.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl px-5 py-10 text-center text-muted-foreground text-sm">
-            No K9 dogs yet — add them in K9 Teams
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dogs.map((dog) => (
-              <div key={dog.id} className="bg-card border border-border rounded-xl p-4 flex items-start gap-4">
-                <ProfilePhotoUpload
-                  entityId={dog.id}
-                  entityType="dog"
-                  currentPhotoUrl={dog.photoUrl}
-                  displayName={dog.name}
-                  canEdit={canEdit}
-                />
-                <div className="flex-1 min-w-0">
-                  <Link href={`/k9teams/dogs/${dog.id}`}
-                    className="font-semibold text-foreground text-sm hover:text-primary transition-colors">
-                    {dog.name}
-                  </Link>
-                  <div className="text-xs text-muted-foreground mt-0.5">{dog.teamName}</div>
-                  {dog.breed && (
-                    <div className="text-xs text-muted-foreground">{dog.breed}</div>
-                  )}
-                  {dog.certificationNumber && (
-                    <div className="text-xs text-muted-foreground mt-1.5">
-                      Cert #{dog.certificationNumber}
-                    </div>
-                  )}
-                  {dog.certifiedUntil && (
-                    <div className="text-xs mt-1">
-                      <span className={
-                        new Date(dog.certifiedUntil) < new Date()
-                          ? "text-red-500"
-                          : "text-muted-foreground"
-                      }>
-                        Exp: {format(new Date(dog.certifiedUntil), "MMM d, yyyy")}
-                      </span>
-                    </div>
-                  )}
-                  <Link href={`/k9teams/dogs/${dog.id}`}
-                    className="text-xs mt-2 block transition-colors" style={{ color: "#0ABAB5" }}>
-                    View profile →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+    <TeamTabs
+      handlers={handlersData}
+      dogs={dogsData}
+      canEdit={canEdit}
+      currentUserId={currentUser.id}
+    />
   );
 }

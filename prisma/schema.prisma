@@ -240,17 +240,37 @@ model User {
   licenseNumber  String?
   certifications Json     @default("[]")
   settings       Json     @default("{}")
+  handlerNotes   String?
+  specialties    String[] @default([])
+  handlerPhotos  String[] @default([])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization         Organization   @relation(fields: [organizationId], references: [id])
-  k9TeamMemberships    K9TeamMember[]
-  assignedAppointments Appointment[]  @relation("AssignedTechnician")
-  inspectionsPerformed Inspection[]
-  auditLogs            AuditLog[]
-  notifications        Notification[]
+  organization          Organization          @relation(fields: [organizationId], references: [id])
+  k9TeamMemberships     K9TeamMember[]
+  assignedAppointments  Appointment[]         @relation("AssignedTechnician")
+  inspectionsPerformed  Inspection[]
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  handlerCertifications HandlerCertification[]
 
   @@map("users")
+}
+
+model HandlerCertification {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  issuedBy   String?
+  certNumber String?
+  issuedAt   DateTime?
+  expiresAt  DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("handler_certifications")
 }
 
 // ─── K9 Teams ────────────────────────────────────────────────────────────────
