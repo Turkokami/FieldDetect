@@ -132,7 +132,8 @@ export function PropertyForm({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? `Failed to ${isEdit ? "update" : "create"} property`);
+        const detail = data.details?.[0]?.message;
+        throw new Error(detail ?? data.error ?? `Failed to ${isEdit ? "update" : "create"} property`);
       }
 
       const data = await res.json();

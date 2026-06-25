@@ -13,16 +13,16 @@ const createPropertySchema = z.object({
     "HOSPITAL", "GOVERNMENT", "OTHER",
   ]).default("SINGLE_FAMILY"),
   addressLine1: z.string().min(1),
-  addressLine2: z.string().optional(),
+  addressLine2: z.string().optional().nullable(),
   city: z.string().min(1),
   state: z.string().min(1),
   zip: z.string().min(1),
-  totalUnits: z.number().int().positive().optional(),
-  totalBuildings: z.number().int().positive().optional(),
-  accessNotes: z.string().optional(),
-  gateCode: z.string().optional(),
-  parkingNotes: z.string().optional(),
-  notes: z.string().optional(),
+  totalUnits: z.number().int().positive().optional().nullable(),
+  totalBuildings: z.number().int().positive().optional().nullable(),
+  accessNotes: z.string().optional().nullable(),
+  gateCode: z.string().optional().nullable(),
+  parkingNotes: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {
