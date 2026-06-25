@@ -398,8 +398,8 @@ function PhotosTab({ handler, canEdit }: { handler: Handler; canEdit: boolean })
     setUploading(true);
     try {
       const uploaded = await startUpload([file]);
-      const url = uploaded?.[0]?.url;
-      if (!url) { toast.error("Upload failed"); return; }
+      const url = uploaded?.[0]?.ufsUrl ?? uploaded?.[0]?.url;
+      if (!url) { toast.error("Upload failed — check UploadThing configuration"); return; }
 
       const updated = [...handler.handlerPhotos, url];
       const res = await fetch(`/api/users/${handler.id}`, {
@@ -410,6 +410,9 @@ function PhotosTab({ handler, canEdit }: { handler: Handler; canEdit: boolean })
       if (!res.ok) { toast.error("Failed to save photo"); return; }
       toast.success("Photo added");
       router.refresh();
+    } catch (err) {
+      console.error("[HANDLER_PHOTO_UPLOAD]", err);
+      toast.error("Upload failed — check UploadThing is configured");
     } finally {
       setUploading(false);
       e.target.value = "";

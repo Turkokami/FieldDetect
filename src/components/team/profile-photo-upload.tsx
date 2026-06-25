@@ -32,8 +32,8 @@ export function ProfilePhotoUpload({ entityId, entityType, currentPhotoUrl, disp
     setUploading(true);
     try {
       const uploaded = await startUpload([file]);
-      const url = uploaded?.[0]?.url;
-      if (!url) { toast.error("Upload failed"); return; }
+      const url = uploaded?.[0]?.ufsUrl ?? uploaded?.[0]?.url;
+      if (!url) { toast.error("Upload failed — check UploadThing configuration"); return; }
 
       const apiPath = entityType === "user"
         ? `/api/users/${entityId}`
@@ -52,6 +52,9 @@ export function ProfilePhotoUpload({ entityId, entityType, currentPhotoUrl, disp
       if (!res.ok) { toast.error("Failed to save photo"); return; }
       setPhotoUrl(url);
       toast.success("Photo updated");
+    } catch (err) {
+      console.error("[PROFILE_PHOTO_UPLOAD]", err);
+      toast.error("Upload failed — check UploadThing is configured");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
