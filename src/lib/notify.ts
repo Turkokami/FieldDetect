@@ -40,6 +40,7 @@ type TemplateCtx = {
   techName: string | null;
   portalUrl: string;
   paymentUrl?: string;
+  googleReviewUrl?: string | null;
 };
 
 function wrap(title: string, body: string): string {
@@ -63,7 +64,7 @@ function buildTemplate(
   status: NotificationTrigger,
   ctx: TemplateCtx
 ): { subject: string; html: string; sms: string } {
-  const { firstName, propertyName, address, dateStr, timeStr, techName, portalUrl, paymentUrl } = ctx;
+  const { firstName, propertyName, address, dateStr, timeStr, techName, portalUrl, paymentUrl, googleReviewUrl } = ctx;
   const btn = (label: string, url: string) =>
     `<a href="${url}" style="display:inline-block;background:#0ABAB5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin-top:16px">${label}</a>`;
 
@@ -124,8 +125,14 @@ function buildTemplate(
           <p style="color:#374151;margin:0 0 16px">
             Your inspection report for <strong>${propertyName}</strong> is now available in your portal.
           </p>
-          ${btn("View Report →", `${portalUrl}/reports`)}`),
-        sms: `FieldDetect: Your inspection report for ${propertyName} is ready. View it at: ${portalUrl}/reports`,
+          ${btn("View Report →", `${portalUrl}/reports`)}
+          ${googleReviewUrl ? `
+          <div style="margin-top:24px;padding:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px">
+            <div style="font-size:14px;font-weight:700;color:#166534;margin-bottom:6px">⭐ Happy with our service?</div>
+            <p style="margin:0 0 12px;font-size:13px;color:#374151">A quick Google review helps us grow and helps others find trusted K9 inspection services.</p>
+            <a href="${googleReviewUrl}" style="display:inline-block;background:#4285F4;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Leave a Google Review ⭐</a>
+          </div>` : ""}`),
+        sms: `FieldDetect: Your inspection report for ${propertyName} is ready. View it at: ${portalUrl}/reports${googleReviewUrl ? `\n\nHappy with our service? Leave us a review: ${googleReviewUrl}` : ""}`,
       };
 
     case "INVOICED":
@@ -170,6 +177,7 @@ export async function notifyOnStatusChange(
         customer: true,
         property: { select: { name: true, addressLine1: true, city: true, state: true } },
         technician: { select: { firstName: true, lastName: true } },
+        organization: { select: { googleReviewUrl: true } },
       },
     });
 
@@ -193,6 +201,7 @@ export async function notifyOnStatusChange(
         : null,
       portalUrl: `${APP_URL}/portal`,
       paymentUrl: options?.paymentUrl,
+      googleReviewUrl: apt.organization?.googleReviewUrl,
     };
 
     const trigger = newStatus as NotificationTrigger;

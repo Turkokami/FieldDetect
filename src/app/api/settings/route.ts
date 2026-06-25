@@ -8,6 +8,7 @@ const updateSettingsSchema = z.object({
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   website: z.string().url().optional().nullable().or(z.literal("")),
+  googleReviewUrl: z.string().url().optional().nullable().or(z.literal("")),
   addressLine1: z.string().optional().nullable(),
   addressLine2: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
@@ -62,6 +63,7 @@ export async function PATCH(req: NextRequest) {
         ...validated,
         website: validated.website || null,
         email: validated.email || null,
+        googleReviewUrl: validated.googleReviewUrl || null,
       },
     });
 

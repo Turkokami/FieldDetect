@@ -557,21 +557,33 @@ export async function GET(
   ${inconclusiveUnits.length > 0 ? `
   <div class="section">
     <div class="section-title" style="color:#ca8a04;border-color:#fde047">⚠️ Requires Attention — ${inconclusiveUnits.length} Unit${inconclusiveUnits.length > 1 ? "s" : ""}</div>
-    <table>
-      <thead>
-        <tr><th>Unit</th><th>Building</th><th>Result</th><th>Notes</th><th>Follow-Up Date</th></tr>
-      </thead>
-      <tbody>
-        ${inconclusiveUnits.map((u) => `
-        <tr class="followup-row">
-          <td><strong>${u.unitNumber}</strong></td>
-          <td>${u.buildingName ?? "—"}</td>
-          <td><span class="result-badge result-${u.detectionResult}">${DETECTION_EMOJI[u.detectionResult]} ${DETECTION_LABEL[u.detectionResult] ?? u.detectionResult}</span></td>
-          <td>${u.technicianNotes ?? "—"}</td>
-          <td>${u.followUpDate ? formatDate(u.followUpDate) : "—"}</td>
-        </tr>`).join("")}
-      </tbody>
-    </table>
+    ${inconclusiveUnits.map((u) => `
+    <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#ca8a04">${u.unitNumber}</div>
+          ${u.buildingName ? `<div style="font-size:10px;color:#64748b">Building: ${u.buildingName}${u.floor ? ` · Floor: ${u.floor}` : ""}</div>` : ""}
+        </div>
+        <div style="text-align:right">
+          <span class="result-badge result-${u.detectionResult}">${DETECTION_EMOJI[u.detectionResult]} ${DETECTION_LABEL[u.detectionResult] ?? u.detectionResult}</span>
+          ${u.followUpDate ? `<div style="font-size:10px;color:#ca8a04;margin-top:4px">Follow-Up: ${formatDate(u.followUpDate)}</div>` : ""}
+        </div>
+      </div>
+      ${u.technicianNotes ? `<div style="margin-bottom:6px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;margin-bottom:2px">Technician Notes</div><div style="font-size:10px;color:#1e293b">${u.technicianNotes}</div></div>` : ""}
+      ${u.recommendations ? `<div style="margin-bottom:6px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;margin-bottom:2px">Recommendations</div><div style="font-size:10px;color:#1e293b">${u.recommendations}</div></div>` : ""}
+      ${u.photos.length > 0 ? `
+      <div style="margin-top:8px">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;margin-bottom:8px">Photos (${u.photos.length})</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          ${u.photos.slice(0, 6).map((ph) => `
+          <div style="border-radius:6px;overflow:hidden;border:1px solid #fde047">
+            <img src="${ph.url}" alt="${ph.caption ?? ph.filename}" style="width:100%;height:110px;object-fit:cover;display:block" />
+            ${ph.caption ? `<div style="padding:3px 6px;font-size:9px;color:#64748b;background:#fefce8">${ph.caption}</div>` : ""}
+          </div>`).join("")}
+        </div>
+        ${u.photos.length > 6 ? `<p style="font-size:9px;color:#94a3b8;margin-top:4px">+ ${u.photos.length - 6} more photos</p>` : ""}
+      </div>` : ""}
+    </div>`).join("")}
   </div>` : ""}
 
   <!-- ── Full Unit Matrix ── -->

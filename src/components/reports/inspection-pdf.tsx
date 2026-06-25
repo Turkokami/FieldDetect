@@ -486,22 +486,56 @@ export function InspectionPDF({ org, customer, property, inspection, technician,
             <Text style={[s.sectionTitle, { color: YELLOW, borderBottomColor: "#fde047" }]}>
               Requires Attention — {inconclusiveUnits.length} Unit{inconclusiveUnits.length > 1 ? "s" : ""}
             </Text>
-            <View style={s.tableHeader}>
-              <Text style={[s.th, { flex: 1 }]}>Unit</Text>
-              <Text style={[s.th, { flex: 1.5 }]}>Building</Text>
-              <Text style={[s.th, { flex: 2 }]}>Result</Text>
-              <Text style={[s.th, { flex: 3 }]}>Notes</Text>
-              <Text style={[s.th, { flex: 1.5 }]}>Follow-Up</Text>
-            </View>
             {inconclusiveUnits.map((u) => (
-              <View key={u.id} style={s.tableRowFollowup}>
-                <Text style={[s.td, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{u.unitNumber}</Text>
-                <Text style={[s.td, { flex: 1.5 }]}>{u.buildingName ?? "—"}</Text>
-                <View style={{ flex: 2 }}>
-                  <ResultBadge result={u.detectionResult} />
+              <View key={u.id} style={{ backgroundColor: "#fefce8", borderWidth: 1, borderColor: "#fde047", borderRadius: 8, padding: 10, marginBottom: 8 }} wrap={false}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <View>
+                    <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: YELLOW }}>{u.unitNumber}</Text>
+                    {u.buildingName && (
+                      <Text style={{ fontSize: 8, color: SLATE }}>
+                        Building: {u.buildingName}{u.floor ? ` · Floor: ${u.floor}` : ""}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <ResultBadge result={u.detectionResult} />
+                    {u.followUpDate && (
+                      <Text style={{ fontSize: 8, color: YELLOW, marginTop: 3 }}>
+                        Follow-Up: {fmtDate(u.followUpDate)}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                <Text style={[s.td, { flex: 3 }]}>{u.technicianNotes ?? "—"}</Text>
-                <Text style={[s.td, { flex: 1.5 }]}>{u.followUpDate ? fmtDate(u.followUpDate) : "—"}</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                  {u.technicianNotes && (
+                    <View style={{ width: "100%" }}>
+                      <Text style={s.infoLabel}>Technician Notes</Text>
+                      <Text style={{ fontSize: 9, color: DARK }}>{u.technicianNotes}</Text>
+                    </View>
+                  )}
+                  {u.recommendations && (
+                    <View style={{ width: "100%" }}>
+                      <Text style={s.infoLabel}>Recommendations</Text>
+                      <Text style={{ fontSize: 9, color: DARK }}>{u.recommendations}</Text>
+                    </View>
+                  )}
+                </View>
+                {u.photos.length > 0 && (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={[s.infoLabel, { marginBottom: 5 }]}>Photos ({u.photos.length})</Text>
+                    <View style={s.photoGrid}>
+                      {u.photos.slice(0, 6).map((ph, pi) => (
+                        <View key={pi} style={[s.photoItem, { borderColor: "#fde047" }]}>
+                          <Image src={ph.url} style={[s.photoImg, { objectFit: "cover" }]} />
+                          {ph.caption && <Text style={s.photoCaption}>{ph.caption}</Text>}
+                        </View>
+                      ))}
+                    </View>
+                    {u.photos.length > 6 && (
+                      <Text style={{ fontSize: 7.5, color: SLATE, marginTop: 3 }}>+ {u.photos.length - 6} more photos on file</Text>
+                    )}
+                  </View>
+                )}
               </View>
             ))}
           </View>

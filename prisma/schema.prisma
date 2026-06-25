@@ -189,6 +189,7 @@ model Organization {
   phone             String?
   email             String?
   website           String?
+  googleReviewUrl   String?
   addressLine1      String?
   addressLine2      String?
   city              String?
@@ -627,6 +628,7 @@ model Inspection {
   customerRating      Int?
   customerFeedback    String?
   reviewRequestedAt   DateTime?
+  reviewToken         String?   @unique
   metadata            Json            @default("{}")
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt

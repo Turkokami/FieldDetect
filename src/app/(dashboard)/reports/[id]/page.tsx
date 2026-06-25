@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { ReviewRequestButton } from "@/components/reports/review-request-button";
 
 export default async function ReportDetailPage({
   params,
@@ -52,23 +53,30 @@ export default async function ReportDetailPage({
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
           <Link href="/reports" className="text-muted-foreground hover:text-foreground text-sm">
             ← Reports
           </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-2xl font-bold text-foreground">
-            Inspection Report #{inspection.inspectionNumber}
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground mt-1">
+            Report #{inspection.inspectionNumber}
           </h1>
         </div>
-        <a
-          href={`/api/reports/${id}/pdf`}
-          target="_blank"
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          Download PDF
-        </a>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ReviewRequestButton
+            inspectionId={inspection.id}
+            hasEmail={!!inspection.property.customer.email}
+            hasPhone={!!inspection.property.customer.phone}
+            alreadyRequested={!!inspection.reviewRequestedAt}
+          />
+          <a
+            href={`/api/reports/${id}/pdf`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Download PDF
+          </a>
+        </div>
       </div>
 
       {/* Summary Card */}
@@ -79,10 +87,10 @@ export default async function ReportDetailPage({
           ? "bg-red-50 border-red-200"
           : "bg-yellow-50 border-yellow-200"
       }`}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-sm font-medium text-muted-foreground">Overall Result</div>
-            <div className={`text-2xl font-bold mt-1 ${
+            <div className={`text-xl sm:text-2xl font-bold mt-1 ${
               inspection.overallResult === "NEGATIVE" ? "text-green-700" :
               ["POSITIVE_K9_ALERT", "VISUAL_CONFIRMATION"].includes(inspection.overallResult ?? "") ? "text-red-700" :
               "text-yellow-700"
@@ -90,22 +98,22 @@ export default async function ReportDetailPage({
               {RESULT_CONFIG[inspection.overallResult ?? ""]?.label ?? inspection.overallResult?.replace(/_/g, " ") ?? "Pending"}
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-4 text-center">
+          <div className="grid grid-cols-4 gap-3 text-center">
             <div>
-              <div className="text-2xl font-bold text-red-700">{inspection.totalPositive}</div>
+              <div className="text-xl sm:text-2xl font-bold text-red-700">{inspection.totalPositive}</div>
               <div className="text-xs text-muted-foreground">Positive</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-green-700">{inspection.totalNegative}</div>
+              <div className="text-xl sm:text-2xl font-bold text-green-700">{inspection.totalNegative}</div>
               <div className="text-xs text-muted-foreground">Negative</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-yellow-700">{inspection.totalInconclusive}</div>
-              <div className="text-xs text-muted-foreground">Inconclusive</div>
+              <div className="text-xl sm:text-2xl font-bold text-yellow-700">{inspection.totalInconclusive}</div>
+              <div className="text-xs text-muted-foreground">Inconclus.</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-gray-600">{inspection.totalInaccessible}</div>
-              <div className="text-xs text-muted-foreground">Inaccessible</div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-600">{inspection.totalInaccessible}</div>
+              <div className="text-xs text-muted-foreground">No Access</div>
             </div>
           </div>
         </div>

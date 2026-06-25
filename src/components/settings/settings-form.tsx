@@ -9,6 +9,7 @@ type Org = {
   phone: string | null;
   email: string | null;
   website: string | null;
+  googleReviewUrl: string | null;
   addressLine1: string | null;
   addressLine2: string | null;
   city: string | null;
@@ -24,6 +25,7 @@ export default function SettingsForm({ org, canEdit }: { org: Org; canEdit: bool
     phone: org.phone ?? "",
     email: org.email ?? "",
     website: org.website ?? "",
+    googleReviewUrl: org.googleReviewUrl ?? "",
     addressLine1: org.addressLine1 ?? "",
     addressLine2: org.addressLine2 ?? "",
     city: org.city ?? "",
@@ -98,7 +100,7 @@ export default function SettingsForm({ org, canEdit }: { org: Org; canEdit: bool
             className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
           />
         </div>
-        <div className="md:col-span-2">
+        <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">Website</label>
           <input
             name="website"
@@ -109,6 +111,19 @@ export default function SettingsForm({ org, canEdit }: { org: Org; canEdit: bool
             placeholder="https://yourcompany.com"
             className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">Google Review Link</label>
+          <input
+            name="googleReviewUrl"
+            type="url"
+            value={form.googleReviewUrl}
+            onChange={handleChange}
+            disabled={!canEdit}
+            placeholder="https://g.page/r/..."
+            className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Customers will be directed here after reading their report</p>
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-foreground mb-1.5">Street Address</label>
