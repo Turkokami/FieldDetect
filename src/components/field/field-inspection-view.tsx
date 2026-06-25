@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Dog, User, CheckCircle2, AlertTriangle, Clock, Camera, Plus, X, Trash2 } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { toast } from "sonner";
 
 type Photo = { id: string; url: string; filename: string };
 type InspectionUnit = {
@@ -180,14 +181,18 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
     setUploadingPhoto(true);
     try {
       const uploaded = await startUpload([file]);
-      if (!uploaded?.[0]) return;
+      if (!uploaded?.[0]) { toast.error("Upload failed — check UploadThing is configured"); return; }
       const { ufsUrl, key, name } = uploaded[0];
-      await fetch(`/api/inspection-units/${existing.id}/photos`, {
+      const res = await fetch(`/api/inspection-units/${existing.id}/photos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: ufsUrl, key, filename: name }),
       });
+      if (!res.ok) { toast.error("Failed to save photo"); return; }
       await refreshInspection(inspection.id);
+    } catch (err) {
+      console.error("[INSPECTION_PHOTO_UPLOAD]", err);
+      toast.error("Photo upload failed");
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

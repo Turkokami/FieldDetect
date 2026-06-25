@@ -8,9 +8,9 @@ import {
   ArrowLeft, Building2, WifiOff, FileText, Navigation,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { useUploadThing } from "@/lib/uploadthing-client";
-import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -334,14 +334,18 @@ function UnitEditor({
     setUploading(true);
     try {
       const uploaded = await startUpload([file]);
-      if (!uploaded?.[0]) return;
+      if (!uploaded?.[0]) { toast.error("Upload failed — check UploadThing is configured"); return; }
       const { ufsUrl, key, name } = uploaded[0];
-      await fetch(`/api/inspection-units/${unitId}/photos`, {
+      const res = await fetch(`/api/inspection-units/${unitId}/photos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: ufsUrl, key, filename: name }),
       });
+      if (!res.ok) { toast.error("Failed to save photo"); return; }
       await onSaved();
+    } catch (err) {
+      console.error("[INSPECTION_PHOTO_UPLOAD]", err);
+      toast.error("Photo upload failed");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
