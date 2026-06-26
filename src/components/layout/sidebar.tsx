@@ -22,6 +22,7 @@ import {
   Smartphone,
   MessageSquare,
   UsersRound,
+  Truck,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -39,6 +40,7 @@ const navItems = [
   { label: "Messages",    href: "/messages",    icon: MessageSquare },
   { label: "Analytics",   href: "/analytics",   icon: TrendingUp },
   { label: "K9 Teams",    href: "/k9teams",     icon: Dog },
+  { label: "Fleet",       href: "/vehicles",    icon: Truck },
   { label: "Team",        href: "/team",        icon: UsersRound },
   { label: "Settings",    href: "/settings",    icon: Settings },
 ];

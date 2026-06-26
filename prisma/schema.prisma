@@ -186,6 +186,37 @@ enum RecurrenceFrequency {
   ANNUALLY
 }
 
+enum VehicleType {
+  TRUCK
+  CAR
+  VAN
+  SUV
+  MOTORHOME
+  TRAILER
+  OTHER
+}
+
+enum VehicleStatus {
+  ACTIVE
+  IN_MAINTENANCE
+  INACTIVE
+}
+
+enum MaintenanceType {
+  OIL_CHANGE
+  TIRE_ROTATION
+  TIRE_REPLACEMENT
+  BRAKE_SERVICE
+  FLUID_TOP_UP
+  BATTERY_REPLACEMENT
+  INSPECTION
+  REGISTRATION
+  INSURANCE
+  REPAIR
+  CLEANING
+  OTHER
+}
+
 // ─── Organization ─────────────────────────────────────────────────────────────
 
 model Organization {
@@ -232,6 +263,7 @@ model Organization {
   taxCodes              TaxCode[]
   equipmentItems        EquipmentItem[]
   ppeRequirements       FacilityPPERequirement[]
+  vehicles              Vehicle[]
 
   @@map("organizations")
 }
@@ -287,6 +319,7 @@ model User {
   notifications         Notification[]
   handlerCertifications HandlerCertification[]
   equipmentCheckouts    EquipmentCheckout[]
+  mileageLogs           VehicleMileageLog[]
 
   @@map("users")
 }
@@ -639,13 +672,17 @@ model Appointment {
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 
+  vehicleId            String?
+
   organization  Organization  @relation(fields: [organizationId], references: [id])
   customer      Customer      @relation(fields: [customerId], references: [id])
   property      Property      @relation(fields: [propertyId], references: [id])
   technician    User?         @relation("AssignedTechnician", fields: [technicianId], references: [id])
   k9Team        K9Team?       @relation(fields: [k9TeamId], references: [id])
+  vehicle       Vehicle?      @relation(fields: [vehicleId], references: [id])
   inspection    Inspection?
   notifications Notification[]
+  mileageLogs   VehicleMileageLog[]
 
   @@map("appointments")
 }
@@ -1097,6 +1134,75 @@ model EquipmentCheckoutItem {
   equipmentItem EquipmentItem     @relation(fields: [equipmentItemId], references: [id])
 
   @@map("equipment_checkout_items")
+}
+
+// ─── Vehicles ─────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  type           VehicleType   @default(TRUCK)
+  status         VehicleStatus @default(ACTIVE)
+  make           String?
+  model          String?
+  year           Int?
+  color          String?
+  licensePlate   String?
+  vin            String?
+  currentMileage Int           @default(0)
+  notes          String?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  maintenance   VehicleMaintenance[]
+  mileageLogs   VehicleMileageLog[]
+  appointments  Appointment[]
+
+  @@map("vehicles")
+}
+
+model VehicleMaintenance {
+  id              String          @id @default(cuid())
+  vehicleId       String
+  type            MaintenanceType @default(OTHER)
+  description     String
+  performedAt     DateTime
+  mileageAtService Int?
+  nextServiceMileage Int?
+  nextServiceDate DateTime?
+  cost            Float?
+  vendor          String?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_maintenance")
+}
+
+model VehicleMileageLog {
+  id             String    @id @default(cuid())
+  vehicleId      String
+  userId         String
+  appointmentId  String?
+  date           DateTime
+  startMileage   Int
+  endMileage     Int
+  purpose        String?
+  destination    String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  vehicle     Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@map("vehicle_mileage_logs")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
