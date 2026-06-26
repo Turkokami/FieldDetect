@@ -25,7 +25,8 @@ export default function BrandingSection({ logoUrl, brandColor, canEdit }: Props)
 
   const { startUpload, isUploading } = useUploadThing("orgLogo", {
     onClientUploadComplete: async (uploaded) => {
-      const url = uploaded?.[0]?.ufsUrl ?? uploaded?.[0]?.url;
+      const file = uploaded?.[0];
+      const url = file?.ufsUrl ?? file?.url ?? (file?.serverData as { url?: string } | null)?.url;
       if (!url) { toast.error("Upload failed — no URL returned"); return; }
       try {
         const res = await fetch("/api/settings", {

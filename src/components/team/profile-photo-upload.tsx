@@ -32,7 +32,8 @@ export function ProfilePhotoUpload({ entityId, entityType, currentPhotoUrl, disp
     setUploading(true);
     try {
       const uploaded = await startUpload([file]);
-      const url = uploaded?.[0]?.ufsUrl ?? uploaded?.[0]?.url;
+      const f = uploaded?.[0];
+      const url = f?.ufsUrl ?? f?.url ?? (f?.serverData as { url?: string } | null)?.url;
       if (!url) { toast.error("Upload failed — check UploadThing configuration"); return; }
 
       const apiPath = entityType === "user"
