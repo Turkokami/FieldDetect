@@ -70,7 +70,7 @@ export async function PATCH(
     const validated = updateInvoiceSchema.parse(body);
 
     const updateData: Record<string, unknown> = { ...validated };
-    if (validated.dueDate) updateData.dueDate = new Date(validated.dueDate);
+    if (validated.dueDate !== undefined) updateData.dueDate = validated.dueDate ? new Date(validated.dueDate) : null;
     if (validated.status === "SENT") updateData.sentAt = new Date();
     if (validated.status === "PAID") updateData.paidAt = new Date();
 

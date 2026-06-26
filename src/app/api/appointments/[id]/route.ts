@@ -114,9 +114,9 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = { ...validated };
     if (validated.scheduledDate) updateData.scheduledDate = new Date(validated.scheduledDate);
-    if (validated.scheduledEndTime) updateData.scheduledEndTime = new Date(validated.scheduledEndTime);
-    if (validated.actualStartTime) updateData.actualStartTime = new Date(validated.actualStartTime);
-    if (validated.actualEndTime) updateData.actualEndTime = new Date(validated.actualEndTime);
+    if (validated.scheduledEndTime !== undefined) updateData.scheduledEndTime = validated.scheduledEndTime ? new Date(validated.scheduledEndTime) : null;
+    if (validated.actualStartTime !== undefined) updateData.actualStartTime = validated.actualStartTime ? new Date(validated.actualStartTime) : null;
+    if (validated.actualEndTime !== undefined) updateData.actualEndTime = validated.actualEndTime ? new Date(validated.actualEndTime) : null;
 
     if (validated.status === "CANCELLED") {
       updateData.cancelledAt = new Date();

@@ -33,10 +33,10 @@ export async function POST(
     const token = invoice.paymentToken ?? randomBytes(24).toString("hex");
     const paymentUrl = `${appUrl}/pay/${token}`;
 
-    // persist token + payment URL before sending
+    // persist token + payment URL so the link works regardless of email outcome
     await prisma.invoice.update({
       where: { id },
-      data: { paymentToken: token, stripePaymentUrl: paymentUrl, status: "SENT", sentAt: new Date() },
+      data: { paymentToken: token, stripePaymentUrl: paymentUrl },
     });
 
     const org = invoice.organization;
@@ -140,6 +140,12 @@ export async function POST(
     } else {
       console.log(`[INVOICE_SEND] Would email ${customerEmail}: Invoice #${invoice.invoiceNumber}, paymentUrl: ${paymentUrl}`);
     }
+
+    // Mark sent only after email succeeds (or dev fallback)
+    await prisma.invoice.update({
+      where: { id },
+      data: { status: "SENT", sentAt: new Date() },
+    });
 
     const updated = await prisma.invoice.findUnique({ where: { id } });
     return NextResponse.json({ data: updated });

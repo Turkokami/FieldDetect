@@ -221,7 +221,7 @@ export default async function InvoiceDetailPage({
               {Number(invoice.taxAmount) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Tax ({(Number(invoice.taxRate) * 100).toFixed(1)}%)
+                    Tax ({Number(invoice.taxRate).toFixed(1)}%)
                   </span>
                   <span className="text-foreground">{formatCurrency(Number(invoice.taxAmount))}</span>
                 </div>

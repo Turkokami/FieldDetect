@@ -318,7 +318,7 @@ export function InvoicePDF({
             )}
             {invoice.taxAmount > 0 && (
               <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>Tax ({(invoice.taxRate * 100).toFixed(1)}%)</Text>
+                <Text style={styles.totalsLabel}>Tax ({invoice.taxRate.toFixed(1)}%)</Text>
                 <Text style={styles.totalsValue}>{fmt(invoice.taxAmount)}</Text>
               </View>
             )}

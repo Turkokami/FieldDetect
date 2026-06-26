@@ -88,9 +88,9 @@ export async function PATCH(
     const validated = updateInspectionSchema.parse(body);
 
     const updateData: Record<string, unknown> = { ...validated };
-    if (validated.endTime) updateData.endTime = new Date(validated.endTime);
-    if (validated.followUpDate) updateData.followUpDate = new Date(validated.followUpDate);
-    if (validated.customerSignature) updateData.signedAt = new Date();
+    if (validated.endTime !== undefined) updateData.endTime = validated.endTime ? new Date(validated.endTime) : null;
+    if (validated.followUpDate !== undefined) updateData.followUpDate = validated.followUpDate ? new Date(validated.followUpDate) : null;
+    if (validated.customerSignature !== undefined) updateData.signedAt = validated.customerSignature ? new Date() : null;
 
     const inspection = await prisma.inspection.update({
       where: { id },
