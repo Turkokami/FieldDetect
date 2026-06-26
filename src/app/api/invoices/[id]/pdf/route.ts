@@ -48,6 +48,7 @@ export async function GET(
         state: org.state ?? null,
         phone: org.phone ?? null,
         email: org.email ?? null,
+        brandColor: (org as { brandColor?: string | null }).brandColor ?? null,
       },
       customer: {
         firstName: invoice.customer.firstName,
@@ -77,6 +78,7 @@ export async function GET(
         discountAmount: Number(invoice.discountAmount),
         taxAmount: Number(invoice.taxAmount),
         taxRate: Number(invoice.taxRate),
+        taxCodeName: invoice.taxCodeName ?? null,
         totalAmount: Number(invoice.totalAmount),
         paidAmount: Number(invoice.paidAmount),
         balanceDue: Number(invoice.balanceDue),

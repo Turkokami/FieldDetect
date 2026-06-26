@@ -123,6 +123,7 @@ type InvoicePDFProps = {
     state: string | null;
     phone: string | null;
     email: string | null;
+    brandColor?: string | null;
   };
   customer: {
     firstName: string;
@@ -150,6 +151,7 @@ type InvoicePDFProps = {
     discountAmount: number;
     taxAmount: number;
     taxRate: number;
+    taxCodeName: string | null;
     totalAmount: number;
     paidAmount: number;
     balanceDue: number;
@@ -186,6 +188,7 @@ const PAYMENT_METHOD: Record<string, string> = {
 export function InvoicePDF({
   org, customer, property, invoice, lineItems, payments,
 }: InvoicePDFProps) {
+  const brand = org.brandColor ?? "#0ABAB5";
   const statusStyle = STATUS_COLORS[invoice.status] ?? STATUS_COLORS.DRAFT;
   const isOverdue = invoice.status === "OVERDUE" || (
     invoice.dueDate && new Date(invoice.dueDate) < new Date() && invoice.balanceDue > 0
@@ -195,7 +198,7 @@ export function InvoicePDF({
     <Document title={`Invoice #${invoice.invoiceNumber}`} author={org.name}>
       <Page size="LETTER" style={styles.page}>
         {/* ── Header ── */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottom: `2 solid ${brand}` }]}>
           <View>
             <Text style={styles.brandName}>{org.name}</Text>
             {org.addressLine1 && (
@@ -318,7 +321,11 @@ export function InvoicePDF({
             )}
             {invoice.taxAmount > 0 && (
               <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>Tax ({invoice.taxRate.toFixed(1)}%)</Text>
+                <Text style={styles.totalsLabel}>
+                  {invoice.taxCodeName
+                    ? `${invoice.taxCodeName} (${invoice.taxRate.toFixed(1)}%)`
+                    : `Tax (${invoice.taxRate.toFixed(1)}%)`}
+                </Text>
                 <Text style={styles.totalsValue}>{fmt(invoice.taxAmount)}</Text>
               </View>
             )}

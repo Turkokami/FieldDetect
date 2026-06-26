@@ -28,6 +28,18 @@ export const ourFileRouter = {
     .onUploadComplete(async ({ file }) => {
       return { url: file.ufsUrl };
     }),
+
+  orgLogo: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+    .middleware(async () => {
+      const { userId } = await auth();
+      if (!userId) throw new Error("Unauthorized");
+      const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+      if (!user || !["OWNER", "ADMIN"].includes(user.role)) throw new Error("Unauthorized");
+      return { organizationId: user.organizationId };
+    })
+    .onUploadComplete(async ({ file }) => {
+      return { url: file.ufsUrl };
+    }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type Customer = { id: string; firstName: string; lastName: string; companyName: string | null };
-type Property = { id: string; name: string; addressLine1: string };
+type Property = { id: string; name: string; addressLine1: string; city: string | null; state: string | null };
+type TaxCode = { id: string; name: string; rate: number; city: string | null; state: string | null; isDefault: boolean };
 type Appointment = {
   id: string;
   scheduledDate: string;
@@ -39,6 +40,8 @@ function NewInvoiceForm() {
   const [customers,    setCustomers]    = useState<Customer[]>([]);
   const [properties,   setProperties]   = useState<Property[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [taxCodes,     setTaxCodes]     = useState<TaxCode[]>([]);
+  const [taxCodeId,    setTaxCodeId]    = useState<string>("");
 
   const [customerId,    setCustomerId]    = useState(prefillCustomerId);
   const [propertyId,    setPropertyId]    = useState(prefillPropertyId);
@@ -59,11 +62,19 @@ function NewInvoiceForm() {
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
 
-  // Load all customers
+  // Load all customers + tax codes
   useEffect(() => {
     fetch("/api/customers?pageSize=200")
       .then((r) => r.json())
       .then((d) => setCustomers(d.data ?? []));
+    fetch("/api/tax-codes")
+      .then((r) => r.json())
+      .then((d) => {
+        const codes: TaxCode[] = d.data ?? [];
+        setTaxCodes(codes);
+        const def = codes.find((c) => c.isDefault);
+        if (def) { setTaxCodeId(def.id); setTaxRate(String(def.rate)); }
+      });
   }, []);
 
   // If prefilled with inspectionId, resolve its customer automatically
@@ -103,6 +114,21 @@ function NewInvoiceForm() {
       setAppointments(ad.data ?? []);
     });
   }, [customerId]);
+
+  // Auto-apply tax code when property changes
+  useEffect(() => {
+    if (!propertyId || taxCodes.length === 0) return;
+    const prop = properties.find((p) => p.id === propertyId);
+    if (!prop) return;
+    const city = prop.city?.toLowerCase().trim();
+    const state = prop.state?.toUpperCase().trim();
+    // Match: exact city+state > state only > default
+    const match =
+      taxCodes.find((c) => c.city && c.state && c.city.toLowerCase() === city && c.state.toUpperCase() === state) ??
+      taxCodes.find((c) => !c.city && c.state && c.state.toUpperCase() === state) ??
+      taxCodes.find((c) => c.isDefault);
+    if (match) { setTaxCodeId(match.id); setTaxRate(String(match.rate)); }
+  }, [propertyId, properties, taxCodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When an appointment is selected, automatically resolve its inspection ID
   useEffect(() => {
@@ -157,7 +183,9 @@ function NewInvoiceForm() {
           customerId,
           inspectionId: inspectionId || undefined,
           dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-          taxRate: taxPct,   // send as percentage (0–100); API divides by 100 internally
+          taxRate: taxPct,
+          taxCodeId: taxCodeId || undefined,
+          taxCodeName: taxCodes.find((c) => c.id === taxCodeId)?.name ?? undefined,
           notes: notes || undefined,
           lineItems: lineItems
             .filter((i) => i.description.trim())
@@ -343,16 +371,34 @@ function NewInvoiceForm() {
                 <span className="text-foreground">${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground shrink-0">Tax (%)</span>
+                <span className="text-sm text-muted-foreground shrink-0">Tax</span>
+                {taxCodes.length > 0 ? (
+                  <select
+                    value={taxCodeId}
+                    onChange={(e) => {
+                      setTaxCodeId(e.target.value);
+                      const tc = taxCodes.find((c) => c.id === e.target.value);
+                      if (tc) setTaxRate(String(tc.rate));
+                      else if (!e.target.value) setTaxRate("0");
+                    }}
+                    className="flex-1 h-7 px-2 rounded border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  >
+                    <option value="">Custom rate…</option>
+                    {taxCodes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.rate}%)</option>
+                    ))}
+                  </select>
+                ) : null}
                 <input
                   type="number"
                   min="0"
                   max="100"
-                  step="0.1"
+                  step="0.001"
                   value={taxRate}
-                  onChange={(e) => setTaxRate(e.target.value)}
+                  onChange={(e) => { setTaxRate(e.target.value); setTaxCodeId(""); }}
                   className="w-16 h-7 px-2 rounded border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                 />
+                <span className="text-xs text-muted-foreground">%</span>
                 <span className="text-sm text-foreground ml-auto">${taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-semibold border-t border-border pt-2">

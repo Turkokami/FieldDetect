@@ -43,9 +43,26 @@ const navItems = [
   { label: "Settings",    href: "/settings",    icon: Settings },
 ];
 
-export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
+export function Sidebar({
+  unreadMessages = 0,
+  brandColor = "#0ABAB5",
+  orgName,
+  orgLogoUrl,
+}: {
+  unreadMessages?: number;
+  brandColor?: string;
+  orgName?: string;
+  orgLogoUrl?: string;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  const hex = brandColor || "#0ABAB5";
+  // Convert hex to rgba for transparent backgrounds
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const rgba = (a: number) => `rgba(${r},${g},${b},${a})`;
 
   return (
     <aside
@@ -60,17 +77,20 @@ export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
         "flex items-center h-16 px-4 shrink-0",
         collapsed ? "justify-center" : "gap-3"
       )}
-        style={{ borderBottom: "1px solid rgba(10,186,181,0.15)" }}
+        style={{ borderBottom: `1px solid ${rgba(0.15)}` }}
       >
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg, #0ABAB5 0%, #0D9488 100%)" }}
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+          style={{ background: orgLogoUrl ? "transparent" : `linear-gradient(135deg, ${hex} 0%, ${hex}cc 100%)` }}
         >
-          <span className="text-white text-base">🐾</span>
+          {orgLogoUrl
+            ? <img src={orgLogoUrl} alt="" className="w-full h-full object-contain" />
+            : <span className="text-white text-base">🐾</span>
+          }
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <div className="font-bold text-white text-sm tracking-tight">FieldDetect</div>
-            <div className="text-xs font-medium" style={{ color: "#0ABAB5" }}>K9 Command Center</div>
+            <div className="font-bold text-white text-sm tracking-tight truncate">{orgName ?? "FieldDetect"}</div>
+            <div className="text-xs font-medium" style={{ color: hex }}>K9 Command Center</div>
           </div>
         )}
       </div>
@@ -93,9 +113,9 @@ export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
                 collapsed && "justify-center px-2"
               )}
               style={isActive ? {
-                background: "linear-gradient(90deg, rgba(10,186,181,0.22) 0%, rgba(10,186,181,0.08) 100%)",
-                borderLeft: "2px solid #0ABAB5",
-                color: "#0ABAB5",
+                background: `linear-gradient(90deg, ${rgba(0.22)} 0%, ${rgba(0.08)} 100%)`,
+                borderLeft: `2px solid ${hex}`,
+                color: hex,
               } : {
                 borderLeft: "2px solid transparent",
               }}
@@ -103,7 +123,7 @@ export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
               <span className="relative shrink-0">
                 <Icon
                   className="h-4.5 w-4.5"
-                  style={{ color: isActive ? "#0ABAB5" : undefined }}
+                  style={{ color: isActive ? hex : undefined }}
                 />
                 {collapsed && item.href === "/messages" && unreadMessages > 0 && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
@@ -128,7 +148,7 @@ export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
       </nav>
 
       {/* Field View switch */}
-      <div className="px-2 py-2 shrink-0" style={{ borderTop: "1px solid rgba(10,186,181,0.1)" }}>
+      <div className="px-2 py-2 shrink-0" style={{ borderTop: `1px solid ${rgba(0.1)}` }}>
         <Link
           href="/field"
           title={collapsed ? "Field View" : undefined}
@@ -136,10 +156,10 @@ export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 text-slate-400 hover:text-white",
             collapsed && "justify-center px-2"
           )}
-          style={{ borderLeft: "2px solid transparent", background: "rgba(10,186,181,0.06)" }}
+          style={{ borderLeft: "2px solid transparent", background: rgba(0.06) }}
         >
-          <Smartphone className="h-4 w-4 shrink-0" style={{ color: "#0ABAB5" }} />
-          {!collapsed && <span style={{ color: "#0ABAB5" }}>Field View</span>}
+          <Smartphone className="h-4 w-4 shrink-0" style={{ color: hex }} />
+          {!collapsed && <span style={{ color: hex }}>Field View</span>}
         </Link>
       </div>
 
@@ -157,7 +177,7 @@ export function Sidebar({ unreadMessages = 0 }: { unreadMessages?: number }) {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-white transition-colors"
-          style={{ background: "rgba(10,186,181,0.05)" }}
+          style={{ background: rgba(0.05) }}
         >
           {collapsed
             ? <ChevronRight className="h-4 w-4" />

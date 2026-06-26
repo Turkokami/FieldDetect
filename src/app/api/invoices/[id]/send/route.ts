@@ -40,6 +40,8 @@ export async function POST(
     });
 
     const org = invoice.organization;
+    const brand = (org as { brandColor?: string | null }).brandColor ?? "#0ABAB5";
+    const brandDark = brand; // use same color for dark variant
     const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
     const lineRows = invoice.lineItems.map((item) => `
@@ -58,7 +60,7 @@ export async function POST(
 <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,0.08)">
 
   <!-- Header -->
-  <div style="background:linear-gradient(135deg,#0ABAB5,#0D9488);padding:24px 28px">
+  <div style="background:linear-gradient(135deg,${brand},${brandDark}cc);padding:24px 28px">
     <div style="display:flex;align-items:center;gap:10px">
       ${org.logoUrl ? `<img src="${org.logoUrl}" alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover">` : `<span style="font-size:28px">🐾</span>`}
       <span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-0.5px">${org.name}</span>
@@ -111,10 +113,10 @@ export async function POST(
   <!-- CTA -->
   <div style="background:#f0fdfa;border-top:1px solid #ccfbf1;padding:24px 28px;text-align:center">
     <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:6px">
-      Amount due: <span style="color:#0ABAB5">${fmt(balanceDue)}</span>
+      Amount due: <span style="color:${brand}">${fmt(balanceDue)}</span>
     </div>
     <p style="color:#64748b;font-size:13px;margin:0 0 16px">Click below to view your invoice and pay securely online.</p>
-    <a href="${paymentUrl}" style="display:inline-block;background:linear-gradient(135deg,#0ABAB5,#0D9488);color:#fff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">
+    <a href="${paymentUrl}" style="display:inline-block;background:linear-gradient(135deg,${brand},${brandDark}cc);color:#fff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">
       View Invoice &amp; Pay Online →
     </a>
   </div>

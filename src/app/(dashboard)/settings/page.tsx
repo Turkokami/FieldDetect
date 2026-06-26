@@ -6,6 +6,8 @@ import UsersTable from "@/components/settings/users-table";
 import NotificationTemplates from "@/components/settings/notification-templates";
 import BillingSection from "@/components/settings/billing-section";
 import BookingLinkCard from "@/components/settings/booking-link-card";
+import BrandingSection from "@/components/settings/branding-section";
+import TaxCodesSection from "@/components/settings/tax-codes-section";
 
 export const metadata = { title: "Settings" };
 
@@ -22,7 +24,7 @@ export default async function SettingsPage({
 
   const sp = await searchParams;
 
-  const [org, users, templates, pendingInvites] = await Promise.all([
+  const [org, users, templates, pendingInvites, taxCodes] = await Promise.all([
     prisma.organization.findUnique({ where: { id: user.organizationId } }),
     prisma.user.findMany({
       where: { organizationId: user.organizationId, isActive: true },
@@ -40,6 +42,10 @@ export default async function SettingsPage({
       },
       orderBy: { createdAt: "desc" },
       select: { id: true, email: true, role: true, createdAt: true, expiresAt: true },
+    }),
+    prisma.taxCode.findMany({
+      where: { organizationId: user.organizationId },
+      orderBy: [{ isDefault: "desc" }, { state: "asc" }, { city: "asc" }, { name: "asc" }],
     }),
   ]);
 
@@ -66,6 +72,29 @@ export default async function SettingsPage({
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4">Organization</h2>
         <SettingsForm org={org} canEdit={canEdit} />
+      </div>
+
+      {/* Branding */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Branding</h2>
+        <p className="text-sm text-muted-foreground mb-4">Logo and brand color used across invoices, emails, and reports.</p>
+        <BrandingSection
+          logoUrl={org.logoUrl}
+          brandColor={(org as { brandColor?: string | null }).brandColor ?? null}
+          canEdit={canEdit}
+        />
+      </div>
+
+      {/* Tax Codes */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Tax Codes</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Define tax rates by city or state. When creating an invoice, the matching code is auto-applied based on the property location.
+        </p>
+        <TaxCodesSection
+          initialTaxCodes={JSON.parse(JSON.stringify(taxCodes))}
+          canEdit={canEdit}
+        />
       </div>
 
       {/* Booking Link */}
