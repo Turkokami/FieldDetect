@@ -151,6 +151,14 @@ enum NotificationType {
   FOLLOW_UP_NEEDED
   APPOINTMENT_REMINDER
   APPOINTMENT_CANCELLED
+  FEEDING_REMINDER
+}
+
+enum FeedingMeal {
+  MORNING
+  AFTERNOON
+  EVENING
+  ALL_MEALS
 }
 
 enum NotificationChannel {
@@ -222,6 +230,7 @@ model Organization {
   notificationTemplates NotificationTemplate[]
   staffInvitations      StaffInvitation[]
   taxCodes              TaxCode[]
+  equipmentItems        EquipmentItem[]
 
   @@map("organizations")
 }
@@ -276,6 +285,7 @@ model User {
   auditLogs             AuditLog[]
   notifications         Notification[]
   handlerCertifications HandlerCertification[]
+  equipmentCheckouts    EquipmentCheckout[]
 
   @@map("users")
 }
@@ -351,9 +361,14 @@ model K9Dog {
   inspections    Inspection[]
   vaccinations   K9Vaccination[]
   certifications K9Certification[]
-  vetAppointments     K9VetAppointment[]
+  vetAppointments      K9VetAppointment[]
   groomingAppointments K9GroomingAppointment[]
-  insurancePayments   K9InsurancePayment[]
+  insurancePayments    K9InsurancePayment[]
+  feedingSchedule      FeedingSchedule?
+  feedingMedications   FeedingMedication[]
+  feedingRecipeItems   FeedingRecipeItem[]
+  feedingRemindersSent FeedingReminderSent[]
+  equipmentCheckouts   EquipmentCheckout[]
 
   @@map("k9_dogs")
 }
@@ -832,12 +847,14 @@ model Notification {
   channel        NotificationChannel
   subject        String?
   body           String
+  link           String?
   recipientEmail String?
   recipientPhone String?
   sentAt         DateTime?
   deliveredAt    DateTime?
   failedAt       DateTime?
   errorMessage   String?
+  readAt         DateTime?
   metadata       Json                @default("{}")
   createdAt      DateTime            @default(now())
 
@@ -938,6 +955,128 @@ model StaffInvitation {
   @@index([email])
   @@index([token])
   @@map("staff_invitations")
+}
+
+// ─── Feeding Schedule ─────────────────────────────────────────────────────────
+
+model FeedingSchedule {
+  id               String   @id @default(cuid())
+  dogId            String   @unique
+  morningEnabled   Boolean  @default(false)
+  morningTime      String?
+  morningAmount    String?
+  afternoonEnabled Boolean  @default(false)
+  afternoonTime    String?
+  afternoonAmount  String?
+  eveningEnabled   Boolean  @default(false)
+  eveningTime      String?
+  eveningAmount    String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("feeding_schedules")
+}
+
+model FeedingMedication {
+  id        String      @id @default(cuid())
+  dogId     String
+  name      String
+  dosage    String?
+  meal      FeedingMeal @default(MORNING)
+  notes     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("feeding_medications")
+}
+
+model FeedingRecipeItem {
+  id         String   @id @default(cuid())
+  dogId      String
+  ingredient String
+  amount     String
+  unit       String   @default("cups")
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("feeding_recipe_items")
+}
+
+model FeedingReminderSent {
+  id           String      @id @default(cuid())
+  dogId        String
+  meal         FeedingMeal
+  reminderType String
+  sentDate     String
+  createdAt    DateTime    @default(now())
+
+  dog K9Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@unique([dogId, meal, reminderType, sentDate])
+  @@map("feeding_reminder_sent")
+}
+
+// ─── Equipment / Gear ─────────────────────────────────────────────────────────
+
+model EquipmentItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  category       String?
+  isRequired     Boolean  @default(false)
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checkoutItems   EquipmentCheckoutItem[]
+
+  @@map("equipment_items")
+}
+
+model EquipmentCheckout {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  dogId          String?
+  date           DateTime
+  checkedOutAt   DateTime?
+  returnedAt     DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id])
+  dog   K9Dog? @relation(fields: [dogId], references: [id])
+  items EquipmentCheckoutItem[]
+
+  @@map("equipment_checkouts")
+}
+
+model EquipmentCheckoutItem {
+  id              String   @id @default(cuid())
+  checkoutId      String
+  equipmentItemId String
+  isCheckedOut    Boolean  @default(false)
+  isReturned      Boolean  @default(false)
+  condition       String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  checkout      EquipmentCheckout @relation(fields: [checkoutId], references: [id], onDelete: Cascade)
+  equipmentItem EquipmentItem     @relation(fields: [equipmentItemId], references: [id])
+
+  @@map("equipment_checkout_items")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

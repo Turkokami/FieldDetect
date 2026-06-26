@@ -2,9 +2,10 @@
 
 import { useTheme } from "next-themes";
 import { UserButton } from "@clerk/nextjs";
-import { Bell, Search, Sun, Moon } from "lucide-react";
+import { Search, Sun, Moon } from "lucide-react";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { CommandPalette } from "@/components/search/command-palette";
+import { NotificationPanel } from "@/components/layout/notification-panel";
 import { useEffect, useState } from "react";
 
 export function Topbar() {
@@ -75,10 +76,7 @@ export function Topbar() {
             <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </button>
 
-          <button className="relative h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-destructive rounded-full" />
-          </button>
+          <NotificationPanel />
 
           <div className="w-px h-5 bg-border mx-0.5" />
 

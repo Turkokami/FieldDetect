@@ -8,6 +8,7 @@ import BillingSection from "@/components/settings/billing-section";
 import BookingLinkCard from "@/components/settings/booking-link-card";
 import BrandingSection from "@/components/settings/branding-section";
 import TaxCodesSection from "@/components/settings/tax-codes-section";
+import EquipmentItemsSection from "@/components/settings/equipment-items-section";
 
 export const metadata = { title: "Settings" };
 
@@ -24,7 +25,7 @@ export default async function SettingsPage({
 
   const sp = await searchParams;
 
-  const [org, users, templates, pendingInvites, taxCodes] = await Promise.all([
+  const [org, users, templates, pendingInvites, taxCodes, equipmentItems] = await Promise.all([
     prisma.organization.findUnique({ where: { id: user.organizationId } }),
     prisma.user.findMany({
       where: { organizationId: user.organizationId, isActive: true },
@@ -46,6 +47,10 @@ export default async function SettingsPage({
     prisma.taxCode.findMany({
       where: { organizationId: user.organizationId },
       orderBy: [{ isDefault: "desc" }, { state: "asc" }, { city: "asc" }, { name: "asc" }],
+    }),
+    prisma.equipmentItem.findMany({
+      where: { organizationId: user.organizationId, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
   ]);
 
@@ -96,6 +101,17 @@ export default async function SettingsPage({
           canEdit={canEdit}
         />
       </div>
+
+      {/* Equipment Items */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Equipment & Gear Checklist</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Define the equipment items that dogs and handlers should check out before field work and return afterward.
+          </p>
+          <EquipmentItemsSection initialItems={JSON.parse(JSON.stringify(equipmentItems))} />
+        </div>
+      )}
 
       {/* Booking Link */}
       {canEdit && (

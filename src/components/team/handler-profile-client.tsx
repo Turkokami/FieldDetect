@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Plus, Trash2, X, Upload } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { EquipmentTab } from "@/components/shared/equipment-tab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -471,12 +472,13 @@ function PhotosTab({ handler, canEdit }: { handler: Handler; canEdit: boolean })
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-type Tab = "overview" | "certifications" | "photos";
+type Tab = "overview" | "certifications" | "photos" | "equipment";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",       label: "Overview" },
   { id: "certifications", label: "Certifications" },
   { id: "photos",         label: "Photos" },
+  { id: "equipment",      label: "Equipment" },
 ];
 
 export function HandlerProfileClient({ handler, canEdit }: { handler: Handler; canEdit: boolean }) {
@@ -519,6 +521,7 @@ export function HandlerProfileClient({ handler, canEdit }: { handler: Handler; c
         {tab === "overview"       && <OverviewTab       handler={handler} canEdit={canEdit} />}
         {tab === "certifications" && <CertificationsTab handler={handler} canEdit={canEdit} />}
         {tab === "photos"         && <PhotosTab         handler={handler} canEdit={canEdit} />}
+        {tab === "equipment"      && <EquipmentTab      entityId={handler.id} entityType="handler" canEdit={canEdit} />}
       </div>
     </div>
   );

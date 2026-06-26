@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { FeedingTab } from "@/components/k9teams/feeding-tab";
+import { EquipmentTab } from "@/components/shared/equipment-tab";
 
 // ─── Types from Prisma (serialized) ──────────────────────────────────────────
 
@@ -917,15 +919,17 @@ function InsuranceTab({ dog, canEdit }: { dog: Dog; canEdit: boolean }) {
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-type Tab = "overview" | "certs" | "vaccinations" | "vet" | "grooming" | "insurance";
+type Tab = "overview" | "certs" | "vaccinations" | "vet" | "grooming" | "insurance" | "feeding" | "equipment";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "certs", label: "Certifications" },
-  { id: "vaccinations", label: "Vaccinations" },
-  { id: "vet", label: "Vet" },
-  { id: "grooming", label: "Grooming" },
-  { id: "insurance", label: "Insurance" },
+  { id: "overview",    label: "Overview" },
+  { id: "certs",       label: "Certifications" },
+  { id: "vaccinations",label: "Vaccinations" },
+  { id: "vet",         label: "Vet" },
+  { id: "grooming",    label: "Grooming" },
+  { id: "insurance",   label: "Insurance" },
+  { id: "feeding",     label: "Feeding" },
+  { id: "equipment",   label: "Equipment" },
 ];
 
 export function DogProfileClient({ dog, canEdit }: { dog: Dog; canEdit: boolean }) {
@@ -952,12 +956,14 @@ export function DogProfileClient({ dog, canEdit }: { dog: Dog; canEdit: boolean 
 
       {/* Tab content */}
       <div className="p-5">
-        {tab === "overview" && <OverviewTab dog={dog} canEdit={canEdit} />}
-        {tab === "certs" && <CertificationsTab dog={dog} canEdit={canEdit} />}
-        {tab === "vaccinations" && <VaccinationsTab dog={dog} canEdit={canEdit} />}
-        {tab === "vet" && <VetTab dog={dog} canEdit={canEdit} />}
-        {tab === "grooming" && <GroomingTab dog={dog} canEdit={canEdit} />}
-        {tab === "insurance" && <InsuranceTab dog={dog} canEdit={canEdit} />}
+        {tab === "overview"    && <OverviewTab    dog={dog} canEdit={canEdit} />}
+        {tab === "certs"       && <CertificationsTab dog={dog} canEdit={canEdit} />}
+        {tab === "vaccinations"&& <VaccinationsTab dog={dog} canEdit={canEdit} />}
+        {tab === "vet"         && <VetTab         dog={dog} canEdit={canEdit} />}
+        {tab === "grooming"    && <GroomingTab     dog={dog} canEdit={canEdit} />}
+        {tab === "insurance"   && <InsuranceTab    dog={dog} canEdit={canEdit} />}
+        {tab === "feeding"     && <FeedingTab      dogId={dog.id} canEdit={canEdit} />}
+        {tab === "equipment"   && <EquipmentTab    entityId={dog.id} entityType="dog" canEdit={canEdit} />}
       </div>
     </div>
   );
