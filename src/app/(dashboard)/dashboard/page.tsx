@@ -332,7 +332,6 @@ export default async function DashboardPage() {
                     {isActive && (
                       <Link
                         href={`/field/${appt.id}`}
-                        onClick={(e) => e.stopPropagation()}
                         className="text-[10px] px-2 py-1 rounded-lg font-semibold text-white shrink-0"
                         style={{ background: "#0ABAB5" }}
                       >
