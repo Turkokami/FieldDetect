@@ -37,7 +37,11 @@ export const ourFileRouter = {
       if (!user || !["OWNER", "ADMIN"].includes(user.role)) throw new Error("Unauthorized");
       return { organizationId: user.organizationId };
     })
-    .onUploadComplete(async ({ file }) => {
+    .onUploadComplete(async ({ metadata, file }) => {
+      await prisma.organization.update({
+        where: { id: metadata.organizationId },
+        data: { logoUrl: file.ufsUrl },
+      });
       return { url: file.ufsUrl };
     }),
 } satisfies FileRouter;
