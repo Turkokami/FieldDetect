@@ -206,13 +206,16 @@ export default async function DashboardPage() {
     prisma.appointment.count({ where: { organizationId: user.organizationId } }),
     prisma.handlerCertification.findMany({
       where: {
-        expiresAt: { not: null, lte: now30 },
-        user: { organizationId: user.organizationId, isActive: true },
+        AND: [
+          { expiresAt: { not: null } },
+          { expiresAt: { lte: now30 } },
+          { user: { organizationId: user.organizationId, isActive: true } },
+        ],
       },
       include: { user: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: { expiresAt: "asc" },
       take: 10,
-    }),
+    }).catch((e) => { console.error("[DASHBOARD] cert query failed:", e); return []; }),
   ]);
 
   const today = new Date();
