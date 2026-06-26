@@ -9,9 +9,9 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type { EventDropArg, EventClickArg, DatesSetArg, EventInput } from "@fullcalendar/core";
 import {
   format, startOfWeek, addDays, isSameDay, isToday, isTomorrow,
-  addMonths, subMonths, startOfMonth, endOfMonth,
+  addMonths, subMonths, startOfMonth, endOfMonth, getDaysInMonth,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,9 +65,18 @@ type Appointment = {
   status: string;
   serviceType: string;
   customer: { firstName: string; lastName: string; companyName: string | null };
-  property: { name: string; addressLine1: string; city: string; state: string };
+  property: { name: string; addressLine1: string; city: string; state: string; propertyType?: string | null };
   technician: { id: string; firstName: string; lastName: string } | null;
   k9Team: { id: string; name: string } | null;
+};
+
+type PPERequirement = {
+  id: string;
+  facilityType: string;
+  name: string;
+  description: string | null;
+  isForHandler: boolean;
+  isForDog: boolean;
 };
 
 type PendingMove = {
@@ -125,10 +134,12 @@ function AppointmentRow({
   apt,
   techColorMap,
   onSelect,
+  ppeAlerts,
 }: {
   apt: Appointment;
   techColorMap: Record<string, string>;
   onSelect: (id: string) => void;
+  ppeAlerts?: PPERequirement[];
 }) {
   const start = new Date(apt.scheduledDate);
   const statusColor = STATUS_COLORS[apt.status] ?? "#64748b";
@@ -186,6 +197,25 @@ function AppointmentRow({
             </div>
           )}
         </div>
+        {ppeAlerts && ppeAlerts.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {ppeAlerts.map((p) => (
+              <span
+                key={p.id}
+                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium"
+                title={p.description ?? undefined}
+              >
+                <ShieldAlert className="h-2.5 w-2.5" />
+                {p.name}
+                {(p.isForHandler || p.isForDog) && (
+                  <span className="text-amber-600">
+                    ({[p.isForHandler && "Handler", p.isForDog && "Dog"].filter(Boolean).join("/")})
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </button>
   );
@@ -194,12 +224,13 @@ function AppointmentRow({
 // ─── Mobile Day View ──────────────────────────────────────────────────────────
 
 function MobileDayView({
-  date, appointments, techColorMap, onSelect,
+  date, appointments, techColorMap, onSelect, ppeRequirements,
 }: {
   date: Date;
   appointments: Appointment[];
   techColorMap: Record<string, string>;
   onSelect: (id: string) => void;
+  ppeRequirements: PPERequirement[];
 }) {
   const dayAppts = useMemo(() =>
     appointments
@@ -207,6 +238,20 @@ function MobileDayView({
       .sort((a, b) => +new Date(a.scheduledDate) - +new Date(b.scheduledDate)),
     [appointments, date]
   );
+
+  // Collect all unique PPE requirements for today's facility types
+  const dayPPEByApt = useMemo(() => {
+    const map = new Map<string, PPERequirement[]>();
+    for (const apt of dayAppts) {
+      const ft = apt.property.propertyType;
+      if (ft) {
+        map.set(apt.id, ppeRequirements.filter((p) => p.facilityType === ft));
+      } else {
+        map.set(apt.id, []);
+      }
+    }
+    return map;
+  }, [dayAppts, ppeRequirements]);
 
   return (
     <div>
@@ -232,7 +277,13 @@ function MobileDayView({
       ) : (
         <div className="space-y-2">
           {dayAppts.map((apt) => (
-            <AppointmentRow key={apt.id} apt={apt} techColorMap={techColorMap} onSelect={onSelect} />
+            <AppointmentRow
+              key={apt.id}
+              apt={apt}
+              techColorMap={techColorMap}
+              onSelect={onSelect}
+              ppeAlerts={dayPPEByApt.get(apt.id)}
+            />
           ))}
         </div>
       )}
@@ -243,12 +294,13 @@ function MobileDayView({
 // ─── Mobile Week View ─────────────────────────────────────────────────────────
 
 function MobileWeekView({
-  weekStart, appointments, techColorMap, onSelect,
+  weekStart, appointments, techColorMap, onSelect, ppeRequirements,
 }: {
   weekStart: Date;
   appointments: Appointment[];
   techColorMap: Record<string, string>;
   onSelect: (id: string) => void;
+  ppeRequirements: PPERequirement[];
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -293,7 +345,13 @@ function MobileWeekView({
             ) : (
               <div className="space-y-2">
                 {dayAppts.map((apt) => (
-                  <AppointmentRow key={apt.id} apt={apt} techColorMap={techColorMap} onSelect={onSelect} />
+                  <AppointmentRow
+                    key={apt.id}
+                    apt={apt}
+                    techColorMap={techColorMap}
+                    onSelect={onSelect}
+                    ppeAlerts={ppeRequirements.filter((p) => p.facilityType === apt.property.propertyType)}
+                  />
                 ))}
               </div>
             )}
@@ -307,14 +365,19 @@ function MobileWeekView({
 // ─── Mobile Month View (agenda) ───────────────────────────────────────────────
 
 function MobileMonthView({
-  monthDate, appointments, techColorMap, onSelect,
+  monthDate, appointments, techColorMap, onSelect, ppeRequirements,
 }: {
   monthDate: Date;
   appointments: Appointment[];
   techColorMap: Record<string, string>;
   onSelect: (id: string) => void;
+  ppeRequirements: PPERequirement[];
 }) {
-  const grouped = useMemo(() => {
+  const [selectedDay, setSelectedDay] = useState<string | null>(() =>
+    format(new Date(), "yyyy-MM-dd")
+  );
+
+  const apptsByDay = useMemo(() => {
     const map: Record<string, Appointment[]> = {};
     for (const a of appointments) {
       const key = format(new Date(a.scheduledDate), "yyyy-MM-dd");
@@ -324,42 +387,96 @@ function MobileMonthView({
     for (const list of Object.values(map)) {
       list.sort((a, b) => +new Date(a.scheduledDate) - +new Date(b.scheduledDate));
     }
-    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+    return map;
   }, [appointments]);
+
+  // Build grid: start of first week containing the 1st of the month
+  const monthStart = startOfMonth(monthDate);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sun-start for grid
+  const daysInMonth = getDaysInMonth(monthDate);
+  // 6 rows × 7 cols = 42 cells
+  const gridDays = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+
+  const selectedAppts = selectedDay ? (apptsByDay[selectedDay] ?? []) : [];
 
   return (
     <div className="space-y-4">
-      {appointments.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card py-12 text-center">
-          <div className="text-2xl mb-2">📅</div>
-          <p className="text-sm font-medium text-foreground">No jobs this month</p>
-          <p className="text-xs text-muted-foreground mt-1">{format(monthDate, "MMMM yyyy")} is clear</p>
+      {/* Mini month grid */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        {/* Day headers */}
+        <div className="grid grid-cols-7 border-b border-border">
+          {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
+            <div key={d} className="py-2 text-center text-[11px] font-semibold text-muted-foreground">{d}</div>
+          ))}
         </div>
-      ) : (
-        grouped.map(([dateKey, dayAppts]) => {
-          const date = new Date(dateKey + "T12:00:00");
-          const todayDay = isToday(date);
-          return (
-            <div key={dateKey}>
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <div
-                  className="text-xs font-semibold uppercase tracking-wide"
-                  style={{ color: todayDay ? "#0ABAB5" : undefined }}
+        {/* Date cells — 6 rows */}
+        <div className="grid grid-cols-7">
+          {gridDays.map((day, i) => {
+            const key = format(day, "yyyy-MM-dd");
+            const inMonth = day.getMonth() === monthDate.getMonth();
+            const today = isToday(day);
+            const selected = key === selectedDay;
+            const dotCount = Math.min(apptsByDay[key]?.length ?? 0, 3);
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedDay(key)}
+                className={`relative flex flex-col items-center py-1.5 text-sm transition-colors ${
+                  !inMonth ? "opacity-30" : ""
+                } ${selected ? "bg-primary/10" : "hover:bg-muted/50"}`}
+              >
+                <span
+                  className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium ${
+                    today
+                      ? "bg-primary text-white font-bold"
+                      : selected
+                      ? "text-primary font-semibold"
+                      : "text-foreground"
+                  }`}
                 >
-                  {isToday(date) ? "Today" : isTomorrow(date) ? "Tomorrow" : format(date, "EEE, MMM d")}
-                </div>
-                {todayDay && <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#0ABAB5" }} />}
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">{dayAppts.length}</span>
-              </div>
-              <div className="space-y-2">
-                {dayAppts.map((apt) => (
-                  <AppointmentRow key={apt.id} apt={apt} techColorMap={techColorMap} onSelect={onSelect} />
-                ))}
-              </div>
+                  {day.getDate()}
+                </span>
+                {dotCount > 0 && (
+                  <div className="flex gap-0.5 mt-0.5 h-1.5">
+                    {Array.from({ length: dotCount }).map((_, di) => (
+                      <div key={di} className="w-1 h-1 rounded-full bg-primary" />
+                    ))}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected day appointments */}
+      {selectedDay && (
+        <div>
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: isToday(new Date(selectedDay + "T12:00:00")) ? "#0ABAB5" : undefined }}>
+              {isToday(new Date(selectedDay + "T12:00:00")) ? "Today" : isTomorrow(new Date(selectedDay + "T12:00:00")) ? "Tomorrow" : format(new Date(selectedDay + "T12:00:00"), "EEE, MMM d")}
             </div>
-          );
-        })
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">{selectedAppts.length} job{selectedAppts.length !== 1 ? "s" : ""}</span>
+          </div>
+          {selectedAppts.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card py-8 text-center">
+              <p className="text-sm text-muted-foreground">No jobs this day</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {selectedAppts.map((apt) => (
+                <AppointmentRow
+                  key={apt.id}
+                  apt={apt}
+                  techColorMap={techColorMap}
+                  onSelect={onSelect}
+                  ppeAlerts={ppeRequirements.filter((p) => p.facilityType === apt.property.propertyType)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -370,9 +487,11 @@ function MobileMonthView({
 export function SchedulingCalendar({
   initialAppointments,
   technicians,
+  ppeRequirements = [],
 }: {
   initialAppointments: Appointment[];
   technicians: Technician[];
+  ppeRequirements?: PPERequirement[];
 }) {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -604,6 +723,7 @@ export function SchedulingCalendar({
               appointments={appointments}
               techColorMap={techColorMap}
               onSelect={setSelectedAptId}
+              ppeRequirements={ppeRequirements}
             />
           )}
           {view === "week" && (
@@ -612,6 +732,7 @@ export function SchedulingCalendar({
               appointments={appointments}
               techColorMap={techColorMap}
               onSelect={setSelectedAptId}
+              ppeRequirements={ppeRequirements}
             />
           )}
           {view === "month" && (
@@ -620,6 +741,7 @@ export function SchedulingCalendar({
               appointments={appointments}
               techColorMap={techColorMap}
               onSelect={setSelectedAptId}
+              ppeRequirements={ppeRequirements}
             />
           )}
         </div>

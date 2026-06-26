@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
             select: { id: true, firstName: true, lastName: true, companyName: true, phone: true },
           },
           property: {
-            select: { id: true, name: true, addressLine1: true, city: true, state: true },
+            select: { id: true, name: true, addressLine1: true, city: true, state: true, propertyType: true },
           },
           technician: {
             select: { id: true, firstName: true, lastName: true, avatarUrl: true },

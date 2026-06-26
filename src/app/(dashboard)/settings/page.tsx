@@ -9,6 +9,7 @@ import BookingLinkCard from "@/components/settings/booking-link-card";
 import BrandingSection from "@/components/settings/branding-section";
 import TaxCodesSection from "@/components/settings/tax-codes-section";
 import EquipmentItemsSection from "@/components/settings/equipment-items-section";
+import PPERequirementsSection from "@/components/settings/ppe-requirements-section";
 
 export const metadata = { title: "Settings" };
 
@@ -25,7 +26,7 @@ export default async function SettingsPage({
 
   const sp = await searchParams;
 
-  const [org, users, templates, pendingInvites, taxCodes, equipmentItems] = await Promise.all([
+  const [org, users, templates, pendingInvites, taxCodes, equipmentItems, ppeRequirements] = await Promise.all([
     prisma.organization.findUnique({ where: { id: user.organizationId } }),
     prisma.user.findMany({
       where: { organizationId: user.organizationId, isActive: true },
@@ -51,6 +52,10 @@ export default async function SettingsPage({
     prisma.equipmentItem.findMany({
       where: { organizationId: user.organizationId, isActive: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+    prisma.facilityPPERequirement.findMany({
+      where: { organizationId: user.organizationId, isActive: true },
+      orderBy: [{ facilityType: "asc" }, { sortOrder: "asc" }],
     }),
   ]);
 
@@ -110,6 +115,17 @@ export default async function SettingsPage({
             Define the equipment items that dogs and handlers should check out before field work and return afterward.
           </p>
           <EquipmentItemsSection initialItems={JSON.parse(JSON.stringify(equipmentItems))} />
+        </div>
+      )}
+
+      {/* PPE Requirements */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">PPE Requirements by Facility</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Set required PPE for handlers and dogs based on facility type. Reminders appear on the calendar day view.
+          </p>
+          <PPERequirementsSection initialItems={JSON.parse(JSON.stringify(ppeRequirements))} />
         </div>
       )}
 

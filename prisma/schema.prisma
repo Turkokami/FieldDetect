@@ -231,6 +231,7 @@ model Organization {
   staffInvitations      StaffInvitation[]
   taxCodes              TaxCode[]
   equipmentItems        EquipmentItem[]
+  ppeRequirements       FacilityPPERequirement[]
 
   @@map("organizations")
 }
@@ -1032,6 +1033,7 @@ model EquipmentItem {
   description    String?
   category       String?
   isRequired     Boolean  @default(false)
+  isTravel       Boolean  @default(false)
   sortOrder      Int      @default(0)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -1041,6 +1043,24 @@ model EquipmentItem {
   checkoutItems   EquipmentCheckoutItem[]
 
   @@map("equipment_items")
+}
+
+model FacilityPPERequirement {
+  id             String   @id @default(cuid())
+  organizationId String
+  facilityType   String
+  name           String
+  description    String?
+  isForHandler   Boolean  @default(true)
+  isForDog       Boolean  @default(false)
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("facility_ppe_requirements")
 }
 
 model EquipmentCheckout {

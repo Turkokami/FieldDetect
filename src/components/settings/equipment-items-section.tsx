@@ -10,6 +10,7 @@ type EquipmentItem = {
   description: string | null;
   category: string | null;
   isRequired: boolean;
+  isTravel: boolean;
   sortOrder: number;
   isActive: boolean;
 };
@@ -26,11 +27,13 @@ export default function EquipmentItemsSection({
 }) {
   const [items, setItems] = useState<EquipmentItem[]>(initialItems);
   const [showAdd, setShowAdd] = useState(false);
+  const [listFilter, setListFilter] = useState<"standard" | "travel">("standard");
   const [form, setForm] = useState({
     name: "",
     description: "",
     category: "",
     isRequired: false,
+    isTravel: false,
   });
   const [saving, setSaving] = useState(false);
 
@@ -46,13 +49,14 @@ export default function EquipmentItemsSection({
           description: form.description || null,
           category: form.category || null,
           isRequired: form.isRequired,
+          isTravel: form.isTravel,
           sortOrder: items.length,
         }),
       });
       if (!res.ok) throw new Error();
       const j = await res.json();
       setItems((prev) => [...prev, j.data]);
-      setForm({ name: "", description: "", category: "", isRequired: false });
+      setForm({ name: "", description: "", category: "", isRequired: false, isTravel: false });
       setShowAdd(false);
       toast.success("Equipment item added");
     } catch {
@@ -87,28 +91,46 @@ export default function EquipmentItemsSection({
     }
   };
 
+  const filteredItems = items.filter((i) => (listFilter === "travel" ? i.isTravel : !i.isTravel));
+
   const grouped = CATEGORIES.reduce((acc, cat) => {
-    const matching = items.filter((i) => i.category === cat);
+    const matching = filteredItems.filter((i) => i.category === cat);
     if (matching.length > 0) acc[cat] = matching;
     return acc;
   }, {} as Record<string, EquipmentItem[]>);
 
-  const uncategorized = items.filter((i) => !i.category || !CATEGORIES.includes(i.category));
+  const uncategorized = filteredItems.filter((i) => !i.category || !CATEGORIES.includes(i.category));
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Items added here appear on equipment checklists for dogs and handlers during field work.
-        </p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
+          <button
+            onClick={() => setListFilter("standard")}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${listFilter === "standard" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Daily Field Work
+          </button>
+          <button
+            onClick={() => setListFilter("travel")}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${listFilter === "travel" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Out-of-State / Travel
+          </button>
+        </div>
         <button
-          onClick={() => setShowAdd(true)}
+          onClick={() => { setForm((f) => ({ ...f, isTravel: listFilter === "travel" })); setShowAdd(true); }}
           className="flex items-center gap-1.5 px-3 h-8 border border-border rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
           Add Item
         </button>
       </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        {listFilter === "travel"
+          ? "Items techs need to pack for overnight or out-of-state trips."
+          : "Items checked out before and returned after each field inspection."}
+      </p>
 
       {showAdd && (
         <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3">
@@ -131,10 +153,17 @@ export default function EquipmentItemsSection({
               <input type="text" className={inputCls} placeholder="Optional description" value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <input type="checkbox" id="required-check" checked={form.isRequired}
-                onChange={(e) => setForm((f) => ({ ...f, isRequired: e.target.checked }))} />
-              <label htmlFor="required-check" className="text-sm text-foreground">Mark as required item</label>
+            <div className="col-span-2 flex items-center gap-6">
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                <input type="checkbox" checked={form.isRequired}
+                  onChange={(e) => setForm((f) => ({ ...f, isRequired: e.target.checked }))} />
+                Mark as required
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                <input type="checkbox" checked={form.isTravel}
+                  onChange={(e) => setForm((f) => ({ ...f, isTravel: e.target.checked }))} />
+                Out-of-state / Travel item
+              </label>
             </div>
           </div>
           <div className="flex gap-2">

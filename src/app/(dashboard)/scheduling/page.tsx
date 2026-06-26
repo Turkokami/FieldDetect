@@ -20,7 +20,7 @@ export default async function SchedulingPage() {
   const rangeStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const rangeEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0, 23, 59, 59);
 
-  const [appointments, bookingRequests] = await Promise.all([
+  const [appointments, bookingRequests, ppeRequirements] = await Promise.all([
   prisma.appointment.findMany({
     where: {
       organizationId: user.organizationId,
@@ -28,7 +28,7 @@ export default async function SchedulingPage() {
     },
     include: {
       customer: { select: { firstName: true, lastName: true, companyName: true } },
-      property: { select: { name: true, addressLine1: true, city: true, state: true } },
+      property: { select: { name: true, addressLine1: true, city: true, state: true, propertyType: true } },
       technician: { select: { id: true, firstName: true, lastName: true } },
       k9Team: { select: { id: true, name: true } },
     },
@@ -41,6 +41,10 @@ export default async function SchedulingPage() {
       property: { select: { name: true, addressLine1: true, city: true, state: true } },
     },
     orderBy: { scheduledDate: "asc" },
+  }),
+  prisma.facilityPPERequirement.findMany({
+    where: { organizationId: user.organizationId, isActive: true },
+    orderBy: [{ facilityType: "asc" }, { sortOrder: "asc" }],
   }),
   ]);
 
@@ -75,6 +79,7 @@ export default async function SchedulingPage() {
       <SchedulingCalendar
         initialAppointments={JSON.parse(JSON.stringify(appointments))}
         technicians={JSON.parse(JSON.stringify(technicians))}
+        ppeRequirements={JSON.parse(JSON.stringify(ppeRequirements))}
       />
     </div>
   );

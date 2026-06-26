@@ -4,13 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  name:        z.string().min(1).optional(),
-  description: z.string().nullable().optional(),
-  category:    z.string().nullable().optional(),
-  isRequired:  z.boolean().optional(),
-  isTravel:    z.boolean().optional(),
-  sortOrder:   z.number().int().optional(),
-  isActive:    z.boolean().optional(),
+  facilityType: z.string().min(1).optional(),
+  name:         z.string().min(1).optional(),
+  description:  z.string().nullable().optional(),
+  isForHandler: z.boolean().optional(),
+  isForDog:     z.boolean().optional(),
+  sortOrder:    z.number().int().optional(),
+  isActive:     z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -32,20 +32,20 @@ export async function PATCH(
     const body = await req.json();
     const validated = updateSchema.parse(body);
 
-    const item = await prisma.equipmentItem.updateMany({
+    const result = await prisma.facilityPPERequirement.updateMany({
       where: { id, organizationId: user.organizationId },
       data: validated,
     });
 
-    if (item.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (result.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const updated = await prisma.equipmentItem.findUnique({ where: { id } });
+    const updated = await prisma.facilityPPERequirement.findUnique({ where: { id } });
     return NextResponse.json({ data: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation error", details: error.issues }, { status: 400 });
     }
-    console.error("[EQUIPMENT_ITEM_PATCH]", error);
+    console.error("[PPE_PATCH]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -67,14 +67,13 @@ export async function DELETE(
 
     const { id } = await params;
 
-    await prisma.equipmentItem.updateMany({
+    await prisma.facilityPPERequirement.deleteMany({
       where: { id, organizationId: user.organizationId },
-      data: { isActive: false },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[EQUIPMENT_ITEM_DELETE]", error);
+    console.error("[PPE_DELETE]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
