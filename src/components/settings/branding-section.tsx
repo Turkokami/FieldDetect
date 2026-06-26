@@ -23,32 +23,28 @@ export default function BrandingSection({ logoUrl, brandColor, canEdit }: Props)
   const [savingColor, setSavingColor] = useState(false);
   const [savedColor, setSavedColor] = useState(false);
 
-  const { startUpload, isUploading } = useUploadThing("orgLogo", {
-    onClientUploadComplete: async (uploaded) => {
-      const file = uploaded?.[0];
-      const url = file?.ufsUrl ?? file?.url ?? (file?.serverData as { url?: string } | null)?.url;
-      if (!url) { toast.error("Upload failed — no URL returned"); return; }
-      try {
-        const res = await fetch("/api/settings", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ logoUrl: url }),
-        });
-        if (!res.ok) throw new Error("Failed to save logo");
-        setCurrentLogo(url);
-        toast.success("Logo updated");
-        router.refresh();
-      } catch {
-        toast.error("Failed to save logo");
-      }
-    },
-    onUploadError: () => { toast.error("Upload failed — check UploadThing is configured"); },
-  });
+  const { startUpload, isUploading } = useUploadThing("orgLogo");
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    startUpload([file]).catch(() => toast.error("Upload failed"));
+    try {
+      const uploaded = await startUpload([file]);
+      const f = uploaded?.[0];
+      const url = f?.ufsUrl ?? f?.url ?? (f?.serverData as { url?: string } | null)?.url;
+      if (!url) { toast.error("Upload failed — no URL returned"); return; }
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logoUrl: url }),
+      });
+      if (!res.ok) throw new Error();
+      setCurrentLogo(url);
+      toast.success("Logo updated");
+      router.refresh();
+    } catch {
+      toast.error("Upload failed");
+    }
   };
 
   const removeLogo = async () => {
