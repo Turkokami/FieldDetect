@@ -175,7 +175,7 @@ export function VehicleProfileClient({
       </div>
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl shrink-0">
             {VEHICLE_TYPE_ICONS[vehicle.type] ?? "🚘"}
@@ -253,12 +253,12 @@ export function VehicleProfileClient({
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-border flex gap-1">
+      <div className="border-b border-border flex gap-1 overflow-x-auto scrollbar-none">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-1.5 ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               tab === t.id
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"

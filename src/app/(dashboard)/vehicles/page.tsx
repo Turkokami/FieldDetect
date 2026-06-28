@@ -107,14 +107,18 @@ export default async function VehiclesPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 pt-3 border-t border-border text-xs text-muted-foreground">
-                  <span>{v._count.assignments} assigned</span>
-                  <span>{v._count.appointments} job{v._count.appointments !== 1 ? "s" : ""}</span>
-                  <span>{v._count.mileageLogs} trip{v._count.mileageLogs !== 1 ? "s" : ""}</span>
+                <div className="pt-3 border-t border-border space-y-1">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{v._count.assignments} assigned</span>
+                    <span className="text-border">·</span>
+                    <span>{v._count.appointments} job{v._count.appointments !== 1 ? "s" : ""}</span>
+                    <span className="text-border">·</span>
+                    <span>{v._count.mileageLogs} trip{v._count.mileageLogs !== 1 ? "s" : ""}</span>
+                  </div>
                   {lastService && (
-                    <span className="ml-auto text-[10px]">
-                      Last service: {new Date(lastService.performedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
+                    <div className="text-[10px] text-muted-foreground">
+                      Last service: {new Date(lastService.performedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </div>
                   )}
                 </div>
               </Link>
