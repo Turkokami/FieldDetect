@@ -1,0 +1,635 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  HOMEOWNER
+  REALTOR
+  ADMIN
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  PENDING
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+}
+
+enum TransactionType {
+  BUYER
+  SELLER
+  RENTER
+  INVESTOR
+  LANDLORD
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PROFESSIONAL
+  PREMIUM
+}
+
+enum AdStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  PENDING_REVIEW
+}
+
+enum AdType {
+  FEATURED_PROFILE
+  CITY_SPONSOR
+  ZIP_SPONSOR
+  BANNER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportType {
+  FAKE_REVIEW
+  SPAM
+  INAPPROPRIATE_CONTENT
+  WRONG_INFORMATION
+  HARASSMENT
+  OTHER
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  emailVerified  DateTime?
+  name           String?
+  image          String?
+  hashedPassword String?
+  role           UserRole  @default(HOMEOWNER)
+  phone          String?
+  bio            String?
+  city           String?
+  state          String?
+  zipCode        String?
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  realtorProfile   RealtorProfile?
+  reviews          Review[]          @relation("ReviewAuthor")
+  receivedReviews  Review[]          @relation("ReviewTarget")
+  homeListings     HomeListing[]
+  favorites        FavoriteRealtor[]
+  sentMessages     Message[]         @relation("MessageSender")
+  receivedMessages Message[]         @relation("MessageReceiver")
+  messageThreads   MessageThread[]   @relation("ThreadParticipants")
+  payments         Payment[]
+  reports          Report[]          @relation("ReportAuthor")
+  reportedReports  Report[]          @relation("ReportTarget")
+  adminActions     AdminActionLog[]
+  accounts         Account[]
+  sessions         Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Brokerage {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  website    String?
+  logo       String?
+  phone      String?
+  email      String?
+  address    String?
+  city       String?
+  state      String?
+  zipCode    String?
+  isVerified Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  realtors RealtorProfile[]
+}
+
+model RealtorProfile {
+  id          String  @id @default(cuid())
+  userId      String? @unique
+  brokerageId String?
+
+  firstName     String
+  lastName      String
+  licenseNumber String?
+  licenseState  String?
+  profilePhoto  String?
+  coverPhoto    String?
+  bio           String? @db.Text
+  tagline       String?
+
+  phone   String?
+  email   String?
+  website String?
+
+  linkedinUrl  String?
+  facebookUrl  String?
+  instagramUrl String?
+  twitterUrl   String?
+  youtubeUrl   String?
+
+  yearsInBusiness      Int?
+  specialties          String[]
+  languages            String[]
+  serviceAreas         String[]
+  propertyTypes        String[]
+  awards               String[]
+
+  totalSalesVolume     Float?
+  numberOfTransactions Int?
+  averageListingPrice  Float?
+
+  isClaimed          Boolean            @default(false)
+  isVerified         Boolean            @default(false)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  isActive           Boolean            @default(true)
+  subscriptionTier   SubscriptionTier   @default(FREE)
+  isFeatured         Boolean            @default(false)
+
+  adminNotes String?   @db.Text
+  claimedAt  DateTime?
+  verifiedAt DateTime?
+
+  profileViews  Int @default(0)
+  leadsReceived Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user                 User?                       @relation(fields: [userId], references: [id])
+  brokerage            Brokerage?                  @relation(fields: [brokerageId], references: [id])
+  reviews              Review[]
+  claimRequests        RealtorClaimRequest[]
+  proposals            RealtorProposal[]
+  favorites            FavoriteRealtor[]
+  advertisements       Advertisement[]
+  soldProperties       SoldProperty[]
+  externalSources      ExternalSource[]
+  reputationSummaries  ExternalReputationSummary[]
+  verificationRequests VerificationRequest[]
+  leads                Lead[]
+  teamPhotos           TeamPhoto[]
+
+  @@index([isVerified, isFeatured])
+}
+
+model TeamPhoto {
+  id        String         @id @default(cuid())
+  realtorId String
+  url       String
+  caption   String?
+  order     Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+}
+
+model SoldProperty {
+  id              String          @id @default(cuid())
+  realtorId       String
+  address         String?
+  city            String
+  state           String
+  price           Float?
+  saleDate        DateTime?
+  propertyType    String?
+  bedrooms        Int?
+  bathrooms       Float?
+  sqFt            Int?
+  description     String?         @db.Text
+  photo           String?
+  transactionType TransactionType
+  createdAt       DateTime        @default(now())
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+}
+
+model RealtorClaimRequest {
+  id            String             @id @default(cuid())
+  realtorId     String
+  userId        String
+  licenseNumber String
+  licenseState  String
+  brokerageName String?
+  proofDocument String?
+  status        VerificationStatus @default(PENDING)
+  adminNotes    String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id])
+}
+
+model Review {
+  id               String  @id @default(cuid())
+  authorId         String
+  realtorId        String
+  realtorProfileId String
+
+  overallRating         Float
+  communicationRating   Float?
+  negotiationRating     Float?
+  marketKnowledgeRating Float?
+  responsivenessRating  Float?
+  professionalismRating Float?
+  honestyRating         Float?
+
+  title          String?
+  content        String  @db.Text
+  wouldRecommend Boolean
+
+  transactionType TransactionType
+  transactionDate DateTime?
+  propertyCity    String?
+  propertyState   String?
+
+  isVerified        Boolean   @default(false)
+  verificationToken String?   @unique
+  verifiedAt        DateTime?
+
+  status      ReviewStatus @default(PENDING)
+  adminNotes  String?
+  moderatedBy String?
+  moderatedAt DateTime?
+
+  realtorResponse String?   @db.Text
+  respondedAt     DateTime?
+
+  isHelpful Int @default(0)
+  viewCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author         User           @relation("ReviewAuthor", fields: [authorId], references: [id])
+  realtor        User?          @relation("ReviewTarget", fields: [realtorId], references: [id])
+  realtorProfile RealtorProfile @relation(fields: [realtorProfileId], references: [id])
+  photos         ReviewPhoto[]
+  reports        Report[]
+
+  @@index([realtorProfileId, status])
+  @@index([authorId])
+}
+
+model ReviewPhoto {
+  id        String   @id @default(cuid())
+  reviewId  String
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}
+
+model ExternalSource {
+  id              String         @id @default(cuid())
+  realtorId       String
+  sourceName      String
+  sourceUrl       String
+  rating          Float?
+  reviewCount     Int?
+  rawData         Json?
+  confidenceScore Float?
+  isApproved      Boolean        @default(false)
+  lastFetchedAt   DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id])
+}
+
+model ExternalReputationSummary {
+  id            String   @id @default(cuid())
+  realtorId     String
+  summary       String   @db.Text
+  sentiment     String?
+  keyThemes     String[]
+  sources       String[]
+  isApproved    Boolean  @default(false)
+  isDisputed    Boolean  @default(false)
+  disputeReason String?  @db.Text
+  generatedAt   DateTime @default(now())
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id])
+}
+
+model HomeListing {
+  id          String @id @default(cuid())
+  homeownerId String
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String
+  state        String
+  zipCode      String
+  propertyType String
+
+  estimatedValue Float?
+  bedrooms       Int?
+  bathrooms      Float?
+  sqFt           Int?
+  lotSize        Float?
+  yearBuilt      Int?
+
+  description          String?       @db.Text
+  desiredTimeline      String?
+  commissionPreference String?
+  needsRepairs         Boolean       @default(false)
+  needsStaging         Boolean       @default(false)
+  needsPhotography     Boolean       @default(false)
+  specialNotes         String?       @db.Text
+
+  status   ListingStatus @default(DRAFT)
+  isPublic Boolean       @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  homeowner User               @relation(fields: [homeownerId], references: [id])
+  photos    HomeListingPhoto[]
+  proposals RealtorProposal[]
+
+  @@index([city, state, status])
+}
+
+model HomeListingPhoto {
+  id        String      @id @default(cuid())
+  listingId String
+  url       String
+  caption   String?
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  listing HomeListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model RealtorProposal {
+  id        String @id @default(cuid())
+  listingId String
+  realtorId String
+
+  coverLetter   String  @db.Text
+  proposedRate  Float?
+  marketingPlan String? @db.Text
+  timeline      String?
+  whyChooseMe   String? @db.Text
+  attachmentUrl String?
+
+  status   ProposalStatus @default(PENDING)
+  viewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing HomeListing    @relation(fields: [listingId], references: [id])
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id])
+
+  @@unique([listingId, realtorId])
+}
+
+model MessageThread {
+  id            String   @id @default(cuid())
+  subject       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastMessageAt DateTime @default(now())
+
+  participants User[]    @relation("ThreadParticipants")
+  messages     Message[]
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  threadId   String
+  senderId   String
+  receiverId String
+  content    String    @db.Text
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  thread   MessageThread @relation(fields: [threadId], references: [id])
+  sender   User          @relation("MessageSender", fields: [senderId], references: [id])
+  receiver User          @relation("MessageReceiver", fields: [receiverId], references: [id])
+}
+
+model FavoriteRealtor {
+  id        String   @id @default(cuid())
+  userId    String
+  realtorId String
+  createdAt DateTime @default(now())
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, realtorId])
+}
+
+model SubscriptionPlan {
+  id            String           @id @default(cuid())
+  name          String           @unique
+  tier          SubscriptionTier
+  price         Float
+  interval      String           @default("month")
+  stripePriceId String?
+  features      String[]
+  leadCredits   Int              @default(0)
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  payments Payment[]
+}
+
+model Payment {
+  id               String    @id @default(cuid())
+  userId           String
+  planId           String?
+  stripePaymentId  String?   @unique
+  stripeCustomerId String?
+  amount           Float
+  currency         String    @default("usd")
+  status           String
+  type             String
+  description      String?
+  metadata         Json?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User              @relation(fields: [userId], references: [id])
+  plan SubscriptionPlan? @relation(fields: [planId], references: [id])
+}
+
+model Advertisement {
+  id        String   @id @default(cuid())
+  realtorId String
+  type      AdType
+  status    AdStatus @default(PENDING_REVIEW)
+
+  targetCity  String?
+  targetState String?
+  targetZip   String?
+
+  headline    String?
+  description String?  @db.Text
+  imageUrl    String?
+  ctaText     String?
+  ctaUrl      String?
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  impressions Int   @default(0)
+  clicks      Int   @default(0)
+  budget      Float?
+  spent       Float  @default(0)
+
+  stripePaymentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id])
+}
+
+model Lead {
+  id         String  @id @default(cuid())
+  realtorId  String
+  sourceType String
+  sourceId   String?
+
+  name    String
+  email   String?
+  phone   String?
+  message String? @db.Text
+
+  isContacted Boolean   @default(false)
+  contactedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id])
+}
+
+model Report {
+  id           String       @id @default(cuid())
+  reporterId   String
+  targetUserId String?
+  reviewId     String?
+  type         ReportType
+  status       ReportStatus @default(PENDING)
+  description  String       @db.Text
+  adminNotes   String?
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  reporter   User    @relation("ReportAuthor", fields: [reporterId], references: [id])
+  targetUser User?   @relation("ReportTarget", fields: [targetUserId], references: [id])
+  review     Review? @relation(fields: [reviewId], references: [id])
+}
+
+model VerificationRequest {
+  id            String             @id @default(cuid())
+  realtorId     String
+  licenseNumber String
+  licenseState  String
+  proofDocUrl   String?
+  status        VerificationStatus @default(PENDING)
+  adminNotes    String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  realtor RealtorProfile @relation(fields: [realtorId], references: [id])
+}
+
+model AdminActionLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String
+  targetType String
+  targetId   String
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
+}
