@@ -1,0 +1,40 @@
+name: Export RateMyRealtor to RealtorRate repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force push (overwrite RealtorRate main)"
+        required: false
+        default: "true"
+        type: boolean
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RateMyRealtor branch
+        uses: actions/checkout@v4
+        with:
+          ref: claude/ratemyrealtor-deploy-main-0gpr1b
+          fetch-depth: 1
+
+      - name: Strip FieldDetect-specific files
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          # Remove files that belong to FieldDetect, not RateMyRealtor
+          git rm --cached AGENTS.md CLAUDE.md 2>/dev/null || true
+          git rm -r --cached .github/ 2>/dev/null || true
+          rm -f AGENTS.md CLAUDE.md
+          rm -rf .github/
+          # Commit the cleanup so the push to RealtorRate is clean
+          git diff --staged --quiet || git commit -m "chore: remove FieldDetect-specific config"
+
+      - name: Push to Turkokami/RealtorRate main
+        env:
+          TOKEN: ${{ secrets.REALTORRATE_PAT }}
+        run: |
+          git remote add realtorrate "https://x-access-token:${TOKEN}@github.com/Turkokami/RealtorRate.git"
+          git push realtorrate HEAD:main --force
+          echo "✅ Pushed to Turkokami/RealtorRate main"
