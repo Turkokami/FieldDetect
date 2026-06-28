@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { Pencil, Trash2, ChevronLeft } from "lucide-react";
 import { MaintenanceTab } from "./maintenance-tab";
 import { MileageTab } from "./mileage-tab";
+import { AssignmentsTab } from "./assignments-tab";
 
 const VEHICLE_TYPE_ICONS: Record<string, string> = {
   TRUCK: "🚚", VAN: "🚐", SUV: "🚙", CAR: "🚗", MOTORHOME: "🚌", TRAILER: "🚛", OTHER: "🚘",
@@ -60,6 +61,28 @@ type Appointment = {
   technician: { firstName: string; lastName: string } | null;
 };
 
+type StaffUser = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  avatarUrl: string | null;
+};
+
+type K9Team = {
+  id: string;
+  name: string;
+  dogs: { id: string; name: string }[];
+};
+
+type Assignment = {
+  id: string;
+  notes: string | null;
+  createdAt: string | Date;
+  user: StaffUser | null;
+  k9Team: K9Team | null;
+};
+
 type Vehicle = {
   id: string;
   name: string;
@@ -76,16 +99,21 @@ type Vehicle = {
   maintenance: MaintenanceRecord[];
   mileageLogs: MileageLog[];
   appointments: Appointment[];
+  assignments: Assignment[];
   _count: { appointments: number; mileageLogs: number };
 };
 
-type Tab = "overview" | "maintenance" | "mileage" | "jobs";
+type Tab = "overview" | "maintenance" | "mileage" | "jobs" | "assignments";
 
 export function VehicleProfileClient({
   vehicle,
+  staffUsers,
+  k9Teams,
   canEdit,
 }: {
   vehicle: Vehicle;
+  staffUsers: StaffUser[];
+  k9Teams: K9Team[];
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -95,10 +123,11 @@ export function VehicleProfileClient({
   const status = STATUS_STYLES[vehicle.status] ?? STATUS_STYLES.ACTIVE;
 
   const TABS: { id: Tab; label: string; count?: number }[] = [
-    { id: "overview",    label: "Overview" },
-    { id: "maintenance", label: "Maintenance", count: vehicle.maintenance.length },
-    { id: "mileage",     label: "Mileage Log",  count: vehicle.mileageLogs.length },
-    { id: "jobs",        label: "Jobs",          count: vehicle._count.appointments },
+    { id: "overview",     label: "Overview" },
+    { id: "assignments",  label: "Assignments",  count: vehicle.assignments.length },
+    { id: "maintenance",  label: "Maintenance",  count: vehicle.maintenance.length },
+    { id: "mileage",      label: "Mileage Log",  count: vehicle.mileageLogs.length },
+    { id: "jobs",         label: "Jobs",         count: vehicle._count.appointments },
   ];
 
   const handleStatusChange = async (newStatus: string) => {
@@ -311,6 +340,16 @@ export function VehicleProfileClient({
             )}
           </div>
         </div>
+      )}
+
+      {tab === "assignments" && (
+        <AssignmentsTab
+          vehicleId={vehicle.id}
+          initialAssignments={vehicle.assignments}
+          staffUsers={staffUsers}
+          k9Teams={k9Teams}
+          canEdit={canEdit}
+        />
       )}
 
       {tab === "maintenance" && (

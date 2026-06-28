@@ -25,7 +25,7 @@ export default async function VehiclesPage() {
   const vehicles = await prisma.vehicle.findMany({
     where: { organizationId: user.organizationId, isActive: true },
     include: {
-      _count: { select: { appointments: true, mileageLogs: true } },
+      _count: { select: { appointments: true, mileageLogs: true, assignments: true } },
       maintenance: { orderBy: { performedAt: "desc" }, take: 1 },
     },
     orderBy: [{ status: "asc" }, { name: "asc" }],
@@ -108,6 +108,7 @@ export default async function VehiclesPage() {
                 </div>
 
                 <div className="flex items-center gap-4 pt-3 border-t border-border text-xs text-muted-foreground">
+                  <span>{v._count.assignments} assigned</span>
                   <span>{v._count.appointments} job{v._count.appointments !== 1 ? "s" : ""}</span>
                   <span>{v._count.mileageLogs} trip{v._count.mileageLogs !== 1 ? "s" : ""}</span>
                   {lastService && (

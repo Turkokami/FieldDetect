@@ -18,37 +18,56 @@ export default async function VehiclePage({
 
   const { id } = await params;
 
-  const vehicle = await prisma.vehicle.findFirst({
-    where: { id, organizationId: user.organizationId, isActive: true },
-    include: {
-      maintenance: { orderBy: { performedAt: "desc" } },
-      mileageLogs: {
-        orderBy: { date: "desc" },
-        take: 50,
-        include: {
-          user: { select: { id: true, firstName: true, lastName: true } },
-          appointment: {
-            select: {
-              id: true,
-              scheduledDate: true,
-              customer: { select: { firstName: true, lastName: true, companyName: true } },
-              property: { select: { name: true, city: true, state: true } },
+  const [vehicle, staffUsers, k9Teams] = await Promise.all([
+    prisma.vehicle.findFirst({
+      where: { id, organizationId: user.organizationId, isActive: true },
+      include: {
+        maintenance: { orderBy: { performedAt: "desc" } },
+        mileageLogs: {
+          orderBy: { date: "desc" },
+          take: 50,
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true } },
+            appointment: {
+              select: {
+                id: true,
+                scheduledDate: true,
+                customer: { select: { firstName: true, lastName: true, companyName: true } },
+                property: { select: { name: true, city: true, state: true } },
+              },
             },
           },
         },
-      },
-      appointments: {
-        orderBy: { scheduledDate: "desc" },
-        take: 20,
-        include: {
-          customer: { select: { firstName: true, lastName: true, companyName: true } },
-          property: { select: { name: true, city: true, state: true } },
-          technician: { select: { firstName: true, lastName: true } },
+        appointments: {
+          orderBy: { scheduledDate: "desc" },
+          take: 20,
+          include: {
+            customer: { select: { firstName: true, lastName: true, companyName: true } },
+            property: { select: { name: true, city: true, state: true } },
+            technician: { select: { firstName: true, lastName: true } },
+          },
         },
+        assignments: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, role: true, avatarUrl: true } },
+            k9Team: { select: { id: true, name: true, dogs: { select: { id: true, name: true } } } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        _count: { select: { appointments: true, mileageLogs: true } },
       },
-      _count: { select: { appointments: true, mileageLogs: true } },
-    },
-  });
+    }),
+    prisma.user.findMany({
+      where: { organizationId: user.organizationId, isActive: true },
+      select: { id: true, firstName: true, lastName: true, role: true, avatarUrl: true },
+      orderBy: [{ role: "asc" }, { firstName: "asc" }],
+    }),
+    prisma.k9Team.findMany({
+      where: { organizationId: user.organizationId, isActive: true },
+      select: { id: true, name: true, dogs: { select: { id: true, name: true } } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!vehicle) notFound();
 
@@ -57,6 +76,8 @@ export default async function VehiclePage({
   return (
     <VehicleProfileClient
       vehicle={JSON.parse(JSON.stringify(vehicle))}
+      staffUsers={JSON.parse(JSON.stringify(staffUsers))}
+      k9Teams={JSON.parse(JSON.stringify(k9Teams))}
       canEdit={canEdit}
     />
   );
