@@ -55,6 +55,10 @@ export async function POST(req: NextRequest) {
       const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
       const fromEmail = process.env.RESEND_FROM_EMAIL ?? "invoices@fielddetect.com";
 
+      // All invoices are from the same org — read CC emails once
+      const firstOrg = invoices[0]?.organization;
+      const ccEmails: string[] = (firstOrg as { ccEmails?: string[] } | undefined)?.ccEmails ?? [];
+
       let sent = 0;
       let skipped = 0;
 
@@ -113,6 +117,7 @@ export async function POST(req: NextRequest) {
             await resend.emails.send({
               from: fromEmail,
               to: invoice.customer.email,
+              ...(ccEmails.length > 0 ? { cc: ccEmails } : {}),
               subject: `Invoice #${invoice.invoiceNumber} from ${org.name} — ${fmt(Number(invoice.totalAmount))} due`,
               html,
             });

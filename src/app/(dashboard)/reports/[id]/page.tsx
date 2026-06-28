@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { ReviewRequestButton } from "@/components/reports/review-request-button";
+import { SendReferralButton } from "@/components/reports/send-referral-button";
 
 export default async function ReportDetailPage({
   params,
@@ -74,14 +75,17 @@ export default async function ReportDetailPage({
             alreadyRequested={!!inspection.reviewRequestedAt}
           />
           {hasReferralUnits && (
-            <a
-              href={`/api/reports/${id}/referral`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
-              title="Download pest control referral for flagged units"
-            >
-              Pest Control Referral
-            </a>
+            <>
+              <a
+                href={`/api/reports/${id}/referral`}
+                target="_blank"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                title="Download pest control referral for flagged units"
+              >
+                Pest Control Referral
+              </a>
+              <SendReferralButton inspectionId={inspection.id} />
+            </>
           )}
           <a
             href={`/api/reports/${id}/pdf`}

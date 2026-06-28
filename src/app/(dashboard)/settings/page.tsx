@@ -10,6 +10,7 @@ import BrandingSection from "@/components/settings/branding-section";
 import TaxCodesSection from "@/components/settings/tax-codes-section";
 import EquipmentItemsSection from "@/components/settings/equipment-items-section";
 import PPERequirementsSection from "@/components/settings/ppe-requirements-section";
+import CcEmailsSection from "@/components/settings/cc-emails-section";
 
 export const metadata = { title: "Settings" };
 
@@ -126,6 +127,20 @@ export default async function SettingsPage({
             Set required PPE for handlers and dogs based on facility type. Reminders appear on the calendar day view.
           </p>
           <PPERequirementsSection initialItems={JSON.parse(JSON.stringify(ppeRequirements))} />
+        </div>
+      )}
+
+      {/* CC Emails */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">CC Emails</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Addresses added here are automatically CC&apos;d on invoices, reports, and referral emails sent from this account.
+          </p>
+          <CcEmailsSection
+            initialEmails={(org as { ccEmails?: string[] }).ccEmails ?? []}
+            canEdit={canEdit}
+          />
         </div>
       )}
 

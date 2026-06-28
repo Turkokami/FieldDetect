@@ -239,6 +239,7 @@ model Organization {
   insuranceInfo     String?
   taxId             String?
   brandColor        String?
+  ccEmails          String[] @default([])
   stripeAccountId      String?
   stripeCustomerId     String?
   stripeSubscriptionId String?

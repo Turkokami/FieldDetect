@@ -131,11 +131,14 @@ export async function POST(
 </body>
 </html>`;
 
+    const ccEmails = (org as { ccEmails?: string[] }).ccEmails ?? [];
+
     if (resend) {
       const fromEmail = process.env.RESEND_FROM_EMAIL ?? "invoices@fielddetect.com";
       await resend.emails.send({
         from: fromEmail,
         to: customerEmail,
+        ...(ccEmails.length > 0 ? { cc: ccEmails } : {}),
         subject: `Invoice #${invoice.invoiceNumber} from ${org.name} — ${fmt(Number(invoice.totalAmount))} due`,
         html,
       });
