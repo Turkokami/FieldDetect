@@ -50,6 +50,10 @@ export default async function ReportDetailPage({
     ["POSITIVE_K9_ALERT", "VISUAL_CONFIRMATION"].includes(u.detectionResult ?? "")
   );
 
+  const hasReferralUnits = inspection.inspectionUnits.some(
+    (u) => ["POSITIVE_K9_ALERT", "VISUAL_CONFIRMATION"].includes(u.detectionResult ?? "") || u.treatmentReferral
+  );
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
@@ -69,6 +73,16 @@ export default async function ReportDetailPage({
             hasPhone={!!inspection.property.customer.phone}
             alreadyRequested={!!inspection.reviewRequestedAt}
           />
+          {hasReferralUnits && (
+            <a
+              href={`/api/reports/${id}/referral`}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+              title="Download pest control referral for flagged units"
+            >
+              Pest Control Referral
+            </a>
+          )}
           <a
             href={`/api/reports/${id}/pdf`}
             target="_blank"
