@@ -2,11 +2,6 @@ name: Export RateMyRealtor to RealtorRate repo
 
 on:
   workflow_dispatch:
-    inputs:
-      pat:
-        description: "GitHub PAT with repo scope for Turkokami/RealtorRate"
-        required: true
-        type: string
 
 jobs:
   export:
@@ -30,9 +25,8 @@ jobs:
 
       - name: Push to Turkokami/RealtorRate main
         env:
-          PAT: ${{ github.event.inputs.pat }}
+          PAT: ${{ secrets.REALTORRATE_PAT }}
         run: |
-          echo "::add-mask::$PAT"
           git remote add realtorrate "https://x-access-token:${PAT}@github.com/Turkokami/RealtorRate.git"
           git push realtorrate HEAD:main --force
           echo "Done — pushed to Turkokami/RealtorRate main"
