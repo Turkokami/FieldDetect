@@ -240,6 +240,7 @@ model Organization {
   taxId             String?
   brandColor        String?
   ccEmails          String[] @default([])
+  contractTemplate  String?
   stripeAccountId      String?
   stripeCustomerId     String?
   stripeSubscriptionId String?

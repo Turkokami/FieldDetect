@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatPhone, formatCurrency } from "@/lib/utils";
 import { DeleteCustomerButton } from "@/components/customers/delete-customer-button";
 import { CopyButton } from "@/components/ui/copy-button";
+import { GenerateContractButton } from "@/components/customers/generate-contract-button";
 
 export default async function CustomerDetailPage({
   params,
@@ -94,6 +95,17 @@ export default async function CustomerDetailPage({
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <DeleteCustomerButton customerId={customer.id} customerName={customerDisplayName} />
+          <GenerateContractButton
+            customerId={customer.id}
+            properties={customer.properties.map((p) => ({
+              id: p.id,
+              name: p.name,
+              addressLine1: p.addressLine1,
+              city: p.city,
+              state: p.state,
+              zip: p.zip,
+            }))}
+          />
           <Link
             href={`/customers/${customer.id}/edit`}
             className="px-3 py-2 text-sm font-medium border border-border rounded-lg hover:bg-muted transition-colors"

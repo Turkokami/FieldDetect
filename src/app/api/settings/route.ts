@@ -21,6 +21,7 @@ const updateSettingsSchema = z.object({
   defaultTaxRate: z.number().min(0).max(1).optional(),
   timezone: z.string().optional(),
   ccEmails: z.array(z.string().email()).optional(),
+  contractTemplate: z.string().optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {

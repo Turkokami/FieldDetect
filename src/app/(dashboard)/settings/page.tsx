@@ -11,6 +11,7 @@ import TaxCodesSection from "@/components/settings/tax-codes-section";
 import EquipmentItemsSection from "@/components/settings/equipment-items-section";
 import PPERequirementsSection from "@/components/settings/ppe-requirements-section";
 import CcEmailsSection from "@/components/settings/cc-emails-section";
+import { ContractTemplateSection } from "@/components/settings/contract-template-section";
 
 export const metadata = { title: "Settings" };
 
@@ -139,6 +140,20 @@ export default async function SettingsPage({
           </p>
           <CcEmailsSection
             initialEmails={(org as { ccEmails?: string[] }).ccEmails ?? []}
+            canEdit={canEdit}
+          />
+        </div>
+      )}
+
+      {/* Contract Template */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Service Agreement Template</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Customize your service agreement. Use <code className="text-xs bg-muted px-1 py-0.5 rounded">{"{{company_name}}"}</code> and <code className="text-xs bg-muted px-1 py-0.5 rounded">{"{{state}}"}</code> as placeholders — they are automatically replaced with your org details when a contract is generated.
+          </p>
+          <ContractTemplateSection
+            initialTemplate={(org as { contractTemplate?: string | null }).contractTemplate ?? null}
             canEdit={canEdit}
           />
         </div>
