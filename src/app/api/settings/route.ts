@@ -16,6 +16,7 @@ const updateSettingsSchema = z.object({
   zip: z.string().optional().nullable(),
   logoUrl: z.string().optional().nullable(),
   brandColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
+  secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
   reportFooter: z.string().optional().nullable(),
   invoiceNotes: z.string().optional().nullable(),
   defaultTaxRate: z.number().min(0).max(1).optional(),

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 type Props = {
   logoUrl: string | null;
   brandColor: string | null;
+  secondaryColor: string | null;
   canEdit: boolean;
 };
 
@@ -16,12 +17,15 @@ const PRESET_COLORS = [
   "#DC2626", "#D97706", "#16A34A", "#0F172A",
 ];
 
-export default function BrandingSection({ logoUrl, brandColor, canEdit }: Props) {
+export default function BrandingSection({ logoUrl, brandColor, secondaryColor, canEdit }: Props) {
   const router = useRouter();
   const [currentLogo, setCurrentLogo] = useState(logoUrl ?? "");
   const [color, setColor] = useState(brandColor ?? "#0ABAB5");
+  const [secColor, setSecColor] = useState(secondaryColor ?? "");
   const [savingColor, setSavingColor] = useState(false);
   const [savedColor, setSavedColor] = useState(false);
+  const [savingSecColor, setSavingSecColor] = useState(false);
+  const [savedSecColor, setSavedSecColor] = useState(false);
 
   const { startUpload, isUploading } = useUploadThing("orgLogo");
 
@@ -82,6 +86,26 @@ export default function BrandingSection({ logoUrl, brandColor, canEdit }: Props)
       toast.error("Failed to save brand color");
     } finally {
       setSavingColor(false);
+    }
+  };
+
+  const saveSecColor = async () => {
+    setSavingSecColor(true);
+    setSavedSecColor(false);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secondaryColor: secColor || null }),
+      });
+      if (!res.ok) throw new Error();
+      setSavedSecColor(true);
+      toast.success("Secondary color saved");
+      router.refresh();
+    } catch {
+      toast.error("Failed to save secondary color");
+    } finally {
+      setSavingSecColor(false);
     }
   };
 
@@ -178,6 +202,80 @@ export default function BrandingSection({ logoUrl, brandColor, canEdit }: Props)
               {savingColor ? "Saving…" : "Save Color"}
             </button>
             {savedColor && <span className="text-sm text-green-600">Saved</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Secondary Color */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-1">Secondary / Accent Color</h3>
+        <p className="text-xs text-muted-foreground mb-3">Used for highlights, gradients, and complementary accents. Defaults to brand color if not set.</p>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {PRESET_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              disabled={!canEdit}
+              onClick={() => setSecColor(c)}
+              className="w-8 h-8 rounded-lg border-2 transition-all disabled:pointer-events-none"
+              style={{
+                background: c,
+                borderColor: secColor === c ? "#fff" : "transparent",
+                boxShadow: secColor === c ? `0 0 0 2px ${c}` : "none",
+              }}
+              title={c}
+            />
+          ))}
+
+          {canEdit && (
+            <label className="relative cursor-pointer w-8 h-8 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-foreground/40 transition-colors" title="Custom color">
+              <span className="text-xs text-muted-foreground">+</span>
+              <input
+                type="color"
+                value={secColor || color}
+                onChange={(e) => setSecColor(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+            </label>
+          )}
+
+          <div className="flex items-center gap-2 ml-2">
+            {secColor ? (
+              <>
+                <div className="w-5 h-5 rounded" style={{ background: secColor }} />
+                <span className="text-sm font-mono text-foreground">{secColor.toUpperCase()}</span>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setSecColor("")}
+                    className="text-xs text-muted-foreground hover:text-destructive ml-1"
+                    title="Clear secondary color"
+                  >
+                    ✕
+                  </button>
+                )}
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground italic">Same as brand color</span>
+            )}
+          </div>
+        </div>
+
+        {canEdit && (
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={saveSecColor}
+              disabled={savingSecColor}
+              className="px-5 h-9 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {savingSecColor ? "Saving…" : "Save Accent Color"}
+            </button>
+            {savedSecColor && <span className="text-sm text-green-600">Saved</span>}
           </div>
         )}
       </div>

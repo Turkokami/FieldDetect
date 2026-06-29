@@ -93,6 +93,7 @@ export default async function SettingsPage({
         <BrandingSection
           logoUrl={org.logoUrl}
           brandColor={(org as { brandColor?: string | null }).brandColor ?? null}
+          secondaryColor={(org as { secondaryColor?: string | null }).secondaryColor ?? null}
           canEdit={canEdit}
         />
       </div>

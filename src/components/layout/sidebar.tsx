@@ -48,11 +48,13 @@ const navItems = [
 export function Sidebar({
   unreadMessages = 0,
   brandColor = "#0ABAB5",
+  secondaryColor,
   orgName,
   orgLogoUrl,
 }: {
   unreadMessages?: number;
   brandColor?: string;
+  secondaryColor?: string;
   orgName?: string;
   orgLogoUrl?: string;
 }) {
@@ -60,6 +62,7 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
 
   const hex = brandColor || "#0ABAB5";
+  const sec = secondaryColor || hex;
   // Convert hex to rgba for transparent backgrounds
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -92,7 +95,7 @@ export function Sidebar({
         {!collapsed && (
           <div className="min-w-0">
             <div className="font-bold text-white text-sm tracking-tight truncate">{orgName ?? "FieldDetect"}</div>
-            <div className="text-xs font-medium" style={{ color: hex }}>K9 Command Center</div>
+            <div className="text-xs font-medium" style={{ color: sec }}>K9 Command Center</div>
           </div>
         )}
       </div>

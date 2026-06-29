@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { computeBrandTokens, tokensToCSS } from "@/lib/brand-colors";
 
 export default async function DashboardLayout({
   children,
@@ -20,7 +21,7 @@ export default async function DashboardLayout({
     user
       ? prisma.organization.findUnique({
           where: { id: user.organizationId },
-          select: { brandColor: true, logoUrl: true, name: true },
+          select: { brandColor: true, secondaryColor: true, logoUrl: true, name: true },
         })
       : null,
     user
@@ -34,13 +35,16 @@ export default async function DashboardLayout({
   ]);
 
   const brand = (org as { brandColor?: string | null } | null)?.brandColor ?? "#0ABAB5";
+  const secondary = (org as { secondaryColor?: string | null } | null)?.secondaryColor ?? null;
+  const { light, dark } = computeBrandTokens(brand, secondary);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <style>{`body { --brand: ${brand}; }`}</style>
+      <style>{`body {\n${tokensToCSS(light)}\n}\n.dark body {\n${tokensToCSS(dark)}\n}`}</style>
       <Sidebar
         unreadMessages={unreadMessages as number}
         brandColor={brand}
+        secondaryColor={secondary ?? brand}
         orgName={org?.name ?? undefined}
         orgLogoUrl={org?.logoUrl ?? undefined}
       />

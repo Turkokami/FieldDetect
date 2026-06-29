@@ -28,7 +28,13 @@ export function Topbar() {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
-      <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0 shadow-sm">
+      <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0 shadow-sm relative">
+        {/* Secondary-color accent strip along the top edge */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[3px]"
+          style={{ background: "linear-gradient(90deg, var(--brand) 0%, var(--brand-secondary) 100%)" }}
+        />
+
         {/* Mobile hamburger */}
         <MobileNav />
 
@@ -36,7 +42,7 @@ export function Topbar() {
         <div className="flex items-center gap-2 lg:hidden">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, #0ABAB5 0%, #0D9488 100%)" }}
+            style={{ background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-secondary) 100%)" }}
           >
             <span className="text-white text-xs">🐾</span>
           </div>
