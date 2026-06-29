@@ -19,10 +19,14 @@ export async function POST(
   });
   if (!appt) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.appointment.update({
-    where: { id },
-    data: { officeNotesReadAt: new Date() },
-  });
+  // Use raw SQL so Prisma's @updatedAt is NOT triggered — if we use .update(),
+  // updated_at gets bumped to now() which makes the row appear unread again
+  // (the unread query checks office_notes_read_at < updated_at).
+  await prisma.$executeRaw`
+    UPDATE appointments
+    SET office_notes_read_at = NOW()
+    WHERE id = ${id}
+  `;
 
   return NextResponse.json({ ok: true });
 }
