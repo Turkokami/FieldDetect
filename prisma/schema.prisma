@@ -273,6 +273,7 @@ model Organization {
   recurringClients      RecurringClient[]
   jobPermits            JobPermit[]
   propertyMaps          PropertyMap[]
+  bedBugVials           BedBugVial[]
 
   @@map("organizations")
 }
@@ -1331,4 +1332,52 @@ model JobPermit {
   @@index([organizationId])
   @@index([appointmentId])
   @@map("job_permits")
+}
+
+// ─── Bed Bug Vial Tracker ─────────────────────────────────────────────────────
+
+model BedBugVial {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  colony         String?
+  source         String?
+  acquisitionDate DateTime        @default(now())
+  status         VialStatus       @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  feedingLogs  VialFeedingLog[]
+
+  @@index([organizationId])
+  @@map("bed_bug_vials")
+}
+
+model VialFeedingLog {
+  id        String    @id @default(cuid())
+  vialId    String
+  fedAt     DateTime
+  fedOn     FeedHost  @default(HUMAN)
+  fedBy     String?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  vial BedBugVial @relation(fields: [vialId], references: [id], onDelete: Cascade)
+
+  @@index([vialId])
+  @@map("vial_feeding_logs")
+}
+
+enum VialStatus {
+  ACTIVE
+  RETIRED
+  DEAD
+}
+
+enum FeedHost {
+  HUMAN
+  PET
+  OTHER
 }
