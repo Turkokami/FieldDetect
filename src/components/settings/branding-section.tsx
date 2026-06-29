@@ -30,23 +30,20 @@ export default function BrandingSection({ logoUrl, brandColor, canEdit }: Props)
     if (!file) return;
     try {
       const uploaded = await startUpload([file]);
-      const f = uploaded?.[0];
-      const url = f?.ufsUrl ?? f?.url ?? (f?.serverData as { url: string } | null)?.url;
-      if (url) {
-        // Client got the URL directly — also patch settings in case server-side save missed
-        await fetch("/api/settings", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ logoUrl: url }),
-        });
-        setCurrentLogo(url);
-        toast.success("Logo updated");
-        router.refresh();
-      } else {
-        // Server saved it via onUploadComplete — just refresh to pick up the new logo
-        toast.success("Logo uploaded — refreshing…");
-        router.refresh();
+      const url = uploaded?.[0]?.ufsUrl ?? uploaded?.[0]?.url;
+      if (!url) {
+        toast.error("Upload failed — no URL returned");
+        return;
       }
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logoUrl: url }),
+      });
+      if (!res.ok) throw new Error();
+      setCurrentLogo(url);
+      toast.success("Logo updated");
+      router.refresh();
     } catch {
       toast.error("Upload failed");
     }

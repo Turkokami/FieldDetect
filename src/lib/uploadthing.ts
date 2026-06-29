@@ -4,8 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 const f = createUploadthing();
 
+// awaitServerData: false — don't block the client waiting for the server callback.
+// The callback URL is unreliable in Vercel preview/prod; all DB saves happen
+// client-side using the ufsUrl that comes back directly from the CDN upload.
 export const ourFileRouter = {
-  inspectionPhoto: f({ image: { maxFileSize: "8MB", maxFileCount: 10 } })
+  inspectionPhoto: f(
+    { image: { maxFileSize: "8MB", maxFileCount: 10 } },
+    { awaitServerData: false }
+  )
     .middleware(async () => {
       const { userId } = await auth();
       if (!userId) throw new Error("Unauthorized");
@@ -17,7 +23,10 @@ export const ourFileRouter = {
       return { url: file.ufsUrl, uploadedBy: metadata.userId };
     }),
 
-  profilePhoto: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+  profilePhoto: f(
+    { image: { maxFileSize: "4MB", maxFileCount: 1 } },
+    { awaitServerData: false }
+  )
     .middleware(async () => {
       const { userId } = await auth();
       if (!userId) throw new Error("Unauthorized");
@@ -29,7 +38,10 @@ export const ourFileRouter = {
       return { url: file.ufsUrl };
     }),
 
-  orgLogo: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+  orgLogo: f(
+    { image: { maxFileSize: "4MB", maxFileCount: 1 } },
+    { awaitServerData: false }
+  )
     .middleware(async () => {
       const { userId } = await auth();
       if (!userId) throw new Error("Unauthorized");
@@ -37,11 +49,8 @@ export const ourFileRouter = {
       if (!user || !["OWNER", "ADMIN"].includes(user.role)) throw new Error("Unauthorized");
       return { organizationId: user.organizationId };
     })
-    .onUploadComplete(async ({ metadata, file }) => {
-      await prisma.organization.update({
-        where: { id: metadata.organizationId },
-        data: { logoUrl: file.ufsUrl },
-      });
+    .onUploadComplete(async ({ file }) => {
+      // Client saves via PATCH /api/settings after receiving ufsUrl directly.
       return { url: file.ufsUrl };
     }),
 } satisfies FileRouter;
