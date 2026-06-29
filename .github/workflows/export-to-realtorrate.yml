@@ -29,7 +29,10 @@ jobs:
           git diff --staged --quiet || git commit -m "chore: remove FieldDetect-specific config"
 
       - name: Push to Turkokami/RealtorRate main
+        env:
+          PAT: ${{ github.event.inputs.pat }}
         run: |
-          git remote add realtorrate "https://x-access-token:${{ github.event.inputs.pat }}@github.com/Turkokami/RealtorRate.git"
+          echo "::add-mask::$PAT"
+          git remote add realtorrate "https://x-access-token:${PAT}@github.com/Turkokami/RealtorRate.git"
           git push realtorrate HEAD:main --force
           echo "Done — pushed to Turkokami/RealtorRate main"
