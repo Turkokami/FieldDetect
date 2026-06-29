@@ -1,0 +1,38 @@
+name: Export RateMyRealtor to RealtorRate repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      pat:
+        description: "GitHub PAT with repo scope for Turkokami/RealtorRate"
+        required: true
+        type: string
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RateMyRealtor branch
+        uses: actions/checkout@v4
+        with:
+          ref: claude/ratemyrealtor-deploy-main-0gpr1b
+          fetch-depth: 1
+
+      - name: Strip FieldDetect-specific files
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git rm --cached AGENTS.md CLAUDE.md 2>/dev/null || true
+          git rm -r --cached .github/ 2>/dev/null || true
+          rm -f AGENTS.md CLAUDE.md
+          rm -rf .github/
+          git diff --staged --quiet || git commit -m "chore: remove FieldDetect-specific config"
+
+      - name: Push to Turkokami/RealtorRate main
+        env:
+          PAT: ${{ github.event.inputs.pat }}
+        run: |
+          echo "::add-mask::$PAT"
+          git remote add realtorrate "https://x-access-token:${PAT}@github.com/Turkokami/RealtorRate.git"
+          git push realtorrate HEAD:main --force
+          echo "Done — pushed to Turkokami/RealtorRate main"
