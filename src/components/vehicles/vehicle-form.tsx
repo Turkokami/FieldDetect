@@ -11,6 +11,8 @@ const VEHICLE_TYPES = [
   { value: "CAR",       label: "Car" },
   { value: "MOTORHOME", label: "Motorhome / RV" },
   { value: "TRAILER",   label: "Trailer" },
+  { value: "BOAT",      label: "Boat / Watercraft" },
+  { value: "DRONE",     label: "Drone / UAV" },
   { value: "OTHER",     label: "Other" },
 ];
 

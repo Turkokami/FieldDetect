@@ -4,6 +4,9 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
 import AppointmentActions from "@/components/scheduling/appointment-actions";
+import { WeatherWidget } from "@/components/scheduling/weather-widget";
+import { GooseTracking } from "@/components/scheduling/goose-tracking";
+import { JobPermitsPanel } from "@/components/scheduling/job-permits";
 
 export default async function AppointmentDetailPage({
   params,
@@ -27,6 +30,7 @@ export default async function AppointmentDetailPage({
       property: { include: { buildings: { select: { id: true, name: true } } } },
       technician: true,
       k9Team: { include: { members: { include: { user: true } }, dogs: true } },
+      permits: { orderBy: { createdAt: "desc" } },
       inspection: {
         include: {
           inspectionUnits: {
@@ -240,6 +244,32 @@ export default async function AppointmentDetailPage({
               <p className="text-sm text-amber-700">{appointment.specialInstructions}</p>
             </div>
           )}
+
+          {/* Weather Widget */}
+          <WeatherWidget
+            appointmentId={appointment.id}
+            address={`${appointment.property.addressLine1}, ${appointment.property.city}, ${appointment.property.state}`}
+            initialWeather={(appointment as { weatherData?: unknown }).weatherData as Parameters<typeof WeatherWidget>[0]["initialWeather"]}
+          />
+
+          {/* Goose Field Tracking (goose control jobs only) */}
+          {appointment.serviceType === "GOOSE_CONTROL" && (
+            <GooseTracking
+              appointmentId={appointment.id}
+              initial={{
+                nestCount: (appointment as { nestCount?: number | null }).nestCount ?? null,
+                totalEggCount: (appointment as { totalEggCount?: number | null }).totalEggCount ?? null,
+                hatchedEggCount: (appointment as { hatchedEggCount?: number | null }).hatchedEggCount ?? null,
+                unhatchedEggCount: (appointment as { unhatchedEggCount?: number | null }).unhatchedEggCount ?? null,
+              }}
+            />
+          )}
+
+          {/* Job Permits */}
+          <JobPermitsPanel
+            appointmentId={appointment.id}
+            initialPermits={JSON.parse(JSON.stringify(appointment.permits ?? []))}
+          />
         </div>
 
         {/* Inspection */}

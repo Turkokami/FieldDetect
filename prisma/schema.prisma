@@ -193,6 +193,8 @@ enum VehicleType {
   SUV
   MOTORHOME
   TRAILER
+  BOAT
+  DRONE
   OTHER
 }
 
@@ -242,6 +244,7 @@ model Organization {
   secondaryColor    String?
   ccEmails          String[] @default([])
   contractTemplate  String?
+  enabledModules    String[] @default([])
   stripeAccountId      String?
   stripeCustomerId     String?
   stripeSubscriptionId String?
@@ -267,6 +270,9 @@ model Organization {
   equipmentItems        EquipmentItem[]
   ppeRequirements       FacilityPPERequirement[]
   vehicles              Vehicle[]
+  recurringClients      RecurringClient[]
+  jobPermits            JobPermit[]
+  propertyMaps          PropertyMap[]
 
   @@map("organizations")
 }
@@ -324,6 +330,7 @@ model User {
   equipmentCheckouts    EquipmentCheckout[]
   mileageLogs           VehicleMileageLog[]
   vehicleAssignments    VehicleAssignment[]
+  recurringClientRoutes RecurringClient[]   @relation("RecurringClientTechnician")
 
   @@map("users")
 }
@@ -524,13 +531,14 @@ model Customer {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id])
-  contacts     CustomerContact[]
-  properties   Property[]
-  appointments Appointment[]
-  invoices     Invoice[]
-  estimates    Estimate[]
-  notifications Notification[]
+  organization      Organization      @relation(fields: [organizationId], references: [id])
+  contacts          CustomerContact[]
+  properties        Property[]
+  appointments      Appointment[]
+  invoices          Invoice[]
+  estimates         Estimate[]
+  notifications     Notification[]
+  recurringClients  RecurringClient[]
 
   @@map("customers")
 }
@@ -585,7 +593,9 @@ model Property {
   units        Unit[]
   appointments Appointment[]
   inspections  Inspection[]
-  estimates    Estimate[]
+  estimates         Estimate[]
+  recurringClients  RecurringClient[]
+  propertyMaps      PropertyMap[]
 
   @@map("properties")
 }
@@ -674,6 +684,12 @@ model Appointment {
   parentAppointmentId      String?
   notes                    String?
   officeNotesReadAt        DateTime?
+  internalNotes            String?
+  weatherData              Json?
+  nestCount                Int?
+  totalEggCount            Int?
+  hatchedEggCount          Int?
+  unhatchedEggCount        Int?
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 
@@ -688,6 +704,7 @@ model Appointment {
   inspection    Inspection?
   notifications Notification[]
   mileageLogs   VehicleMileageLog[]
+  permits       JobPermit[]
 
   @@map("appointments")
 }
@@ -945,6 +962,7 @@ model Estimate {
   taxCodeName                String?
   discountAmount             Float           @default(0)
   totalAmount                Float           @default(0)
+  facilityData               Json?
   validUntil                 DateTime?
   sentAt                     DateTime?
   viewedAt                   DateTime?
@@ -1244,4 +1262,73 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ─── Recurring Clients (Route Handler Assignments) ────────────────────────────
+
+model RecurringClient {
+  id             String      @id @default(cuid())
+  organizationId String
+  customerId     String
+  propertyId     String?
+  technicianId   String?
+  serviceType    ServiceType @default(BED_BUG_INSPECTION)
+  frequency      String      @default("MONTHLY")
+  notes          String?
+  isActive       Boolean     @default(true)
+  routeOrder     Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  property     Property?    @relation(fields: [propertyId], references: [id])
+  technician   User?        @relation("RecurringClientTechnician", fields: [technicianId], references: [id])
+
+  @@index([organizationId])
+  @@map("recurring_clients")
+}
+
+// ─── Property Maps (Aerial Annotation) ───────────────────────────────────────
+
+model PropertyMap {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  name           String   @default("Site Map")
+  imageUrl       String
+  markers        Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("property_maps")
+}
+
+// ─── Job Permits ──────────────────────────────────────────────────────────────
+
+model JobPermit {
+  id              String    @id @default(cuid())
+  organizationId  String
+  appointmentId   String?
+  permitType      String
+  permitNumber    String?
+  issuingAuthority String?
+  issuedDate      DateTime?
+  expiresDate     DateTime?
+  status          String    @default("PENDING")
+  notes           String?
+  attachmentUrl   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([appointmentId])
+  @@map("job_permits")
 }

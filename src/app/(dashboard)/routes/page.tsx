@@ -2,13 +2,14 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import RoutesClient from "@/components/routes/routes-client";
+import { RecurringClientsClient } from "@/components/routes/recurring-clients-client";
 
 export const metadata = { title: "Routes" };
 
 export default async function RoutesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; tab?: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) return null;
@@ -16,7 +17,7 @@ export default async function RoutesPage({
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) return null;
 
-  const { view = "week" } = await searchParams;
+  const { view = "week", tab = "board" } = await searchParams;
 
   const now = new Date();
   const todayStart = new Date(now);
@@ -30,7 +31,7 @@ export default async function RoutesPage({
     ? { gte: todayStart, lt: todayEnd }
     : { gte: todayStart, lt: weekEnd };
 
-  const [appointments, technicians] = await Promise.all([
+  const [appointments, technicians, recurringClients] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         organizationId: user.organizationId,
@@ -61,6 +62,15 @@ export default async function RoutesPage({
       select: { id: true, firstName: true, lastName: true },
       orderBy: { firstName: "asc" },
     }),
+    prisma.recurringClient.findMany({
+      where: { organizationId: user.organizationId, isActive: true },
+      include: {
+        customer: { select: { firstName: true, lastName: true, companyName: true } },
+        property: { select: { name: true, addressLine1: true, city: true } },
+        technician: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: [{ technicianId: "asc" }, { routeOrder: "asc" }],
+    }),
   ]);
 
   const totalStops = appointments.length;
@@ -72,47 +82,57 @@ export default async function RoutesPage({
         <div>
           <h1 className="text-2xl font-bold text-foreground">Routes</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {totalStops} stop{totalStops !== 1 ? "s" : ""}
-            {" "}· {techCount} technician{techCount !== 1 ? "s" : ""}
+            {tab === "recurring"
+              ? `${recurringClients.length} recurring client${recurringClients.length !== 1 ? "s" : ""}`
+              : `${totalStops} stop${totalStops !== 1 ? "s" : ""} · ${techCount} technician${techCount !== 1 ? "s" : ""}`
+            }
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Tab switcher */}
           <div className="flex gap-1 bg-muted rounded-lg p-1">
-            <Link
-              href="/routes?view=week"
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                view === "week"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              This Week
+            <Link href="/routes?tab=board"
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${tab === "board" || !tab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              Route Board
             </Link>
-            <Link
-              href="/routes?view=today"
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                view === "today"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Today Only
+            <Link href="/routes?tab=recurring"
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${tab === "recurring" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              Recurring Clients
             </Link>
           </div>
-          <Link
-            href="/scheduling/new"
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
+
+          {tab !== "recurring" && (
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <Link href="/routes?view=week"
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                This Week
+              </Link>
+              <Link href="/routes?view=today"
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === "today" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                Today Only
+              </Link>
+            </div>
+          )}
+
+          <Link href="/scheduling/new"
+            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
             + New Appointment
           </Link>
         </div>
       </div>
 
-      <RoutesClient
-        initialAppointments={JSON.parse(JSON.stringify(appointments))}
-        technicians={JSON.parse(JSON.stringify(technicians))}
-        view={view}
-      />
+      {tab === "recurring" ? (
+        <RecurringClientsClient
+          initialClients={JSON.parse(JSON.stringify(recurringClients))}
+          technicians={JSON.parse(JSON.stringify(technicians))}
+        />
+      ) : (
+        <RoutesClient
+          initialAppointments={JSON.parse(JSON.stringify(appointments))}
+          technicians={JSON.parse(JSON.stringify(technicians))}
+          view={view}
+        />
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Truck, Plus } from "lucide-react";
 export const metadata = { title: "Fleet" };
 
 const VEHICLE_TYPE_ICONS: Record<string, string> = {
-  TRUCK: "🚚", VAN: "🚐", SUV: "🚙", CAR: "🚗", MOTORHOME: "🚌", TRAILER: "🚛", OTHER: "🚘",
+  TRUCK: "🚚", VAN: "🚐", SUV: "🚙", CAR: "🚗", MOTORHOME: "🚌", TRAILER: "🚛", BOAT: "⛵", DRONE: "🚁", OTHER: "🚘",
 };
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   ACTIVE:         { bg: "bg-green-100",  text: "text-green-700",  label: "Active" },

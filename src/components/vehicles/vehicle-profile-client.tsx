@@ -11,10 +11,10 @@ import { MileageTab } from "./mileage-tab";
 import { AssignmentsTab } from "./assignments-tab";
 
 const VEHICLE_TYPE_ICONS: Record<string, string> = {
-  TRUCK: "🚚", VAN: "🚐", SUV: "🚙", CAR: "🚗", MOTORHOME: "🚌", TRAILER: "🚛", OTHER: "🚘",
+  TRUCK: "🚚", VAN: "🚐", SUV: "🚙", CAR: "🚗", MOTORHOME: "🚌", TRAILER: "🚛", BOAT: "⛵", DRONE: "🚁", OTHER: "🚘",
 };
 const VEHICLE_TYPE_LABELS: Record<string, string> = {
-  TRUCK: "Truck", VAN: "Van", SUV: "SUV", CAR: "Car", MOTORHOME: "Motorhome / RV", TRAILER: "Trailer", OTHER: "Other",
+  TRUCK: "Truck", VAN: "Van", SUV: "SUV", CAR: "Car", MOTORHOME: "Motorhome / RV", TRAILER: "Trailer", BOAT: "Boat / Watercraft", DRONE: "Drone / UAV", OTHER: "Other",
 };
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   ACTIVE:         { bg: "bg-green-100",  text: "text-green-700",  label: "Active" },

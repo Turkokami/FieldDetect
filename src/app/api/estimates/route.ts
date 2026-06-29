@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, rbacResponse } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 const lineItemSchema = z.object({
@@ -20,6 +21,7 @@ const createSchema = z.object({
   taxRate: z.coerce.number().min(0).max(100).default(0),
   discountAmount: z.coerce.number().min(0).default(0),
   validUntil: z.string().datetime().optional().nullable(),
+  facilityData: z.unknown().optional().nullable(),
   lineItems: z.array(lineItemSchema).min(1),
 });
 
@@ -80,6 +82,7 @@ export async function POST(req: NextRequest) {
         serviceType: (validated.serviceType as never) ?? "BED_BUG_INSPECTION",
         scopeNotes: validated.scopeNotes ?? null,
         internalNotes: validated.internalNotes ?? null,
+        facilityData: validated.facilityData === null ? Prisma.JsonNull : (validated.facilityData as Prisma.InputJsonValue) ?? undefined,
         taxRate: validated.taxRate,
         discountAmount: validated.discountAmount,
         taxAmount,
