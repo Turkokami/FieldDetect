@@ -7,6 +7,7 @@ import AppointmentActions from "@/components/scheduling/appointment-actions";
 import { WeatherWidget } from "@/components/scheduling/weather-widget";
 import { GooseTracking } from "@/components/scheduling/goose-tracking";
 import { JobPermitsPanel } from "@/components/scheduling/job-permits";
+import { PropertyMapEditor } from "@/components/scheduling/property-map-editor";
 
 export default async function AppointmentDetailPage({
   params,
@@ -44,6 +45,18 @@ export default async function AppointmentDetailPage({
   });
 
   if (!appointment) notFound();
+
+  const MAP_SERVICE_TYPES = [
+    "GOOSE_CONTROL", "RODENT_INSPECTION", "RODENT_EXCLUSION",
+    "WILDLIFE_INSPECTION", "WILDLIFE_REMOVAL", "BIRD_EXCLUSION",
+  ];
+  const showMap = MAP_SERVICE_TYPES.includes(appointment.serviceType);
+  const propertyMaps = showMap
+    ? await prisma.propertyMap.findMany({
+        where: { propertyId: appointment.propertyId, organizationId: user.organizationId },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
 
   const SERVICE_LABELS: Record<string, string> = {
     BED_BUG_INSPECTION: "Bed Bug Inspection",
@@ -262,6 +275,15 @@ export default async function AppointmentDetailPage({
                 hatchedEggCount: (appointment as { hatchedEggCount?: number | null }).hatchedEggCount ?? null,
                 unhatchedEggCount: (appointment as { unhatchedEggCount?: number | null }).unhatchedEggCount ?? null,
               }}
+            />
+          )}
+
+          {/* Site Maps / Aerial Annotation */}
+          {showMap && (
+            <PropertyMapEditor
+              propertyId={appointment.propertyId}
+              serviceType={appointment.serviceType}
+              initialMaps={JSON.parse(JSON.stringify(propertyMaps))}
             />
           )}
 

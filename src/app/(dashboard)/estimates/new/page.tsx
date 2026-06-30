@@ -366,12 +366,12 @@ const SERVICE_MODULES: Record<string, string> = {
 const ALL_SERVICE_TYPES = [
   { value: "BED_BUG_INSPECTION", label: "Bed Bug K9 Inspection" },
   { value: "BED_BUG_TREATMENT", label: "Bed Bug Treatment" },
-  { value: "GOOSE_CONTROL", label: "Goose Control" },
-  { value: "BIRD_EXCLUSION", label: "Bird Exclusion" },
-  { value: "RODENT_INSPECTION", label: "Rodent K9 Inspection" },
-  { value: "RODENT_EXCLUSION", label: "Rodent Exclusion" },
-  { value: "WILDLIFE_INSPECTION", label: "Wildlife Inspection" },
-  { value: "WILDLIFE_REMOVAL", label: "Wildlife Removal" },
+  { value: "GOOSE_CONTROL", label: "Goose Control", module: "GOOSE_CONTROL" },
+  { value: "BIRD_EXCLUSION", label: "Bird Exclusion", module: "BIRD_EXCLUSION" },
+  { value: "RODENT_INSPECTION", label: "Rodent K9 Inspection", module: "RODENT_INSPECTION" },
+  { value: "RODENT_EXCLUSION", label: "Rodent Exclusion", module: "RODENT_EXCLUSION" },
+  { value: "WILDLIFE_INSPECTION", label: "Wildlife Inspection", module: "WILDLIFE" },
+  { value: "WILDLIFE_REMOVAL", label: "Wildlife Removal", module: "WILDLIFE" },
   { value: "GENERAL_PEST_INSPECTION", label: "General Pest Inspection" },
   { value: "OTHER", label: "Other / Custom" },
 ];
@@ -386,6 +386,7 @@ function NewEstimateForm() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [enabledModules, setEnabledModules] = useState<string[] | null>(null);
 
   const [customerId, setCustomerId] = useState(prefillCustomerId);
   const [propertyId, setPropertyId] = useState(prefillPropertyId);
@@ -427,6 +428,10 @@ function NewEstimateForm() {
     fetch("/api/customers?pageSize=200")
       .then((r) => r.json())
       .then((d) => setCustomers(d.data ?? []));
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => setEnabledModules((d.data?.enabledModules as string[]) ?? []))
+      .catch(() => setEnabledModules([]));
   }, []);
 
   useEffect(() => {
@@ -513,6 +518,13 @@ function NewEstimateForm() {
   const labelClass = "block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide";
   const hasModule = !!SERVICE_MODULES[serviceType];
 
+  // Filter service types based on org's enabled modules (null = still loading, show all)
+  const visibleServiceTypes = ALL_SERVICE_TYPES.filter((st) => {
+    if (!("module" in st) || !st.module) return true;
+    if (enabledModules === null) return true;
+    return enabledModules.includes(st.module);
+  });
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
@@ -551,7 +563,7 @@ function NewEstimateForm() {
             <div>
               <label className={labelClass}>Service Type</label>
               <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className={inputClass}>
-                {ALL_SERVICE_TYPES.map((st) => (
+                {visibleServiceTypes.map((st) => (
                   <option key={st.value} value={st.value}>{st.label}</option>
                 ))}
               </select>
@@ -559,7 +571,7 @@ function NewEstimateForm() {
             <div>
               <label className={labelClass}>Estimate Title</label>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder={`e.g. ${ALL_SERVICE_TYPES.find((s) => s.value === serviceType)?.label ?? "Service"} Proposal`}
+                placeholder={`e.g. ${visibleServiceTypes.find((s) => s.value === serviceType)?.label ?? "Service"} Proposal`}
                 className={inputClass} />
             </div>
             <div>

@@ -50,7 +50,21 @@ export const ourFileRouter = {
       return { organizationId: user.organizationId };
     })
     .onUploadComplete(async ({ file }) => {
-      // Client saves via PATCH /api/settings after receiving ufsUrl directly.
+      return { url: file.ufsUrl };
+    }),
+
+  siteMapPhoto: f(
+    { image: { maxFileSize: "16MB", maxFileCount: 1 } },
+    { awaitServerData: false }
+  )
+    .middleware(async () => {
+      const { userId } = await auth();
+      if (!userId) throw new Error("Unauthorized");
+      const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
+      if (!user) throw new Error("User not found");
+      return { userId: user.id, organizationId: user.organizationId };
+    })
+    .onUploadComplete(async ({ file }) => {
       return { url: file.ufsUrl };
     }),
 } satisfies FileRouter;

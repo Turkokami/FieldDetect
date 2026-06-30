@@ -16,7 +16,16 @@ const SERVICE_TYPES = [
   { value: "OTHER", label: "Other" },
 ];
 
-type OrgInfo = { name: string; phone: string | null; logoUrl: string | null };
+const SERVICE_MODULE_MAP: Record<string, string> = {
+  GOOSE_CONTROL: "GOOSE_CONTROL",
+  BIRD_EXCLUSION: "BIRD_EXCLUSION",
+  RODENT_INSPECTION: "RODENT_INSPECTION",
+  RODENT_EXCLUSION: "RODENT_EXCLUSION",
+  WILDLIFE_INSPECTION: "WILDLIFE",
+  WILDLIFE_REMOVAL: "WILDLIFE",
+};
+
+type OrgInfo = { name: string; phone: string | null; logoUrl: string | null; enabledModules: string[] };
 
 export default function BookingPage({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState<string | null>(null);
@@ -87,6 +96,14 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
 
   const ic = "w-full h-10 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]/40 focus:border-[#0ABAB5] transition-all placeholder:text-gray-400";
   const minDate = new Date().toISOString().split("T")[0];
+
+  const visibleServiceTypes = org
+    ? SERVICE_TYPES.filter((st) => {
+        const mod = SERVICE_MODULE_MAP[st.value];
+        if (!mod) return true;
+        return (org.enabledModules ?? []).includes(mod);
+      })
+    : SERVICE_TYPES;
 
   if (orgError) {
     return (
@@ -220,7 +237,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Service Type *</label>
                     <select value={form.serviceType} onChange={(e) => set("serviceType", e.target.value)} className={ic}>
-                      {SERVICE_TYPES.map((s) => (
+                      {visibleServiceTypes.map((s) => (
                         <option key={s.value} value={s.value}>{s.label}</option>
                       ))}
                     </select>
