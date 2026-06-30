@@ -4,13 +4,14 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Phone, MapPin, User, AlertTriangle, CheckCircle2,
-  Camera, Plus, X, ChevronRight, Clock, Trash2, ArrowRight, PenLine,
-  ArrowLeft, Building2, WifiOff, FileText, Navigation,
+  Camera, Plus, X, Clock, Trash2, ArrowRight, PenLine,
+  ArrowLeft, Building2, WifiOff, FileText, Navigation, Map as MapIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { PropertyMapEditor } from "@/components/scheduling/property-map-editor";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,13 @@ type K9Dog = { id: string; name: string; breed: string | null };
 type Member = { isPrimary: boolean; user: { firstName: string; lastName: string } };
 type K9Team = { id: string; name: string; dogs: K9Dog[]; members: Member[] } | null;
 
+type TechPropertyMap = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  markers: unknown[];
+};
+
 export type TechAppointment = {
   id: string;
   status: string;
@@ -58,6 +66,7 @@ export type TechAppointment = {
   technician: { firstName: string; lastName: string } | null;
   k9Team: K9Team;
   inspection: Inspection | null;
+  propertyMaps?: TechPropertyMap[];
 };
 
 type CompletionData = {
@@ -111,6 +120,11 @@ async function flushSyncQueue(): Promise<number> {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const SITE_WIDE_TYPES = new Set([
+  "GOOSE_CONTROL", "RODENT_INSPECTION", "RODENT_EXCLUSION",
+  "WILDLIFE_INSPECTION", "WILDLIFE_REMOVAL",
+]);
 
 const RESULTS = [
   { value: "NEGATIVE",            label: "Negative",     emoji: "✅", color: "#22c55e", bg: "#052e16" },
@@ -1366,7 +1380,19 @@ function AddBuildingToProperty({ propertyId, onAdded }: { propertyId: string; on
 
 // ─── AddExtraEntry ────────────────────────────────────────────────────────────
 
-function AddExtraEntry({ inspectionId, onAdded }: { inspectionId: string; onAdded: (unitNumber: string) => Promise<void> }) {
+function AddExtraEntry({
+  inspectionId,
+  onAdded,
+  buttonLabel = "Add Entry Point (Lobby, Common Area, etc.)",
+  inputPlaceholder = "e.g. Lobby, Boiler Room, Hallway 2nd Floor",
+  promptText = "Enter a name for this entry point:",
+}: {
+  inspectionId: string;
+  onAdded: (unitNumber: string) => Promise<void>;
+  buttonLabel?: string;
+  inputPlaceholder?: string;
+  promptText?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1393,19 +1419,19 @@ function AddExtraEntry({ inspectionId, onAdded }: { inspectionId: string; onAdde
         className="w-full py-2.5 rounded-xl border-2 border-dashed text-sm flex items-center justify-center gap-2 transition-colors"
         style={{ borderColor: "rgba(255,255,255,0.12)", color: "#64748b" }}
       >
-        <Plus className="h-4 w-4" /> Add Entry Point (Lobby, Common Area, etc.)
+        <Plus className="h-4 w-4" /> {buttonLabel}
       </button>
     );
   }
 
   return (
     <div className="rounded-xl p-4 space-y-3" style={DARK.card}>
-      <p className="text-sm" style={{ color: "#94a3b8" }}>Enter a name for this entry point:</p>
+      <p className="text-sm" style={{ color: "#94a3b8" }}>{promptText}</p>
       <div className="flex gap-2">
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="e.g. Lobby, Boiler Room, Hallway 2nd Floor"
+          placeholder={inputPlaceholder}
           className="flex-1 h-9 px-3 rounded-lg text-sm text-white focus:outline-none"
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
           onKeyDown={(e) => e.key === "Enter" && add()}
@@ -1443,7 +1469,11 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
   const [pendingSync, setPendingSync] = useState(0);
   const [showOfficeNote, setShowOfficeNote] = useState(false);
   const [officeNotes, setOfficeNotes] = useState<string | null>(initial.notes ?? null);
+  const [activeTab, setActiveTab] = useState<"inspection" | "map">("inspection");
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isSiteWide = SITE_WIDE_TYPES.has(initial.serviceType);
+  const hasMaps = (initial.propertyMaps?.length ?? 0) > 0 || SITE_WIDE_TYPES.has(initial.serviceType);
 
   // ── Online/offline detection ──
   useEffect(() => {
@@ -1512,6 +1542,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
     : 0;
   const totalCount = allPropertyUnits.length;
   const alertCount = [...inspMap.values()].flat().filter((u) => u.detectionResult && ALERT_RESULTS.has(u.detectionResult)).length;
+  const siteWideZoneCount = isSiteWide ? extraUnits.filter((u) => !u.unitNumber.match(/ ·\d+$/)).length : 0;
 
   const sortedForNav = useMemo(() => allPropertyUnits, [allPropertyUnits]);
   const currentNavIdx = editingUnit ? sortedForNav.findIndex((u) => u.unitNumber === editingUnit) : -1;
@@ -1818,166 +1849,284 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
           {/* ── Inspection section ── */}
           {(isCheckedIn || isComplete) && inspection && (
             <>
-              {/* Progress */}
-              <div className="rounded-2xl p-4" style={DARK.card}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-white">{completedCount} / {totalCount} units</span>
-                    {alertCount > 0 && (
-                      <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>
-                        <AlertTriangle className="h-3 w-3" />{alertCount} alert{alertCount > 1 ? "s" : ""}
-                      </span>
+              {/* Tab bar — only shown when maps are relevant */}
+              {hasMaps && (
+                <div className="flex rounded-xl overflow-hidden p-1" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <button
+                    onClick={() => setActiveTab("inspection")}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all"
+                    style={activeTab === "inspection"
+                      ? { background: "#0ABAB5", color: "#fff" }
+                      : { color: "#64748b" }}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {isSiteWide ? "Observations" : "Inspection"}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("map")}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all"
+                    style={activeTab === "map"
+                      ? { background: "#0ABAB5", color: "#fff" }
+                      : { color: "#64748b" }}
+                  >
+                    <MapIcon className="h-4 w-4" />
+                    Site Map
+                  </button>
+                </div>
+              )}
+
+              {/* ── MAP TAB ── */}
+              {activeTab === "map" && (
+                <PropertyMapEditor
+                  propertyId={apt.property.id}
+                  serviceType={apt.serviceType}
+                  initialMaps={(apt.propertyMaps ?? []) as Parameters<typeof PropertyMapEditor>[0]["initialMaps"]}
+                  dark
+                />
+              )}
+
+              {/* ── INSPECTION TAB ── */}
+              {activeTab === "inspection" && (
+                <>
+                  {/* Progress */}
+                  <div className="rounded-2xl p-4" style={DARK.card}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        {isSiteWide ? (
+                          <span className="text-sm font-semibold text-white">
+                            {siteWideZoneCount} zone{siteWideZoneCount !== 1 ? "s" : ""} recorded
+                          </span>
+                        ) : (
+                          <span className="text-sm font-semibold text-white">{completedCount} / {totalCount} units</span>
+                        )}
+                        {alertCount > 0 && (
+                          <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>
+                            <AlertTriangle className="h-3 w-3" />{alertCount} alert{alertCount > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      {!isSiteWide && totalCount > 0 && (
+                        <span className="text-xs" style={{ color: "#64748b" }}>
+                          {Math.round((completedCount / totalCount) * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {!isSiteWide && totalCount > 0 && (
+                      <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${(completedCount / totalCount) * 100}%`, background: alertCount > 0 ? "#ef4444" : "#0ABAB5" }}
+                        />
+                      </div>
+                    )}
+                    {isSiteWide && (
+                      <div className="text-xs mt-1" style={{ color: "#64748b" }}>
+                        Site-wide survey — add observation zones below
+                      </div>
                     )}
                   </div>
-                  <span className="text-xs" style={{ color: "#64748b" }}>
-                    {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%`, background: alertCount > 0 ? "#ef4444" : "#0ABAB5" }}
-                  />
-                </div>
-              </div>
 
-              {/* Job Notes */}
-              <div className="rounded-2xl p-4" style={DARK.card}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5" style={{ color: "#0ABAB5" }} />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-white">Job Notes</span>
-                  </div>
-                  {notesSaving && <span className="text-xs" style={{ color: "#64748b" }}>Saving…</span>}
-                </div>
-                <textarea
-                  value={jobNotes}
-                  onChange={(e) => saveNotes(e.target.value)}
-                  placeholder="Overall observations, property conditions, access issues…"
-                  rows={3}
-                  disabled={isComplete}
-                  className="w-full px-3 py-2 rounded-lg text-sm text-white focus:outline-none resize-none disabled:opacity-60"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
-                />
-              </div>
-
-              {/* Unit grids by building */}
-              {apt.property.buildings.map((building) => (
-                <div key={building.id} className="rounded-2xl p-4" style={DARK.card}>
-                  <BuildingHeader
-                    building={building}
-                    inspectedCount={[...building.units].filter((u) => (inspMap.get(u.unitNumber)?.length ?? 0) > 0).length}
-                    onRenamed={(newName) => {
-                      setApt((prev) => ({
-                        ...prev,
-                        property: {
-                          ...prev.property,
-                          buildings: prev.property.buildings.map((b) =>
-                            b.id === building.id ? { ...b, name: newName } : b
-                          ),
-                        },
-                      }));
-                    }}
-                    onDeleted={refreshProperty}
-                  />
-                  <div className="grid grid-cols-4 gap-2">
-                    {[...building.units].sort((a, b) => naturalSort(a.unitNumber, b.unitNumber)).map((unit) => (
-                      <UnitTile
-                        key={unit.id}
-                        unit={unit}
-                        inspUnits={inspMap.get(unit.unitNumber) ?? []}
-                        onSelect={() => !isComplete && setEditingUnit(unit.unitNumber)}
-                      />
-                    ))}
-                  </div>
-                  {!isComplete && (
-                    <div className="mt-3">
-                      <AddUnitToProperty
-                        propertyId={apt.property.id}
-                        buildingId={building.id}
-                        onAdded={async (unitNumber) => { await refreshProperty(); if (unitNumber) setEditingUnit(unitNumber); }}
-                      />
+                  {/* Job Notes */}
+                  <div className="rounded-2xl p-4" style={DARK.card}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5" style={{ color: "#0ABAB5" }} />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-white">Job Notes</span>
+                      </div>
+                      {notesSaving && <span className="text-xs" style={{ color: "#64748b" }}>Saving…</span>}
                     </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Standalone units */}
-              {(apt.property.units.length > 0 || apt.property.buildings.length === 0) && (
-                <div className="rounded-2xl p-4" style={DARK.card}>
-                  <div className="text-sm font-semibold text-white mb-3">Units</div>
-                  {apt.property.units.length > 0 && (
-                    <div className="grid grid-cols-4 gap-2 mb-3">
-                      {[...apt.property.units].sort((a, b) => naturalSort(a.unitNumber, b.unitNumber)).map((unit) => (
-                        <UnitTile
-                          key={unit.id}
-                          unit={unit}
-                          inspUnits={inspMap.get(unit.unitNumber) ?? []}
-                          onSelect={() => !isComplete && setEditingUnit(unit.unitNumber)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {!isComplete && (
-                    <AddUnitToProperty
-                      propertyId={apt.property.id}
-                      buildingId={null}
-                      onAdded={async (unitNumber) => { await refreshProperty(); if (unitNumber) setEditingUnit(unitNumber); }}
+                    <textarea
+                      value={jobNotes}
+                      onChange={(e) => saveNotes(e.target.value)}
+                      placeholder="Overall observations, property conditions, access issues…"
+                      rows={3}
+                      disabled={isComplete}
+                      className="w-full px-3 py-2 rounded-lg text-sm text-white focus:outline-none resize-none disabled:opacity-60"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
                     />
-                  )}
-                </div>
-              )}
-
-              {/* Extra entry points */}
-              {extraUnits.length > 0 && (
-                <div className="rounded-2xl p-4" style={DARK.card}>
-                  <div className="text-sm font-semibold text-white mb-3">Extra Entry Points</div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {extraUnits
-                      .filter((u) => !u.unitNumber.match(/ ·\d+$/))
-                      .sort((a, b) => naturalSort(a.unitNumber, b.unitNumber))
-                      .map((u) => (
-                        <UnitTile
-                          key={u.id}
-                          unit={{ id: u.id, unitNumber: u.unitNumber }}
-                          inspUnits={[u]}
-                          onSelect={() => !isComplete && setEditingUnit(u.unitNumber)}
-                        />
-                      ))}
                   </div>
-                </div>
-              )}
 
-              {/* Add building */}
-              {!isComplete && (
-                <AddBuildingToProperty propertyId={apt.property.id} onAdded={refreshProperty} />
-              )}
+                  {/* ─── SITE-WIDE MODE: Observation zones ─── */}
+                  {isSiteWide && (
+                    <div className="rounded-2xl p-4" style={DARK.card}>
+                      <div className="text-sm font-semibold text-white mb-1">Observation Zones</div>
+                      <div className="text-xs mb-4" style={{ color: "#64748b" }}>
+                        Add zones to record observations for each area of the property.
+                      </div>
 
-              {/* Add extra entry */}
-              {!isComplete && (
-                <AddExtraEntry
-                  inspectionId={inspection.id}
-                  onAdded={async (unitNumber) => { await refreshInspection(); setEditingUnit(unitNumber); }}
-                />
-              )}
+                      {/* Zone list */}
+                      {extraUnits.filter((u) => !u.unitNumber.match(/ ·\d+$/)).length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {extraUnits
+                            .filter((u) => !u.unitNumber.match(/ ·\d+$/))
+                            .sort((a, b) => naturalSort(a.unitNumber, b.unitNumber))
+                            .map((zone) => {
+                              const allZoneUnits = inspMap.get(zone.unitNumber) ?? [zone];
+                              const result = worstResult(allZoneUnits);
+                              const cfg = result ? RESULT_MAP[result] : null;
+                              const photoCount = allZoneUnits.reduce((s, u) => s + u.photos.length, 0);
+                              return (
+                                <button
+                                  key={zone.id}
+                                  onClick={() => !isComplete && setEditingUnit(zone.unitNumber)}
+                                  disabled={isComplete}
+                                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 text-left transition-all active:scale-[0.99] disabled:opacity-70"
+                                  style={cfg
+                                    ? { borderColor: cfg.color, background: `${cfg.color}18` }
+                                    : { borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
+                                >
+                                  <span className="text-xl shrink-0">{cfg?.emoji ?? "⬜"}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-semibold text-white truncate">{zone.unitNumber}</div>
+                                    {cfg && <div className="text-xs mt-0.5" style={{ color: cfg.color }}>{cfg.label}</div>}
+                                  </div>
+                                  {photoCount > 0 && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(59,130,246,0.2)", color: "#60a5fa" }}>
+                                      📷 {photoCount}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                        </div>
+                      )}
 
-              {/* Complete button */}
-              {!isComplete && completedCount > 0 && (
-                <button
-                  onClick={completeInspection}
-                  disabled={completing || showSignature}
-                  className="w-full py-4 rounded-xl font-bold text-base text-white flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
-                  style={{ background: alertCount > 0 ? "#dc2626" : "#0ABAB5" }}
-                >
-                  {completing ? (
-                    <><Clock className="h-5 w-5 animate-spin" />Completing…</>
-                  ) : (
-                    <><CheckCircle2 className="h-5 w-5" />
-                      Complete & Get Signature
-                      {alertCount > 0 ? ` — ${alertCount} Alert${alertCount > 1 ? "s" : ""}` : " — All Clear"}
+                      {!isComplete && (
+                        <AddExtraEntry
+                          inspectionId={inspection.id}
+                          onAdded={async (unitNumber) => { await refreshInspection(); setEditingUnit(unitNumber); }}
+                          buttonLabel="+ Add Observation Zone"
+                          inputPlaceholder="e.g. North Pond, Parking Lot, Back Field"
+                          promptText="Name this observation zone:"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {/* ─── UNIT-BASED MODE: Building grids ─── */}
+                  {!isSiteWide && (
+                    <>
+                      {/* Unit grids by building */}
+                      {apt.property.buildings.map((building) => (
+                        <div key={building.id} className="rounded-2xl p-4" style={DARK.card}>
+                          <BuildingHeader
+                            building={building}
+                            inspectedCount={[...building.units].filter((u) => (inspMap.get(u.unitNumber)?.length ?? 0) > 0).length}
+                            onRenamed={(newName) => {
+                              setApt((prev) => ({
+                                ...prev,
+                                property: {
+                                  ...prev.property,
+                                  buildings: prev.property.buildings.map((b) =>
+                                    b.id === building.id ? { ...b, name: newName } : b
+                                  ),
+                                },
+                              }));
+                            }}
+                            onDeleted={refreshProperty}
+                          />
+                          <div className="grid grid-cols-4 gap-2">
+                            {[...building.units].sort((a, b) => naturalSort(a.unitNumber, b.unitNumber)).map((unit) => (
+                              <UnitTile
+                                key={unit.id}
+                                unit={unit}
+                                inspUnits={inspMap.get(unit.unitNumber) ?? []}
+                                onSelect={() => !isComplete && setEditingUnit(unit.unitNumber)}
+                              />
+                            ))}
+                          </div>
+                          {!isComplete && (
+                            <div className="mt-3">
+                              <AddUnitToProperty
+                                propertyId={apt.property.id}
+                                buildingId={building.id}
+                                onAdded={async (unitNumber) => { await refreshProperty(); if (unitNumber) setEditingUnit(unitNumber); }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Standalone units */}
+                      {(apt.property.units.length > 0 || apt.property.buildings.length === 0) && (
+                        <div className="rounded-2xl p-4" style={DARK.card}>
+                          <div className="text-sm font-semibold text-white mb-3">Units</div>
+                          {apt.property.units.length > 0 && (
+                            <div className="grid grid-cols-4 gap-2 mb-3">
+                              {[...apt.property.units].sort((a, b) => naturalSort(a.unitNumber, b.unitNumber)).map((unit) => (
+                                <UnitTile
+                                  key={unit.id}
+                                  unit={unit}
+                                  inspUnits={inspMap.get(unit.unitNumber) ?? []}
+                                  onSelect={() => !isComplete && setEditingUnit(unit.unitNumber)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {!isComplete && (
+                            <AddUnitToProperty
+                              propertyId={apt.property.id}
+                              buildingId={null}
+                              onAdded={async (unitNumber) => { await refreshProperty(); if (unitNumber) setEditingUnit(unitNumber); }}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Extra entry points */}
+                      {extraUnits.length > 0 && (
+                        <div className="rounded-2xl p-4" style={DARK.card}>
+                          <div className="text-sm font-semibold text-white mb-3">Extra Entry Points</div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {extraUnits
+                              .filter((u) => !u.unitNumber.match(/ ·\d+$/))
+                              .sort((a, b) => naturalSort(a.unitNumber, b.unitNumber))
+                              .map((u) => (
+                                <UnitTile
+                                  key={u.id}
+                                  unit={{ id: u.id, unitNumber: u.unitNumber }}
+                                  inspUnits={[u]}
+                                  onSelect={() => !isComplete && setEditingUnit(u.unitNumber)}
+                                />
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add building */}
+                      {!isComplete && (
+                        <AddBuildingToProperty propertyId={apt.property.id} onAdded={refreshProperty} />
+                      )}
+
+                      {/* Add extra entry */}
+                      {!isComplete && (
+                        <AddExtraEntry
+                          inspectionId={inspection.id}
+                          onAdded={async (unitNumber) => { await refreshInspection(); setEditingUnit(unitNumber); }}
+                        />
+                      )}
                     </>
                   )}
-                </button>
+
+                  {/* Complete button */}
+                  {!isComplete && (isSiteWide ? siteWideZoneCount > 0 : completedCount > 0) && (
+                    <button
+                      onClick={completeInspection}
+                      disabled={completing || showSignature}
+                      className="w-full py-4 rounded-xl font-bold text-base text-white flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+                      style={{ background: alertCount > 0 ? "#dc2626" : "#0ABAB5" }}
+                    >
+                      {completing ? (
+                        <><Clock className="h-5 w-5 animate-spin" />Completing…</>
+                      ) : (
+                        <><CheckCircle2 className="h-5 w-5" />
+                          Complete & Get Signature
+                          {alertCount > 0 ? ` — ${alertCount} Alert${alertCount > 1 ? "s" : ""}` : " — All Clear"}
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
               )}
             </>
           )}

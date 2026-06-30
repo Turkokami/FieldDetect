@@ -60,6 +60,21 @@ export default async function FieldJobPage({
 
   if (!appointment) notFound();
 
-  const apt: TechAppointment = JSON.parse(JSON.stringify(appointment));
+  const MAP_SERVICE_TYPES = [
+    "GOOSE_CONTROL", "RODENT_INSPECTION", "RODENT_EXCLUSION",
+    "WILDLIFE_INSPECTION", "WILDLIFE_REMOVAL", "BIRD_EXCLUSION",
+  ];
+
+  const propertyMaps = MAP_SERVICE_TYPES.includes(appointment.serviceType)
+    ? await prisma.propertyMap.findMany({
+        where: { propertyId: appointment.propertyId, organizationId: user.organizationId },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+
+  const apt: TechAppointment = {
+    ...JSON.parse(JSON.stringify(appointment)),
+    propertyMaps: JSON.parse(JSON.stringify(propertyMaps)),
+  };
   return <FieldTechView appointment={apt} />;
 }

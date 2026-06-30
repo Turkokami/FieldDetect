@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing-client";
+
+type MarkerPhoto = { url: string; key: string };
 
 type MapMarker = {
   id: string;
@@ -13,6 +16,7 @@ type MapMarker = {
   count?: number;
   notes?: string;
   addedAt: string;
+  photos?: MarkerPhoto[];
 };
 
 type PropertyMap = {
@@ -95,9 +99,10 @@ type Props = {
   propertyId: string;
   serviceType?: string;
   initialMaps: PropertyMap[];
+  dark?: boolean;
 };
 
-export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Props) {
+export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark = false }: Props) {
   const [maps, setMaps] = useState<PropertyMap[]>(initialMaps);
   const [activeMapId, setActiveMapId] = useState<string | null>(initialMaps[0]?.id ?? null);
   const [uploading, setUploading] = useState(false);
@@ -108,12 +113,43 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
   const [editLabel, setEditLabel] = useState("");
   const [editCount, setEditCount] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editPhotos, setEditPhotos] = useState<MarkerPhoto[]>([]);
+  const [uploadingMarkerPhoto, setUploadingMarkerPhoto] = useState(false);
   const [renamingMapId, setRenamingMapId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const markerPhotoInputRef = useRef<HTMLInputElement>(null);
   const { startUpload } = useUploadThing("siteMapPhoto");
+  const { startUpload: uploadMarkerPhoto } = useUploadThing("inspectionPhoto");
+
+  // Dark-mode style helpers
+  const d = dark ? {
+    card: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px" } as React.CSSProperties,
+    border: { borderBottom: "1px solid rgba(255,255,255,0.08)" } as React.CSSProperties,
+    titleText: { color: "#ffffff" } as React.CSSProperties,
+    muteText: { color: "#64748b" } as React.CSSProperties,
+    inputStyle: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" } as React.CSSProperties,
+    inputCls: "w-full px-3 py-1.5 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30",
+    panelCls: "rounded-xl p-4",
+    panelStyle: { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" } as React.CSSProperties,
+    btnBorder: "border border-[rgba(255,255,255,0.12)] text-slate-300 hover:text-white",
+    btnPrimary: "text-white font-semibold",
+    btnPrimaryStyle: { background: "#0ABAB5" } as React.CSSProperties,
+  } : {
+    card: undefined as React.CSSProperties | undefined,
+    border: undefined as React.CSSProperties | undefined,
+    titleText: undefined as React.CSSProperties | undefined,
+    muteText: undefined as React.CSSProperties | undefined,
+    inputStyle: undefined as React.CSSProperties | undefined,
+    inputCls: "w-full px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+    panelCls: "bg-muted/40 rounded-xl p-4 border border-border",
+    panelStyle: undefined as React.CSSProperties | undefined,
+    btnBorder: "border border-border text-muted-foreground hover:text-foreground hover:bg-muted",
+    btnPrimary: "text-white font-semibold bg-primary hover:bg-primary/90",
+    btnPrimaryStyle: undefined as React.CSSProperties | undefined,
+  };
 
   const activeMap = maps.find((m) => m.id === activeMapId) ?? null;
   const configs = getConfigs(serviceType);
@@ -147,6 +183,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
     setEditLabel(marker.label ?? "");
     setEditCount(marker.count !== undefined ? String(marker.count) : "");
     setEditNotes(marker.notes ?? "");
+    setEditPhotos(marker.photos ?? []);
   };
 
   const saveMarkerEdit = () => {
@@ -163,6 +200,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
                       label: editLabel || undefined,
                       count: editCount ? parseInt(editCount) : undefined,
                       notes: editNotes || undefined,
+                      photos: editPhotos.length > 0 ? editPhotos : undefined,
                     }
                   : mk
               ),
@@ -172,6 +210,23 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
     );
     setSelectedId(null);
     setIsDirty(true);
+  };
+
+  const handleMarkerPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploadingMarkerPhoto(true);
+    try {
+      const uploaded = await uploadMarkerPhoto(files);
+      if (!uploaded?.length) throw new Error("Upload failed");
+      const newPhotos: MarkerPhoto[] = uploaded.map((f) => ({ url: (f as { ufsUrl: string }).ufsUrl, key: f.key }));
+      setEditPhotos((prev) => [...prev, ...newPhotos]);
+    } catch {
+      toast.error("Photo upload failed");
+    } finally {
+      setUploadingMarkerPhoto(false);
+      if (markerPhotoInputRef.current) markerPhotoInputRef.current.value = "";
+    }
   };
 
   const deleteMarker = (markerId: string) => {
@@ -267,24 +322,34 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
     .filter((c) => c.n > 0);
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
+    <div className={dark ? "rounded-2xl overflow-hidden" : "bg-card border border-border rounded-xl overflow-hidden"} style={dark ? d.card : undefined}>
       {/* Header */}
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
+      <div className={dark ? "px-5 py-4 flex items-center justify-between gap-3" : "px-5 py-4 border-b border-border flex items-center justify-between gap-3"} style={dark ? d.border : undefined}>
         <div className="flex items-center gap-2">
           <span className="text-base">🗺️</span>
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Site Maps</h3>
+          <h3 className={`text-sm font-semibold uppercase tracking-wide ${dark ? "" : "text-foreground"}`} style={dark ? d.titleText : undefined}>Site Maps</h3>
           {maps.length > 0 && (
-            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+            <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full" style={dark ? d.muteText : { color: undefined }}>
               {maps.length}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
+          {activeMap && (
+            <Link
+              href={`/reports/site-map/${activeMap.id}`}
+              target="_blank"
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d.btnBorder}`}
+            >
+              View Report
+            </Link>
+          )}
           {isDirty && (
             <button
               onClick={saveMap}
               disabled={saving}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-60"
+              className={`px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-60 ${d.btnPrimary}`}
+              style={d.btnPrimaryStyle}
             >
               {saving ? "Saving…" : "Save Map"}
             </button>
@@ -293,7 +358,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border hover:bg-muted transition-colors disabled:opacity-60"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-60 ${d.btnBorder}`}
           >
             {uploading ? "Uploading…" : "+ Upload Photo"}
           </button>
@@ -303,15 +368,16 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
       {maps.length === 0 ? (
         <div className="p-10 text-center">
           <div className="text-5xl mb-3">🛩️</div>
-          <h4 className="font-semibold text-foreground mb-1">No Site Maps Yet</h4>
-          <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+          <h4 className={`font-semibold mb-1 ${dark ? "text-white" : "text-foreground"}`}>No Site Maps Yet</h4>
+          <p className={`text-sm mb-4 max-w-sm mx-auto ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
             {SERVICE_HINTS[serviceType ?? ""] ??
               "Upload an aerial or satellite photo, then tap to place markers at key locations."}
           </p>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-60"
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${d.btnPrimary}`}
+            style={d.btnPrimaryStyle}
           >
             {uploading ? "Uploading…" : "Upload Aerial Photo"}
           </button>
@@ -319,7 +385,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
       ) : (
         <>
           {/* Map tabs */}
-          <div className="flex items-center gap-0.5 px-4 pt-3 border-b border-border overflow-x-auto">
+          <div className={`flex items-center gap-0.5 px-4 pt-3 overflow-x-auto ${dark ? "" : "border-b border-border"}`} style={dark ? d.border : undefined}>
             {maps.map((m) => (
               <div key={m.id} className="flex items-center shrink-0">
                 {renamingMapId === m.id ? (
@@ -331,10 +397,11 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
                       autoFocus
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
-                      className="w-28 text-xs px-2 py-1 border border-primary rounded-md bg-background"
+                      className={`w-28 text-xs px-2 py-1 rounded-md ${dark ? "text-white" : "border border-primary bg-background"}`}
+                      style={dark ? d.inputStyle : undefined}
                       onBlur={() => setRenamingMapId(null)}
                     />
-                    <button type="submit" className="text-xs text-primary font-semibold">✓</button>
+                    <button type="submit" className="text-xs font-semibold" style={dark ? { color: "#0ABAB5" } : { color: "var(--primary)" }}>✓</button>
                   </form>
                 ) : (
                   <button
@@ -342,8 +409,8 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
                     onDoubleClick={() => { setRenamingMapId(m.id); setRenameValue(m.name); }}
                     className={`px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
                       activeMapId === m.id
-                        ? "text-primary border-primary bg-primary/5"
-                        : "text-muted-foreground border-transparent hover:text-foreground"
+                        ? dark ? "border-[#0ABAB5] text-[#0ABAB5] bg-[rgba(10,186,181,0.08)]" : "text-primary border-primary bg-primary/5"
+                        : dark ? "border-transparent text-slate-400 hover:text-white" : "text-muted-foreground border-transparent hover:text-foreground"
                     }`}
                     title="Double-click to rename"
                   >
@@ -358,7 +425,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
             <div className="p-4 space-y-4">
               {/* Marker type selector */}
               <div>
-                <p className="text-xs text-muted-foreground mb-2">
+                <p className={`text-xs mb-2 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
                   Select a marker type, then tap the photo to place it.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -448,7 +515,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
 
               {/* Marker editor panel */}
               {selectedMarker && (
-                <div className="bg-muted/40 rounded-xl p-4 border border-border">
+                <div className={d.panelCls} style={d.panelStyle}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div
@@ -457,20 +524,20 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
                       >
                         {getMarkerCfg(selectedMarker.type, serviceType).symbol}
                       </div>
-                      <span className="text-sm font-semibold text-foreground">
+                      <span className={`text-sm font-semibold ${dark ? "text-white" : "text-foreground"}`}>
                         Edit — {getMarkerCfg(selectedMarker.type, serviceType).label}
                       </span>
                     </div>
                     <button
                       onClick={() => deleteMarker(selectedMarker.id)}
-                      className="text-xs font-semibold text-destructive hover:underline"
+                      className="text-xs font-semibold text-red-400 hover:underline"
                     >
                       Delete
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1">Label / ID</label>
+                      <label className={`block text-xs font-semibold mb-1 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Label / ID</label>
                       <input
                         type="text"
                         value={editLabel}
@@ -480,11 +547,12 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
                           selectedMarker.type === "BURROW" ? "e.g. Burrow A" :
                           "Optional label"
                         }
-                        className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className={d.inputCls}
+                        style={d.inputStyle}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                      <label className={`block text-xs font-semibold mb-1 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
                         {selectedMarker.type === "NEST" || selectedMarker.type === "EGGS" ? "Egg Count" :
                          selectedMarker.type === "BURROW" ? "Burrow Count" :
                          selectedMarker.type === "ACTIVITY" ? "Bird Count" :
@@ -496,30 +564,73 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
                         value={editCount}
                         onChange={(e) => setEditCount(e.target.value)}
                         placeholder="—"
-                        className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className={d.inputCls}
+                        style={d.inputStyle}
                       />
                     </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1">Notes</label>
+                    <div className="sm:col-span-2">
+                      <label className={`block text-xs font-semibold mb-1 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Notes</label>
                       <input
                         type="text"
                         value={editNotes}
                         onChange={(e) => setEditNotes(e.target.value)}
                         placeholder="Optional notes about this location…"
-                        className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className={d.inputCls}
+                        style={d.inputStyle}
                       />
+                    </div>
+
+                    {/* Photos */}
+                    <div className="sm:col-span-2">
+                      <label className={`block text-xs font-semibold mb-2 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
+                        Photos {editPhotos.length > 0 && `(${editPhotos.length})`}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {editPhotos.map((p, i) => (
+                          <div key={p.url} className="relative w-16 h-16 rounded-lg overflow-hidden border group" style={dark ? { borderColor: "rgba(255,255,255,0.12)" } : { borderColor: "var(--border)" }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.url} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setEditPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 hidden group-hover:flex items-center justify-center text-white text-[9px]"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => markerPhotoInputRef.current?.click()}
+                          disabled={uploadingMarkerPhoto}
+                          className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center transition-colors disabled:opacity-50"
+                          style={dark ? { borderColor: "rgba(255,255,255,0.2)", color: "#64748b" } : { borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+                        >
+                          {uploadingMarkerPhoto ? <span className="text-[10px]">…</span> : <span className="text-xl leading-none">+</span>}
+                        </button>
+                        <input
+                          ref={markerPhotoInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          capture="environment"
+                          className="hidden"
+                          onChange={handleMarkerPhotoUpload}
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 mt-3">
                     <button
                       onClick={() => setSelectedId(null)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border hover:bg-muted transition-colors"
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d.btnBorder}`}
                     >
                       Cancel
                     </button>
                     <button
                       onClick={saveMarkerEdit}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors"
+                      className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${d.btnPrimary}`}
+                      style={d.btnPrimaryStyle}
                     >
                       Save Details
                     </button>
@@ -530,10 +641,10 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
               {/* Summary legend */}
               {markerSummary.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Marker Summary</p>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Marker Summary</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {markerSummary.map((cfg) => (
-                      <div key={cfg.value} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                      <div key={cfg.value} className="flex items-center gap-2 rounded-lg px-3 py-2" style={dark ? { background: "rgba(255,255,255,0.05)" } : { background: "rgba(0,0,0,0.04)" }}>
                         <div
                           className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                           style={{ background: cfg.color }}
@@ -541,8 +652,8 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
                           {cfg.symbol}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-foreground">{cfg.n}</div>
-                          <div className="text-[10px] text-muted-foreground truncate">{cfg.label}</div>
+                          <div className={`text-xs font-bold ${dark ? "text-white" : "text-foreground"}`}>{cfg.n}</div>
+                          <div className={`text-[10px] truncate ${dark ? "text-slate-400" : "text-muted-foreground"}`}>{cfg.label}</div>
                         </div>
                       </div>
                     ))}
@@ -551,10 +662,10 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps }: Prop
               )}
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
+              <div className={`flex items-center justify-between pt-2 border-t text-xs ${dark ? "text-slate-400 border-[rgba(255,255,255,0.08)]" : "text-muted-foreground border-border"}`}>
                 <button
                   onClick={() => deleteMap(activeMap.id)}
-                  className="hover:text-destructive transition-colors"
+                  className="hover:text-red-400 transition-colors"
                 >
                   Delete this map
                 </button>
