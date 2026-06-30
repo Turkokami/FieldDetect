@@ -469,7 +469,6 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
                   src={activeMap.imageUrl}
                   alt={activeMap.name}
                   className="w-full h-auto block"
-                  style={{ maxHeight: "520px", objectFit: "contain" }}
                   draggable={false}
                 />
 
@@ -486,8 +485,13 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
                         if (isSelected) setSelectedId(null);
                         else openMarker(marker);
                       }}
-                      className="absolute -translate-x-1/2 -translate-y-1/2 focus:outline-none group"
-                      style={{ left: `${marker.x}%`, top: `${marker.y}%`, zIndex: isSelected ? 20 : 10 }}
+                      className="absolute focus:outline-none group flex flex-col items-center"
+                      style={{
+                        left: `${marker.x}%`,
+                        top: `${marker.y}%`,
+                        transform: "translate(-50%, -100%)",
+                        zIndex: isSelected ? 20 : 10,
+                      }}
                       aria-label={cfg.label}
                     >
                       <div
@@ -496,15 +500,27 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
                         }`}
                         style={{
                           background: cfg.color,
-                          width: isSelected ? "32px" : "28px",
-                          height: isSelected ? "32px" : "28px",
-                          fontSize: marker.count ? "10px" : "11px",
+                          width: isSelected ? "30px" : "26px",
+                          height: isSelected ? "30px" : "26px",
+                          fontSize: "10px",
+                          border: "2px solid rgba(255,255,255,0.8)",
                         }}
                       >
                         {marker.count ?? cfg.symbol}
                       </div>
+                      {/* Pin tail */}
+                      <div
+                        style={{
+                          width: 0,
+                          height: 0,
+                          borderLeft: "5px solid transparent",
+                          borderRight: "5px solid transparent",
+                          borderTop: `6px solid ${cfg.color}`,
+                          marginTop: "-1px",
+                        }}
+                      />
                       {marker.label && (
-                        <div className="absolute left-1/2 -translate-x-1/2 top-8 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap pointer-events-none z-30">
+                        <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap pointer-events-none z-30">
                           {marker.label}
                         </div>
                       )}
