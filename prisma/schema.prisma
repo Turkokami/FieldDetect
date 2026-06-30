@@ -274,6 +274,9 @@ model Organization {
   jobPermits            JobPermit[]
   propertyMaps          PropertyMap[]
   bedBugVials           BedBugVial[]
+  stations              Station[]
+  chemicals             Chemical[]
+  chemicalApplications  ChemicalApplication[]
 
   @@map("organizations")
 }
@@ -332,6 +335,8 @@ model User {
   mileageLogs           VehicleMileageLog[]
   vehicleAssignments    VehicleAssignment[]
   recurringClientRoutes RecurringClient[]   @relation("RecurringClientTechnician")
+  stationChecks         StationCheck[]      @relation("StationCheckUser")
+  chemicalApplications  ChemicalApplication[] @relation("ChemApplicationUser")
 
   @@map("users")
 }
@@ -594,9 +599,11 @@ model Property {
   units        Unit[]
   appointments Appointment[]
   inspections  Inspection[]
-  estimates         Estimate[]
-  recurringClients  RecurringClient[]
-  propertyMaps      PropertyMap[]
+  estimates            Estimate[]
+  recurringClients     RecurringClient[]
+  propertyMaps         PropertyMap[]
+  stations             Station[]
+  chemicalApplications ChemicalApplication[]
 
   @@map("properties")
 }
@@ -702,10 +709,12 @@ model Appointment {
   technician    User?         @relation("AssignedTechnician", fields: [technicianId], references: [id])
   k9Team        K9Team?       @relation(fields: [k9TeamId], references: [id])
   vehicle       Vehicle?      @relation(fields: [vehicleId], references: [id])
-  inspection    Inspection?
-  notifications Notification[]
-  mileageLogs   VehicleMileageLog[]
-  permits       JobPermit[]
+  inspection           Inspection?
+  notifications        Notification[]
+  mileageLogs          VehicleMileageLog[]
+  permits              JobPermit[]
+  stationChecks        StationCheck[]
+  chemicalApplications ChemicalApplication[]
 
   @@map("appointments")
 }
@@ -1380,4 +1389,116 @@ enum FeedHost {
   HUMAN
   PET
   OTHER
+}
+
+// ─── Pest Control Stations (Barcode Scanner) ──────────────────────────────────
+
+model Station {
+  id             String      @id @default(cuid())
+  organizationId String
+  propertyId     String
+  barcode        String
+  stationType    StationType @default(OTHER)
+  label          String?
+  locationNotes  String?
+  isActive       Boolean     @default(true)
+  installedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  checks       StationCheck[]
+
+  @@unique([organizationId, barcode])
+  @@index([propertyId])
+  @@map("stations")
+}
+
+model StationCheck {
+  id            String        @id @default(cuid())
+  stationId     String
+  appointmentId String?
+  checkedById   String?
+  status        StationStatus @default(CLEAR)
+  notes         String?
+  checkedAt     DateTime      @default(now())
+
+  station     Station      @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  checkedBy   User?        @relation("StationCheckUser", fields: [checkedById], references: [id], onDelete: SetNull)
+
+  @@index([stationId])
+  @@index([appointmentId])
+  @@map("station_checks")
+}
+
+enum StationType {
+  TERMITE
+  RODENT_BAIT
+  RODENT_SNAP
+  RODENT_GLUE
+  RODENT_LIVE
+  OTHER
+}
+
+enum StationStatus {
+  CLEAR
+  ACTIVITY
+  TRIGGERED
+  BAIT_CONSUMED
+  BAIT_REPLACED
+  DAMAGED
+  REMOVED
+}
+
+// ─── Chemical Library ─────────────────────────────────────────────────────────
+
+model Chemical {
+  id               String   @id @default(cuid())
+  organizationId   String
+  name             String
+  epaRegNumber     String?
+  activeIngredient String?
+  signalWord       String?
+  targetPests      String[] @default([])
+  isActive         Boolean  @default(true)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  applications ChemicalApplication[]
+
+  @@index([organizationId])
+  @@map("chemicals")
+}
+
+model ChemicalApplication {
+  id                String   @id @default(cuid())
+  organizationId    String
+  chemicalId        String
+  appointmentId     String?
+  propertyId        String?
+  mixRatio          String?
+  amountUsed        Float?
+  unit              String?
+  applicationMethod String?
+  targetPest        String?
+  treatmentArea     String?
+  appliedById       String?
+  appliedAt         DateTime @default(now())
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  chemical    Chemical      @relation(fields: [chemicalId], references: [id])
+  appointment Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  property    Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  appliedBy   User?         @relation("ChemApplicationUser", fields: [appliedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([appointmentId])
+  @@index([chemicalId])
+  @@map("chemical_applications")
 }

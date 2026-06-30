@@ -8,6 +8,8 @@ import { WeatherWidget } from "@/components/scheduling/weather-widget";
 import { GooseTracking } from "@/components/scheduling/goose-tracking";
 import { JobPermitsPanel } from "@/components/scheduling/job-permits";
 import { PropertyMapEditor } from "@/components/scheduling/property-map-editor";
+import { StationScanner } from "@/components/stations/station-scanner";
+import { ChemicalApplicationsPanel } from "@/components/stations/chemical-applications-panel";
 
 export default async function AppointmentDetailPage({
   params,
@@ -50,13 +52,32 @@ export default async function AppointmentDetailPage({
     "GOOSE_CONTROL", "RODENT_INSPECTION", "RODENT_EXCLUSION",
     "WILDLIFE_INSPECTION", "WILDLIFE_REMOVAL", "BIRD_EXCLUSION",
   ];
+  const STATION_SERVICE_TYPES = [
+    "TERMITE_INSPECTION", "RODENT_INSPECTION", "RODENT_EXCLUSION",
+    "GENERAL_PEST_INSPECTION", "GENERAL_PEST_TREATMENT", "OTHER",
+  ];
+
   const showMap = MAP_SERVICE_TYPES.includes(appointment.serviceType);
-  const propertyMaps = showMap
-    ? await prisma.propertyMap.findMany({
-        where: { propertyId: appointment.propertyId, organizationId: user.organizationId },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
+  const showStations = STATION_SERVICE_TYPES.includes(appointment.serviceType);
+
+  const [propertyMaps, stations, chemicalApplications] = await Promise.all([
+    showMap
+      ? prisma.propertyMap.findMany({
+          where: { propertyId: appointment.propertyId, organizationId: user.organizationId },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+    prisma.station.findMany({
+      where: { propertyId: appointment.propertyId, organizationId: user.organizationId, isActive: true },
+      include: { checks: { orderBy: { checkedAt: "desc" }, take: 1 } },
+      orderBy: [{ stationType: "asc" }, { label: "asc" }],
+    }),
+    prisma.chemicalApplication.findMany({
+      where: { appointmentId: appointment.id },
+      include: { chemical: true, appliedBy: { select: { firstName: true, lastName: true } } },
+      orderBy: { appliedAt: "desc" },
+    }),
+  ]);
 
   const SERVICE_LABELS: Record<string, string> = {
     BED_BUG_INSPECTION: "Bed Bug Inspection",
@@ -386,6 +407,24 @@ export default async function AppointmentDetailPage({
               )}
             </div>
           )}
+
+          {/* Station Scanner */}
+          <div className="mt-4">
+            <StationScanner
+              propertyId={appointment.propertyId}
+              appointmentId={appointment.id}
+              initialStations={JSON.parse(JSON.stringify(stations))}
+            />
+          </div>
+
+          {/* Chemical Applications */}
+          <div className="mt-4">
+            <ChemicalApplicationsPanel
+              appointmentId={appointment.id}
+              propertyId={appointment.propertyId}
+              initialApplications={JSON.parse(JSON.stringify(chemicalApplications))}
+            />
+          </div>
 
           {appointment.description && (
             <div className="mt-4 bg-card border border-border rounded-xl p-5">

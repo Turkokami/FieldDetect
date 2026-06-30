@@ -13,6 +13,7 @@ import PPERequirementsSection from "@/components/settings/ppe-requirements-secti
 import CcEmailsSection from "@/components/settings/cc-emails-section";
 import { ContractTemplateSection } from "@/components/settings/contract-template-section";
 import { ModulesSection } from "@/components/settings/modules-section";
+import { ChemicalLibrarySection } from "@/components/settings/chemical-library-section";
 
 export const metadata = { title: "Settings" };
 
@@ -29,7 +30,7 @@ export default async function SettingsPage({
 
   const sp = await searchParams;
 
-  const [org, users, templates, pendingInvites, taxCodes, equipmentItems, ppeRequirements] = await Promise.all([
+  const [org, users, templates, pendingInvites, taxCodes, equipmentItems, ppeRequirements, chemicals] = await Promise.all([
     prisma.organization.findUnique({ where: { id: user.organizationId } }),
     prisma.user.findMany({
       where: { organizationId: user.organizationId, isActive: true },
@@ -59,6 +60,10 @@ export default async function SettingsPage({
     prisma.facilityPPERequirement.findMany({
       where: { organizationId: user.organizationId, isActive: true },
       orderBy: [{ facilityType: "asc" }, { sortOrder: "asc" }],
+    }),
+    prisma.chemical.findMany({
+      where: { organizationId: user.organizationId, isActive: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -107,6 +112,18 @@ export default async function SettingsPage({
         </p>
         <TaxCodesSection
           initialTaxCodes={JSON.parse(JSON.stringify(taxCodes))}
+          canEdit={canEdit}
+        />
+      </div>
+
+      {/* Chemical Library */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Chemical Library</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Manage your approved chemical list. EPA registration number, active ingredient, and signal word are logged on job records for compliance.
+        </p>
+        <ChemicalLibrarySection
+          initialChemicals={JSON.parse(JSON.stringify(chemicals))}
           canEdit={canEdit}
         />
       </div>
