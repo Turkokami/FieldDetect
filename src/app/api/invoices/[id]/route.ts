@@ -74,6 +74,22 @@ export async function PATCH(
     if (validated.status === "SENT") updateData.sentAt = new Date();
     if (validated.status === "PAID") updateData.paidAt = new Date();
 
+    // Recalculate totals if tax rate or discount changed
+    if (validated.taxRate !== undefined || validated.discountAmount !== undefined) {
+      const current = existing;
+      const items = await prisma.invoiceLineItem.findMany({ where: { invoiceId: id } });
+      const subtotal = items.reduce((s, i) => s + Number(i.total), 0);
+      const discount = validated.discountAmount !== undefined ? validated.discountAmount : Number(current.discountAmount ?? 0);
+      const taxRate = validated.taxRate !== undefined ? validated.taxRate : Number(current.taxRate ?? 0);
+      const taxAmount = (subtotal - discount) * (taxRate / 100);
+      const totalAmount = subtotal + taxAmount - discount;
+      const amountPaid = Number(current.paidAmount ?? 0);
+      updateData.subtotal = subtotal;
+      updateData.taxAmount = taxAmount;
+      updateData.totalAmount = totalAmount;
+      updateData.balanceDue = totalAmount - amountPaid;
+    }
+
     const invoice = await prisma.invoice.update({
       where: { id },
       data: updateData,

@@ -23,6 +23,7 @@ const updateSettingsSchema = z.object({
   timezone: z.string().optional(),
   ccEmails: z.array(z.string().email()).optional(),
   contractTemplate: z.string().optional().nullable(),
+  enabledModules: z.array(z.string()).optional(),
 });
 
 export async function GET(req: NextRequest) {

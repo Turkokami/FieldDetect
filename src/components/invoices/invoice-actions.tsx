@@ -4,6 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+type LineItem = {
+  id: string;
+  description: string;
+  quantity: number | string;
+  unitPrice: number | string;
+  total: number | string;
+  sortOrder: number;
+};
+
 type Invoice = {
   id: string;
   status: string;
@@ -11,6 +20,12 @@ type Invoice = {
   dueDate: Date | null;
   notes: string | null;
   discountAmount: number | string | null;
+  subtotal: number | string;
+  taxRate: number | string;
+  taxAmount: number | string;
+  totalAmount: number | string;
+  taxCodeName: string | null;
+  lineItems: LineItem[];
 };
 
 function DownloadPDFButton({ invoiceId }: { invoiceId: string }) {
@@ -46,6 +61,13 @@ type EditForm = {
   dueDate: string;
   notes: string;
   discountAmount: string;
+  taxRate: string;
+};
+
+type NewItemForm = {
+  description: string;
+  quantity: string;
+  unitPrice: string;
 };
 
 export default function InvoiceActions({ invoice, remaining, canDelete = false }: Props) {
@@ -66,12 +88,24 @@ export default function InvoiceActions({ invoice, remaining, canDelete = false }
   });
 
   const [editForm, setEditForm] = useState<EditForm>({
-    dueDate: invoice.dueDate
-      ? new Date(invoice.dueDate).toISOString().split("T")[0]
-      : "",
+    dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split("T")[0] : "",
     notes: invoice.notes ?? "",
     discountAmount: invoice.discountAmount != null ? String(Number(invoice.discountAmount)) : "0",
+    taxRate: String(Number(invoice.taxRate ?? 0)),
   });
+
+  const [lineItems, setLineItems] = useState<LineItem[]>(invoice.lineItems);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<{ description: string; quantity: string; unitPrice: string } | null>(null);
+  const [newItem, setNewItem] = useState<NewItemForm>({ description: "", quantity: "1", unitPrice: "" });
+  const [addingItem, setAddingItem] = useState(false);
+  const [itemLoading, setItemLoading] = useState(false);
+
+  const subtotal = lineItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0);
+  const discount = parseFloat(editForm.discountAmount) || 0;
+  const taxRate = parseFloat(editForm.taxRate) || 0;
+  const taxAmount = (subtotal - discount) * (taxRate / 100);
+  const total = subtotal + taxAmount - discount;
 
   const patch = async (body: Record<string, unknown>) => {
     const res = await fetch(`/api/invoices/${invoice.id}`, {
@@ -181,6 +215,64 @@ export default function InvoiceActions({ invoice, remaining, canDelete = false }
     }
   };
 
+  const addLineItem = async () => {
+    if (!newItem.description || !newItem.unitPrice) return;
+    setItemLoading(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/line-items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: newItem.description,
+          quantity: parseFloat(newItem.quantity) || 1,
+          unitPrice: parseFloat(newItem.unitPrice) || 0,
+          sortOrder: lineItems.length,
+        }),
+      });
+      if (!res.ok) { toast.error("Failed to add line item"); return; }
+      const j = await res.json();
+      setLineItems((prev) => [...prev, j.data]);
+      setNewItem({ description: "", quantity: "1", unitPrice: "" });
+      setAddingItem(false);
+    } finally {
+      setItemLoading(false);
+    }
+  };
+
+  const saveEditItem = async (itemId: string) => {
+    if (!editingItem) return;
+    setItemLoading(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/line-items?itemId=${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: editingItem.description,
+          quantity: parseFloat(editingItem.quantity) || 1,
+          unitPrice: parseFloat(editingItem.unitPrice) || 0,
+        }),
+      });
+      if (!res.ok) { toast.error("Failed to update line item"); return; }
+      const j = await res.json();
+      setLineItems((prev) => prev.map((i) => i.id === itemId ? j.data : i));
+      setEditingItemId(null);
+      setEditingItem(null);
+    } finally {
+      setItemLoading(false);
+    }
+  };
+
+  const deleteLineItem = async (itemId: string) => {
+    setItemLoading(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/line-items?itemId=${itemId}`, { method: "DELETE" });
+      if (!res.ok) { toast.error("Failed to delete line item"); return; }
+      setLineItems((prev) => prev.filter((i) => i.id !== itemId));
+    } finally {
+      setItemLoading(false);
+    }
+  };
+
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -188,12 +280,9 @@ export default function InvoiceActions({ invoice, remaining, canDelete = false }
       const body: Record<string, unknown> = {
         notes: editForm.notes || null,
         discountAmount: parseFloat(editForm.discountAmount) || 0,
+        taxRate: parseFloat(editForm.taxRate) || 0,
+        dueDate: editForm.dueDate ? new Date(editForm.dueDate).toISOString() : null,
       };
-      if (editForm.dueDate) {
-        body.dueDate = new Date(editForm.dueDate).toISOString();
-      } else {
-        body.dueDate = null;
-      }
       await patch(body);
       setShowEditModal(false);
       toast.success("Invoice updated");
@@ -376,38 +465,227 @@ export default function InvoiceActions({ invoice, remaining, canDelete = false }
       {/* Edit Invoice Modal */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-card border border-border rounded-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Edit Invoice</h2>
-            <form onSubmit={saveEdit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Due Date</label>
-                <input
-                  type="date"
-                  value={editForm.dueDate}
-                  onChange={(e) => setEditForm((f) => ({ ...f, dueDate: e.target.value }))}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
+          <div className="bg-card border border-border rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+              <h2 className="text-lg font-semibold text-foreground">Edit Invoice #{invoice.invoiceNumber}</h2>
+              <button onClick={() => setShowEditModal(false)} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+            </div>
+
+            <form onSubmit={saveEdit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+
+                {/* Line Items */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-foreground">Line Items</h3>
+                    <button
+                      type="button"
+                      onClick={() => setAddingItem(true)}
+                      className="text-xs font-medium px-3 h-7 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+                    >
+                      + Add Item
+                    </button>
+                  </div>
+
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Description</th>
+                          <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground w-16">Qty</th>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground w-24">Unit Price</th>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground w-24">Total</th>
+                          <th className="w-8" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lineItems.map((item) => (
+                          editingItemId === item.id && editingItem ? (
+                            <tr key={item.id} className="border-t border-border bg-primary/5">
+                              <td className="px-2 py-1.5">
+                                <input
+                                  className="w-full h-8 px-2 rounded border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                  value={editingItem.description}
+                                  onChange={(e) => setEditingItem((p) => p ? { ...p, description: e.target.value } : p)}
+                                  autoFocus
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  type="number" min="0.01" step="0.01"
+                                  className="w-full h-8 px-2 rounded border border-border bg-background text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                                  value={editingItem.quantity}
+                                  onChange={(e) => setEditingItem((p) => p ? { ...p, quantity: e.target.value } : p)}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  type="number" min="0" step="0.01"
+                                  className="w-full h-8 px-2 rounded border border-border bg-background text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                                  value={editingItem.unitPrice}
+                                  onChange={(e) => setEditingItem((p) => p ? { ...p, unitPrice: e.target.value } : p)}
+                                />
+                              </td>
+                              <td className="px-3 py-1.5 text-right text-muted-foreground">
+                                ${((parseFloat(editingItem.quantity) || 0) * (parseFloat(editingItem.unitPrice) || 0)).toFixed(2)}
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <div className="flex gap-1">
+                                  <button type="button" onClick={() => saveEditItem(item.id)} disabled={itemLoading} className="text-xs px-2 h-7 bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50">✓</button>
+                                  <button type="button" onClick={() => { setEditingItemId(null); setEditingItem(null); }} className="text-xs px-2 h-7 border border-border rounded text-muted-foreground hover:text-foreground">✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            <tr key={item.id} className="border-t border-border hover:bg-muted/30 group">
+                              <td className="px-3 py-2.5 text-foreground">{item.description}</td>
+                              <td className="px-3 py-2.5 text-center text-foreground">{Number(item.quantity)}</td>
+                              <td className="px-3 py-2.5 text-right text-foreground">${Number(item.unitPrice).toFixed(2)}</td>
+                              <td className="px-3 py-2.5 text-right text-foreground">${Number(item.total).toFixed(2)}</td>
+                              <td className="px-2 py-2.5">
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setEditingItemId(item.id); setEditingItem({ description: item.description, quantity: String(Number(item.quantity)), unitPrice: String(Number(item.unitPrice)) }); }}
+                                    className="text-xs px-1.5 h-6 border border-border rounded text-muted-foreground hover:text-foreground"
+                                  >✎</button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteLineItem(item.id)}
+                                    disabled={itemLoading}
+                                    className="text-xs px-1.5 h-6 border border-border rounded text-muted-foreground hover:text-destructive hover:border-destructive/40 disabled:opacity-50"
+                                  >✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        ))}
+
+                        {/* Add new item row */}
+                        {addingItem && (
+                          <tr className="border-t border-border bg-primary/5">
+                            <td className="px-2 py-1.5">
+                              <input
+                                className="w-full h-8 px-2 rounded border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                placeholder="Item description"
+                                value={newItem.description}
+                                onChange={(e) => setNewItem((p) => ({ ...p, description: e.target.value }))}
+                                autoFocus
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="number" min="0.01" step="0.01"
+                                className="w-full h-8 px-2 rounded border border-border bg-background text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                                placeholder="1"
+                                value={newItem.quantity}
+                                onChange={(e) => setNewItem((p) => ({ ...p, quantity: e.target.value }))}
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="number" min="0" step="0.01"
+                                className="w-full h-8 px-2 rounded border border-border bg-background text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                                placeholder="0.00"
+                                value={newItem.unitPrice}
+                                onChange={(e) => setNewItem((p) => ({ ...p, unitPrice: e.target.value }))}
+                              />
+                            </td>
+                            <td className="px-3 py-1.5 text-right text-muted-foreground text-sm">
+                              ${((parseFloat(newItem.quantity) || 0) * (parseFloat(newItem.unitPrice) || 0)).toFixed(2)}
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <div className="flex gap-1">
+                                <button type="button" onClick={addLineItem} disabled={itemLoading || !newItem.description || !newItem.unitPrice} className="text-xs px-2 h-7 bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50">Add</button>
+                                <button type="button" onClick={() => { setAddingItem(false); setNewItem({ description: "", quantity: "1", unitPrice: "" }); }} className="text-xs px-2 h-7 border border-border rounded text-muted-foreground hover:text-foreground">✕</button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+
+                        {lineItems.length === 0 && !addingItem && (
+                          <tr>
+                            <td colSpan={5} className="px-3 py-4 text-center text-sm text-muted-foreground">
+                              No line items — click Add Item above
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Totals + Tax + Discount */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Tax Rate (%)</label>
+                    <input
+                      type="number" step="0.001" min="0" max="100"
+                      value={editForm.taxRate}
+                      onChange={(e) => setEditForm((f) => ({ ...f, taxRate: e.target.value }))}
+                      className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      placeholder="0.000"
+                    />
+                    {invoice.taxCodeName && (
+                      <p className="text-xs text-muted-foreground mt-1">{invoice.taxCodeName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Discount ($)</label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={editForm.discountAmount}
+                      onChange={(e) => setEditForm((f) => ({ ...f, discountAmount: e.target.value }))}
+                      className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                </div>
+
+                {/* Running totals */}
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-1.5 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Subtotal</span><span>${subtotal.toFixed(2)}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount</span><span>−${discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {taxRate > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Tax ({taxRate}%)</span><span>${taxAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-1.5">
+                    <span>Total</span><span>${total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Due date + notes */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Due Date</label>
+                    <input
+                      type="date"
+                      value={editForm.dueDate}
+                      onChange={(e) => setEditForm((f) => ({ ...f, dueDate: e.target.value }))}
+                      className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Notes</label>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                    rows={2}
+                    placeholder="Invoice notes visible to customer"
+                    className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Discount ($)</label>
-                <input
-                  type="number" step="0.01" min="0"
-                  value={editForm.discountAmount}
-                  onChange={(e) => setEditForm((f) => ({ ...f, discountAmount: e.target.value }))}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Notes</label>
-                <textarea
-                  value={editForm.notes}
-                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                  rows={3}
-                  placeholder="Invoice notes visible to customer"
-                  className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
+
+              <div className="flex gap-3 px-6 py-4 border-t border-border shrink-0">
                 <button type="button" onClick={() => setShowEditModal(false)}
                   className="flex-1 h-10 border border-border rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors">
                   Cancel

@@ -12,6 +12,7 @@ import EquipmentItemsSection from "@/components/settings/equipment-items-section
 import PPERequirementsSection from "@/components/settings/ppe-requirements-section";
 import CcEmailsSection from "@/components/settings/cc-emails-section";
 import { ContractTemplateSection } from "@/components/settings/contract-template-section";
+import { ModulesSection } from "@/components/settings/modules-section";
 
 export const metadata = { title: "Settings" };
 
@@ -156,6 +157,19 @@ export default async function SettingsPage({
           <ContractTemplateSection
             initialTemplate={(org as { contractTemplate?: string | null }).contractTemplate ?? null}
             canEdit={canEdit}
+          />
+        </div>
+      )}
+
+      {/* Service Modules */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Service Modules</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Enable additional service types for your organization. Each module unlocks its estimate calculator, job tracking fields, and related features.
+          </p>
+          <ModulesSection
+            initialModules={(org as { enabledModules?: string[] }).enabledModules ?? []}
           />
         </div>
       )}

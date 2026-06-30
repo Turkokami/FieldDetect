@@ -11,6 +11,7 @@ type InspectionUnit = {
   id: string;
   unitNumber: string;
   detectionResult: string | null;
+  severityLevel: string | null;
   technicianNotes: string | null;
   photos: Photo[];
 };
@@ -65,6 +66,7 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
   const [starting, setStarting] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [activeResult, setActiveResult] = useState<string | null>(null);
+  const [activeSeverity, setActiveSeverity] = useState<string>("NONE");
   const [activeNotes, setActiveNotes] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -126,6 +128,7 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
     const existing = inspectionMap.get(unitNumber);
     setSelectedUnit(unitNumber);
     setActiveResult(existing?.detectionResult ?? null);
+    setActiveSeverity(existing?.severityLevel ?? "NONE");
     setActiveNotes(existing?.technicianNotes ?? "");
     setShowPicker(true);
     setShowAddEntry(false);
@@ -144,6 +147,7 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             detectionResult: activeResult,
+            severityLevel: activeSeverity,
             technicianNotes: activeNotes || null,
           }),
         });
@@ -155,6 +159,7 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
             units: [{
               unitNumber: selectedUnit,
               detectionResult: activeResult,
+              severityLevel: activeSeverity,
               technicianNotes: activeNotes || null,
             }],
           }),
@@ -237,6 +242,7 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
     setShowPicker(false);
     setSelectedUnit(null);
     setActiveResult(null);
+    setActiveSeverity("NONE");
     setActiveNotes("");
     setShowAddEntry(false);
     setNewEntryLabel("");
@@ -525,6 +531,39 @@ export default function FieldInspectionView({ appointment }: { appointment: Appo
                   );
                 })}
               </div>
+
+              {/* Severity */}
+              {activeResult && activeResult !== "NEGATIVE" && activeResult !== "UNABLE_TO_INSPECT" && activeResult !== "ACCESS_DENIED" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Infestation Severity</label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { value: "NONE",     label: "None",     color: "#64748b" },
+                      { value: "LOW",      label: "Low",      color: "#84cc16" },
+                      { value: "MODERATE", label: "Moderate", color: "#f59e0b" },
+                      { value: "HIGH",     label: "High",     color: "#f97316" },
+                      { value: "SEVERE",   label: "Severe",   color: "#ef4444" },
+                    ].map((s) => {
+                      const isSelected = activeSeverity === s.value;
+                      return (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => setActiveSeverity(s.value)}
+                          className="py-2 rounded-lg border-2 text-xs font-semibold transition-all active:scale-95"
+                          style={
+                            isSelected
+                              ? { borderColor: s.color, background: `${s.color}22`, color: s.color }
+                              : { borderColor: "transparent", background: "rgba(255,255,255,0.04)", color: "#94a3b8" }
+                          }
+                        >
+                          {s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Notes */}
               <div>
