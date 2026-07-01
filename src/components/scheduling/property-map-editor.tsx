@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing-client";
@@ -78,7 +78,8 @@ const FALLBACK_MARKERS: MarkerCfg[] = [
 ];
 
 function getConfigs(serviceType?: string): MarkerCfg[] {
-  return MARKER_CONFIGS[serviceType ?? ""] ?? FALLBACK_MARKERS;
+  if (!serviceType || serviceType === "GENERAL") return FALLBACK_MARKERS;
+  return MARKER_CONFIGS[serviceType] ?? FALLBACK_MARKERS;
 }
 
 function getMarkerCfg(type: string, serviceType?: string): MarkerCfg {
@@ -93,7 +94,18 @@ const SERVICE_HINTS: Record<string, string> = {
   WILDLIFE_INSPECTION: "Mark animal sightings, entry points, structural damage, and trap locations.",
   WILDLIFE_REMOVAL: "Mark animal sightings, trap locations, entry points, and removed animal areas.",
   BIRD_EXCLUSION: "Mark active nesting sites, roosting areas, exclusion zones installed, and damage areas.",
+  GENERAL: "Use general-purpose markers to annotate any location of interest.",
 };
+
+const PRESET_OPTIONS = [
+  { value: "GOOSE_CONTROL", label: "🪿 Goose Control" },
+  { value: "RODENT_INSPECTION", label: "🐭 Rodent Inspection" },
+  { value: "RODENT_EXCLUSION", label: "🔩 Rodent Exclusion" },
+  { value: "WILDLIFE_INSPECTION", label: "🦝 Wildlife Inspection" },
+  { value: "WILDLIFE_REMOVAL", label: "🦌 Wildlife Removal" },
+  { value: "BIRD_EXCLUSION", label: "🐦 Bird Exclusion" },
+  { value: "GENERAL", label: "📍 General / Other" },
+];
 
 type Props = {
   propertyId: string;
@@ -108,7 +120,8 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeType, setActiveType] = useState(() => getConfigs(serviceType)[0]?.value ?? "MARKER");
+  const [toolPreset, setToolPreset] = useState<string>(serviceType ?? "GOOSE_CONTROL");
+  const [activeType, setActiveType] = useState(() => getConfigs(toolPreset)[0]?.value ?? "MARKER");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editCount, setEditCount] = useState("");
@@ -151,8 +164,23 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
     btnPrimaryStyle: undefined as React.CSSProperties | undefined,
   };
 
+  // Load per-map tool preset from localStorage; fall back to serviceType prop
+  useEffect(() => {
+    if (!activeMapId) return;
+    const saved = localStorage.getItem(`fd-map-preset-${activeMapId}`);
+    const next = saved ?? serviceType ?? "GOOSE_CONTROL";
+    setToolPreset(next);
+    setActiveType(getConfigs(next)[0]?.value ?? "MARKER");
+  }, [activeMapId, serviceType]);
+
+  const handlePresetChange = (preset: string) => {
+    setToolPreset(preset);
+    setActiveType(getConfigs(preset)[0]?.value ?? "MARKER");
+    if (activeMapId) localStorage.setItem(`fd-map-preset-${activeMapId}`, preset);
+  };
+
   const activeMap = maps.find((m) => m.id === activeMapId) ?? null;
-  const configs = getConfigs(serviceType);
+  const configs = getConfigs(toolPreset);
   const selectedMarker = activeMap?.markers.find((m) => m.id === selectedId) ?? null;
 
   const handleMapClick = useCallback(
@@ -370,7 +398,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
           <div className="text-5xl mb-3">🛩️</div>
           <h4 className={`font-semibold mb-1 ${dark ? "text-white" : "text-foreground"}`}>No Site Maps Yet</h4>
           <p className={`text-sm mb-4 max-w-sm mx-auto ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
-            {SERVICE_HINTS[serviceType ?? ""] ??
+            {SERVICE_HINTS[toolPreset] ??
               "Upload an aerial or satellite photo, then tap to place markers at key locations."}
           </p>
           <button
@@ -423,10 +451,27 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
 
           {activeMap && (
             <div className="p-4 space-y-4">
+              {/* Tool preset selector */}
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium shrink-0 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Tool Set:</span>
+                <select
+                  value={toolPreset}
+                  onChange={(e) => handlePresetChange(e.target.value)}
+                  className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500/30 ${
+                    dark ? "text-white" : "border border-border bg-background text-foreground"
+                  }`}
+                  style={dark ? { ...d.inputStyle, padding: "6px 10px" } : undefined}
+                >
+                  {PRESET_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Marker type selector */}
               <div>
                 <p className={`text-xs mb-2 ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
-                  Select a marker type, then tap the photo to place it.
+                  {SERVICE_HINTS[toolPreset] ?? "Tap the map to place a marker at any location."}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {configs.map((cfg) => {
@@ -474,7 +519,7 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
 
                 {/* Marker overlays */}
                 {activeMap.markers.map((marker) => {
-                  const cfg = getMarkerCfg(marker.type, serviceType);
+                  const cfg = getMarkerCfg(marker.type, toolPreset);
                   const isSelected = selectedId === marker.id;
                   return (
                     <button
@@ -536,12 +581,12 @@ export function PropertyMapEditor({ propertyId, serviceType, initialMaps, dark =
                     <div className="flex items-center gap-2">
                       <div
                         className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
-                        style={{ background: getMarkerCfg(selectedMarker.type, serviceType).color }}
+                        style={{ background: getMarkerCfg(selectedMarker.type, toolPreset).color }}
                       >
-                        {getMarkerCfg(selectedMarker.type, serviceType).symbol}
+                        {getMarkerCfg(selectedMarker.type, toolPreset).symbol}
                       </div>
                       <span className={`text-sm font-semibold ${dark ? "text-white" : "text-foreground"}`}>
-                        Edit — {getMarkerCfg(selectedMarker.type, serviceType).label}
+                        Edit — {getMarkerCfg(selectedMarker.type, toolPreset).label}
                       </span>
                     </div>
                     <button

@@ -96,7 +96,16 @@ export default async function SiteMapReportPage({
       {/* Screen-only nav */}
       <div className="px-6 pt-5 pb-4 flex items-center justify-between print:hidden border-b border-border">
         <Link href="/reports" className="text-sm text-muted-foreground hover:text-foreground">← Reports</Link>
-        <PrintButton />
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/reports/site-map/${mapId}/pdf`}
+            download
+            className="px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:bg-muted transition-colors"
+          >
+            ⬇ Download PDF
+          </a>
+          <PrintButton />
+        </div>
       </div>
 
       <div className="px-6 py-6 space-y-6">
