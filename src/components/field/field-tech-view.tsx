@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useUploadThing } from "@/lib/uploadthing-client";
 import { PropertyMapEditor } from "@/components/scheduling/property-map-editor";
+import { ExclusionCalculator } from "@/components/field/exclusion-calculator";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1469,7 +1470,7 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
   const [pendingSync, setPendingSync] = useState(0);
   const [showOfficeNote, setShowOfficeNote] = useState(false);
   const [officeNotes, setOfficeNotes] = useState<string | null>(initial.notes ?? null);
-  const [activeTab, setActiveTab] = useState<"inspection" | "map">("inspection");
+  const [activeTab, setActiveTab] = useState<"inspection" | "map" | "estimate">("inspection");
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isSiteWide = SITE_WIDE_TYPES.has(initial.serviceType);
@@ -1849,31 +1850,35 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
           {/* ── Inspection section ── */}
           {(isCheckedIn || isComplete) && inspection && (
             <>
-              {/* Tab bar — only shown when maps are relevant */}
-              {hasMaps && (
-                <div className="flex rounded-xl overflow-hidden p-1" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <button
-                    onClick={() => setActiveTab("inspection")}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all"
-                    style={activeTab === "inspection"
-                      ? { background: "#0ABAB5", color: "#fff" }
-                      : { color: "#64748b" }}
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    {isSiteWide ? "Observations" : "Inspection"}
-                  </button>
+              {/* Tab bar */}
+              <div className="flex rounded-xl overflow-hidden p-1" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <button
+                  onClick={() => setActiveTab("inspection")}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+                  style={activeTab === "inspection" ? { background: "#0ABAB5", color: "#fff" } : { color: "#64748b" }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {isSiteWide ? "Observations" : "Inspection"}
+                </button>
+                {hasMaps && (
                   <button
                     onClick={() => setActiveTab("map")}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all"
-                    style={activeTab === "map"
-                      ? { background: "#0ABAB5", color: "#fff" }
-                      : { color: "#64748b" }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+                    style={activeTab === "map" ? { background: "#0ABAB5", color: "#fff" } : { color: "#64748b" }}
                   >
-                    <MapIcon className="h-4 w-4" />
+                    <MapIcon className="h-3.5 w-3.5" />
                     Site Map
                   </button>
-                </div>
-              )}
+                )}
+                <button
+                  onClick={() => setActiveTab("estimate")}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+                  style={activeTab === "estimate" ? { background: "#0ABAB5", color: "#fff" } : { color: "#64748b" }}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Estimate
+                </button>
+              </div>
 
               {/* ── MAP TAB ── */}
               {activeTab === "map" && (
@@ -1883,6 +1888,11 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
                   initialMaps={(apt.propertyMaps ?? []) as Parameters<typeof PropertyMapEditor>[0]["initialMaps"]}
                   dark
                 />
+              )}
+
+              {/* ── ESTIMATE TAB ── */}
+              {activeTab === "estimate" && (
+                <ExclusionCalculator appointmentId={apt.id} />
               )}
 
               {/* ── INSPECTION TAB ── */}
