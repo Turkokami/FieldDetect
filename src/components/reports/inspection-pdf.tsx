@@ -253,6 +253,37 @@ export function InspectionPDF({ org, customer, property, inspection, technician,
     org.licenseNumber ? `License: ${org.licenseNumber}` : null,
   ].filter(Boolean) as string[];
 
+  const SERVICE_TAGLINE: Record<string, string> = {
+    BED_BUG_INSPECTION:    "K9 Bed Bug Detection & Inspection Services",
+    BED_BUG_TREATMENT:     "Bed Bug Treatment Services",
+    RODENT_INSPECTION:     "Rodent Inspection & Detection Services",
+    RODENT_EXCLUSION:      "Rodent Exclusion Services",
+    WILDLIFE_INSPECTION:   "Wildlife Inspection Services",
+    WILDLIFE_REMOVAL:      "Wildlife Removal & Control Services",
+    BIRD_EXCLUSION:        "Bird Exclusion Services",
+    GOOSE_CONTROL:         "Canada Goose Control & Management",
+    GENERAL_PEST_INSPECTION: "General Pest Inspection Services",
+    GENERAL_PEST_TREATMENT:  "Pest Control & Treatment Services",
+  };
+  const SERVICE_DISCLAIMER: Record<string, string> = {
+    BED_BUG_INSPECTION:    "This report reflects the findings of a K9 scent detection inspection. K9 detection is a tool used to identify areas of potential bed bug activity and is not a guarantee of infestation or non-infestation. Visual confirmation is recommended to verify K9 alerts.",
+    BED_BUG_TREATMENT:     "This report reflects bed bug treatment services performed on the date and property specified. Results may vary based on infestation level and preparation compliance.",
+    RODENT_INSPECTION:     "This report reflects the findings of a rodent inspection performed on the date and property specified above. Findings are based on conditions observed at the time of inspection.",
+    RODENT_EXCLUSION:      "This report reflects rodent exclusion work performed on the date and property specified above. Exclusion effectiveness depends on conditions and customer maintenance of entry point repairs.",
+    WILDLIFE_INSPECTION:   "This report reflects the findings of a wildlife inspection. Findings are based on conditions observed at the time of inspection and may not capture all wildlife activity on the property.",
+    WILDLIFE_REMOVAL:      "This report reflects wildlife removal services performed on the date and property specified. Wildlife activity may resume if exclusion measures are not implemented.",
+    BIRD_EXCLUSION:        "This report reflects bird exclusion work performed on the date and property specified. Exclusion effectiveness depends on installation conditions and ongoing maintenance.",
+    GOOSE_CONTROL:         "This report reflects Canada Goose control and management services. Effectiveness depends on site conditions, seasonal patterns, and follow-up treatment as recommended.",
+    GENERAL_PEST_INSPECTION: "This report reflects the findings of a pest inspection. Findings are based on conditions observed at the time of inspection.",
+    GENERAL_PEST_TREATMENT:  "This report reflects pest control treatment services performed on the date and property specified. Results may vary based on infestation level and preparation compliance.",
+  };
+  const tagline = SERVICE_TAGLINE[inspection.serviceType] ?? "Pest Control & Inspection Services";
+  const disclaimer = SERVICE_DISCLAIMER[inspection.serviceType]
+    ?? "This report reflects the findings of an inspection conducted on the date and at the property specified above. Results are based on conditions observed at the time of inspection.";
+  const sigLabel = ["BED_BUG_INSPECTION", "BED_BUG_TREATMENT"].includes(inspection.serviceType)
+    ? "Technician / K9 Handler"
+    : "Technician";
+
   return (
     <Document title={`Inspection Report — ${inspection.inspectionNumber}`} author={org.name} creator="FieldDetect">
       {/* ── Page 1: Header + Summary + Positive Findings ── */}
@@ -270,7 +301,7 @@ export function InspectionPDF({ org, customer, property, inspection, technician,
             )}
             <View>
               <Text style={s.companyName}>{org.name}</Text>
-              <Text style={s.companyTagline}>K9 Bed Bug Detection & Inspection Services</Text>
+              <Text style={s.companyTagline}>{tagline}</Text>
               {orgMetaLines.map((line, i) => (
                 <Text key={i} style={s.companyMeta}>{line}</Text>
               ))}
@@ -655,9 +686,7 @@ export function InspectionPDF({ org, customer, property, inspection, technician,
         <View style={s.disclaimer}>
           <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 2 }}>Disclaimer</Text>
           <Text>
-            This report reflects the findings of a K9 scent detection inspection conducted on the date and at the property specified above.
-            K9 detection is a tool used to identify areas of potential bed bug activity and is not a guarantee of infestation or non-infestation.
-            Visual confirmation is recommended to verify K9 alerts. Results are based on conditions observed at the time of inspection.
+            {disclaimer}
             {" "}{org.name} is not responsible for conditions that change after the inspection date.
             This report is intended for the exclusive use of the named customer and may not be reproduced or distributed without written consent.
           </Text>
@@ -682,7 +711,7 @@ export function InspectionPDF({ org, customer, property, inspection, technician,
             <View style={s.sigBox}>
               <View style={{ height: 60 }} />
             </View>
-            <Text style={s.sigLabel}>Technician / K9 Handler</Text>
+            <Text style={s.sigLabel}>{sigLabel}</Text>
             <Text style={s.sigName}>{technician.firstName} {technician.lastName}</Text>
           </View>
         </View>

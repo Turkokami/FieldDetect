@@ -749,8 +749,10 @@ function CompletionSummary({
   const sendReport = async () => {
     setSending(true);
     try {
-      await fetch(`/api/field/${appointmentId}/complete`, { method: "POST" });
+      await fetch(`/api/field/${appointmentId}/send-report`, { method: "POST" });
       setSent(true);
+    } catch {
+      toast.error("Failed to send report");
     } finally {
       setSending(false);
     }
@@ -830,14 +832,25 @@ function CompletionSummary({
           )}
 
           {inspectionId && (
-            <Link
-              href={`/inspections/${inspectionId}`}
-              className="w-full py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2"
-              style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)" }}
-            >
-              <FileText className="h-4 w-4" />
-              View Full Report
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href={`/inspections/${inspectionId}`}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2"
+                style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)" }}
+              >
+                <FileText className="h-4 w-4" />
+                View Report
+              </Link>
+              <a
+                href={`/api/reports/${inspectionId}/pdf`}
+                download
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2"
+                style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)" }}
+              >
+                <ArrowRight className="h-4 w-4 rotate-90" />
+                Download PDF
+              </a>
+            </div>
           )}
 
           <Link
