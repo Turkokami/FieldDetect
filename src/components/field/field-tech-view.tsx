@@ -333,12 +333,14 @@ function UnitEditor({
     }
   };
 
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ photos: Photo[]; idx: number; unitId: string } | null>(null);
+
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
 
     let unitId = detections[photoTargetIdx]?.inspUnitId;
-
     if (!unitId) {
       const { success, updatedDetections } = await saveAll();
       if (!success) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
@@ -347,28 +349,40 @@ function UnitEditor({
     }
 
     setUploading(true);
+    setUploadProgress({ done: 0, total: files.length });
     try {
-      const uploaded = await startUpload([file]);
-      if (!uploaded?.[0]) { toast.error("Upload failed — check UploadThing is configured"); return; }
-      const { ufsUrl, key, name } = uploaded[0];
-      const res = await fetch(`/api/inspection-units/${unitId}/photos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: ufsUrl, key, filename: name }),
-      });
-      if (!res.ok) { toast.error("Failed to save photo"); return; }
+      for (let i = 0; i < files.length; i++) {
+        const uploaded = await startUpload([files[i]]);
+        if (!uploaded?.[0]) { toast.error(`Upload failed for photo ${i + 1}`); continue; }
+        const { ufsUrl, key, name } = uploaded[0];
+        const res = await fetch(`/api/inspection-units/${unitId}/photos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: ufsUrl, key, filename: name }),
+        });
+        if (!res.ok) { toast.error(`Failed to save photo ${i + 1}`); continue; }
+        setUploadProgress({ done: i + 1, total: files.length });
+      }
       await onSaved();
+      if (files.length > 1) toast.success(`${files.length} photos uploaded`);
     } catch (err) {
       console.error("[INSPECTION_PHOTO_UPLOAD]", err);
       toast.error("Photo upload failed");
     } finally {
       setUploading(false);
+      setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const deletePhoto = async (photoId: string, unitId: string) => {
     await fetch(`/api/inspection-units/${unitId}/photos?photoId=${photoId}`, { method: "DELETE" });
+    setLightbox((prev) => {
+      if (!prev) return null;
+      const remaining = prev.photos.filter((p) => p.id !== photoId);
+      if (!remaining.length) return null;
+      return { ...prev, photos: remaining, idx: Math.min(prev.idx, remaining.length - 1) };
+    });
     await onSaved();
   };
 
@@ -469,44 +483,58 @@ function UnitEditor({
                   <button
                     onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
                     disabled={uploading || saving}
-                    className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg disabled:opacity-50"
-                    style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", background: "rgba(255,255,255,0.04)" }}
+                    className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg disabled:opacity-50 active:scale-95 transition-all"
+                    style={{ border: "1px solid rgba(255,255,255,0.15)", color: "#ffffff", background: "rgba(10,186,181,0.15)" }}
                   >
-                    <Camera className="h-3 w-3" />
-                    {uploading && photoTargetIdx === idx ? "Uploading…" : saving && photoTargetIdx === idx ? "Saving…" : "Add Photo"}
+                    <Camera className="h-3.5 w-3.5" />
+                    {uploading && photoTargetIdx === idx
+                      ? uploadProgress ? `${uploadProgress.done}/${uploadProgress.total}…` : "Uploading…"
+                      : "Add Photos"}
                   </button>
                 </div>
                 {photos.length > 0 ? (
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {photos.map((ph) => (
-                      <div key={ph.id} className="relative aspect-square rounded-lg overflow-hidden group" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div className="grid grid-cols-3 gap-2">
+                    {photos.map((ph, pi) => (
+                      <div
+                        key={ph.id}
+                        className="relative rounded-xl overflow-hidden"
+                        style={{ aspectRatio: "1", border: "1px solid rgba(255,255,255,0.1)" }}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={ph.url} alt="" className="w-full h-full object-cover" />
+                        <img
+                          src={ph.url} alt=""
+                          className="w-full h-full object-cover"
+                          onClick={() => setLightbox({ photos, idx: pi, unitId: det.inspUnitId! })}
+                        />
+                        {/* Always-visible delete button */}
                         <button
-                          onClick={() => deletePhoto(ph.id, det.inspUnitId!)}
-                          className="absolute inset-0 bg-black/60 hidden group-active:flex items-center justify-center"
+                          onClick={(e) => { e.stopPropagation(); deletePhoto(ph.id, det.inspUnitId!); }}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ background: "rgba(0,0,0,0.65)" }}
                         >
-                          <Trash2 className="h-4 w-4 text-white" />
+                          <X className="h-3.5 w-3.5 text-white" />
                         </button>
                       </div>
                     ))}
                     <button
                       onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
-                      className="aspect-square rounded-lg border-2 border-dashed flex items-center justify-center"
-                      style={{ borderColor: "rgba(255,255,255,0.15)" }}
+                      disabled={uploading || saving}
+                      className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+                      style={{ aspectRatio: "1", borderColor: "rgba(255,255,255,0.12)" }}
                     >
-                      <Plus className="h-4 w-4" style={{ color: "#64748b" }} />
+                      <Plus className="h-5 w-5" style={{ color: "#64748b" }} />
+                      <span className="text-[9px]" style={{ color: "#64748b" }}>More</span>
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => { setPhotoTargetIdx(idx); fileInputRef.current?.click(); }}
                     disabled={uploading || saving}
-                    className="w-full h-16 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                    style={{ borderColor: "rgba(255,255,255,0.12)", color: "#64748b" }}
+                    className="w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    style={{ height: "80px", borderColor: "rgba(255,255,255,0.12)", color: "#64748b" }}
                   >
-                    <Camera className="h-4 w-4" />
-                    <span className="text-xs">{!det.inspUnitId ? "Add photo (auto-saves first)" : "Add photo"}</span>
+                    <Camera className="h-5 w-5" />
+                    <span className="text-xs">{!det.inspUnitId ? "Add photos (saves first)" : "Tap to add photos"}</span>
                   </button>
                 )}
               </div>
@@ -549,7 +577,85 @@ function UnitEditor({
         </div>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoCapture} />
+
+      {/* ── Photo lightbox ── */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col"
+          style={{ background: "rgba(0,0,0,0.96)" }}
+          onClick={() => setLightbox(null)}
+        >
+          {/* Top bar */}
+          <div
+            className="flex items-center justify-between px-4 py-3 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "rgba(0,0,0,0.5)" }}
+          >
+            <span className="text-sm font-semibold text-white">
+              {lightbox.idx + 1} / {lightbox.photos.length}
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => deletePhoto(lightbox.photos[lightbox.idx].id, lightbox.unitId)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: "rgba(239,68,68,0.2)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+              <button onClick={() => setLightbox(null)} style={{ color: "#94a3b8" }}>
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Photo */}
+          <div className="flex-1 flex items-center justify-center px-2" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightbox.photos[lightbox.idx].url}
+              alt=""
+              className="max-w-full max-h-full object-contain rounded-xl"
+              style={{ userSelect: "none" }}
+            />
+          </div>
+
+          {/* Prev / Next */}
+          {lightbox.photos.length > 1 && (
+            <div
+              className="flex items-center justify-between px-4 py-4 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                disabled={lightbox.idx === 0}
+                onClick={() => setLightbox((prev) => prev && ({ ...prev, idx: prev.idx - 1 }))}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-30"
+                style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}
+              >
+                ← Prev
+              </button>
+              {/* Dot strip */}
+              <div className="flex gap-1.5">
+                {lightbox.photos.map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-full transition-all"
+                    style={{ width: i === lightbox.idx ? "18px" : "6px", height: "6px", background: i === lightbox.idx ? "#0ABAB5" : "rgba(255,255,255,0.3)" }}
+                  />
+                ))}
+              </div>
+              <button
+                disabled={lightbox.idx === lightbox.photos.length - 1}
+                onClick={() => setLightbox((prev) => prev && ({ ...prev, idx: prev.idx + 1 }))}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-30"
+                style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer — secondary save strip pinned at bottom (above keyboard on some devices) */}
       <div className="shrink-0 px-4 py-3 flex gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(10,15,26,0.95)", paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
