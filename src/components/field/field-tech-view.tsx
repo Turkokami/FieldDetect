@@ -1892,7 +1892,12 @@ export default function FieldTechView({ appointment: initial }: { appointment: T
 
               {/* ── ESTIMATE TAB ── */}
               {activeTab === "estimate" && (
-                <ExclusionCalculator appointmentId={apt.id} />
+                <ExclusionCalculator
+                  appointmentId={apt.id}
+                  customerId={apt.customer.id}
+                  propertyId={apt.property.id}
+                  serviceType={apt.serviceType}
+                />
               )}
 
               {/* ── INSPECTION TAB ── */}
