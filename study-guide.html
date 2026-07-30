@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Guide — ACE Trainer</title>
+  <meta name="description" content="A domain-by-domain study guide for the Google Cloud Associate Cloud Engineer (ACE) exam: key services, gcloud commands, decision tables, and exam tips." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2748%27 fill=%27%234285f4%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2756%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27Arial%27 font-weight=%27bold%27%3EA%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><span class="dot"></span> ACE Trainer</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="study-guide.html" class="active">Study Guide</a>
+        <a href="practice.html">Practice Exams</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container" style="padding-top:34px; padding-bottom:20px;">
+    <h1 class="section-title" style="font-size:34px;">ACE Study Guide</h1>
+    <p class="section-sub">
+      The Associate Cloud Engineer exam is practical: it rewards knowing <em>which service solves which problem</em>
+      and the everyday <code>gcloud</code> / console workflows to deploy and operate them. This guide is organized
+      by the five official domains.
+    </p>
+
+    <div class="grid" style="grid-template-columns: 220px 1fr; gap:30px; align-items:start;">
+      <!-- TOC -->
+      <aside class="toc card" style="padding:14px;">
+        <strong style="font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em;">Contents</strong>
+        <a href="#d1">1 · Setup &amp; environment</a>
+        <a href="#d2">2 · Planning &amp; configuring</a>
+        <a href="#d3">3 · Deploying &amp; implementing</a>
+        <a href="#d4">4 · Operations</a>
+        <a href="#d5">5 · Access &amp; security</a>
+        <a href="#cheatsheet">gcloud cheat sheet</a>
+        <a href="#tips">Exam-day tips</a>
+      </aside>
+
+      <div>
+        <!-- DOMAIN 1 -->
+        <div class="guide-domain" id="d1">
+          <h2><span class="domain-num" style="margin:0;">1</span> Setting up a cloud solution environment</h2>
+          <p><strong>Resource hierarchy.</strong> <code>Organization → Folders → Projects → Resources</code>. IAM and
+          Organization Policies set higher up are <em>inherited</em> downward. Folders group projects (e.g., per department)
+          so policies apply to all projects inside.</p>
+
+          <p><strong>Projects &amp; billing.</strong> Every resource lives in a project. A project must be linked to a
+          <strong>billing account</strong> — this is <em>not</em> automatic and is <em>not</em> inherited from a folder.
+          A billing account can pay for many projects; a project has exactly one active billing account.</p>
+
+          <ul>
+            <li>Create a project and link billing:
+              <pre><code>gcloud projects create my-proj --folder=FOLDER_ID
+gcloud billing projects link my-proj --billing-account=XXXXXX-XXXXXX-XXXXXX</code></pre>
+            </li>
+            <li><strong>Budgets &amp; alerts</strong> notify you as spend approaches a threshold (50/90/100%). Budgets
+            <em>do not stop</em> resources by themselves — pair with a Pub/Sub topic + Cloud Function for automation.</li>
+            <li><strong>Cloud SDK / gcloud CLI</strong>: install locally, then <code>gcloud init</code> to authenticate and
+            pick a project. <strong>Cloud Shell</strong> is a browser terminal with tools pre-installed and pre-authenticated.</li>
+          </ul>
+
+          <div class="callout"><strong>Exam tip:</strong> Configurations let you switch contexts fast —
+          <code>gcloud config set project</code>, <code>gcloud config configurations create/activate</code>.
+          Remember VMs are <em>zonal</em>, subnets are <em>regional</em>, and a VPC/network is <em>global</em>.</div>
+        </div>
+
+        <!-- DOMAIN 2 -->
+        <div class="guide-domain" id="d2">
+          <h2><span class="domain-num" style="margin:0;">2</span> Planning and configuring a cloud solution</h2>
+          <p>This domain is mostly <strong>service selection</strong>. Learn the decision tables below cold.</p>
+
+          <h3>Compute: pick the right platform</h3>
+          <table class="svc">
+            <tr><th>Need</th><th>Service</th></tr>
+            <tr><td>Full control of the OS / VMs, lift-and-shift, GPUs</td><td><strong>Compute Engine</strong></td></tr>
+            <tr><td>Kubernetes / container orchestration, portability</td><td><strong>GKE</strong> (Autopilot = no node mgmt)</td></tr>
+            <tr><td>Stateless containers, scale to zero, minimal ops</td><td><strong>Cloud Run</strong></td></tr>
+            <tr><td>Web/app from source code, managed runtimes</td><td><strong>App Engine</strong> (standard = scale to zero)</td></tr>
+            <tr><td>Event-driven small functions</td><td><strong>Cloud Functions</strong></td></tr>
+          </table>
+
+          <h3>Storage: pick the right data store</h3>
+          <table class="svc">
+            <tr><th>Need</th><th>Service</th></tr>
+            <tr><td>Objects/blobs (images, backups, static files)</td><td><strong>Cloud Storage</strong></td></tr>
+            <tr><td>Managed relational, regional OLTP (MySQL/Postgres/SQL Server)</td><td><strong>Cloud SQL</strong></td></tr>
+            <tr><td>Global, horizontally-scalable relational, strong consistency</td><td><strong>Cloud Spanner</strong></td></tr>
+            <tr><td>Document DB, mobile/web, realtime + offline</td><td><strong>Firestore</strong></td></tr>
+            <tr><td>Wide-column NoSQL, high-throughput time-series/IoT</td><td><strong>Bigtable</strong></td></tr>
+            <tr><td>Serverless analytics data warehouse (SQL)</td><td><strong>BigQuery</strong></td></tr>
+            <tr><td>In-memory cache (Redis/Memcached)</td><td><strong>Memorystore</strong></td></tr>
+            <tr><td>Shared NFS file system for many VMs</td><td><strong>Filestore</strong></td></tr>
+          </table>
+
+          <h3>Cloud Storage classes</h3>
+          <table class="svc">
+            <tr><th>Class</th><th>Use when accessed…</th><th>Min. storage</th></tr>
+            <tr><td>Standard</td><td>Frequently / hot data</td><td>none</td></tr>
+            <tr><td>Nearline</td><td>&lt; once a month</td><td>30 days</td></tr>
+            <tr><td>Coldline</td><td>&lt; once a quarter</td><td>90 days</td></tr>
+            <tr><td>Archive</td><td>&lt; once a year</td><td>365 days</td></tr>
+          </table>
+          <p>Location types: <strong>regional</strong> (one region), <strong>dual-region</strong>, and
+          <strong>multi-region</strong> (broad geo, highest availability). Use <strong>lifecycle rules</strong> to
+          auto-transition classes or delete objects.</p>
+
+          <h3>Cost planning</h3>
+          <ul>
+            <li><strong>Pricing Calculator</strong> — estimate cost <em>before</em> deploying.</li>
+            <li><strong>Spot / Preemptible VMs</strong> — deep discount, can be reclaimed anytime → fault-tolerant batch.</li>
+            <li><strong>Committed use discounts (CUD)</strong> — 1 or 3-year commitment for steady 24/7 usage → biggest steady-state savings.</li>
+            <li><strong>Sustained use discounts</strong> — automatic, applied for running VMs a large share of the month.</li>
+          </ul>
+
+          <h3>Networking basics</h3>
+          <ul>
+            <li><strong>VPC</strong> is global; <strong>subnets</strong> are regional. <strong>Auto mode</strong> makes a subnet per region; <strong>custom mode</strong> gives you full control.</li>
+            <li><strong>Firewall rules</strong>: by protocol/port, source (CIDR / tags / service accounts), target (tags / SAs). Default-deny inbound, default-allow outbound.</li>
+            <li>Connect networks: <strong>VPC Peering</strong> (VPC↔VPC, non-transitive), <strong>Shared VPC</strong> (one host network shared to service projects), <strong>Cloud VPN</strong> (encrypted over internet), <strong>Interconnect</strong> (private, high-bandwidth to on-prem).</li>
+          </ul>
+        </div>
+
+        <!-- DOMAIN 3 -->
+        <div class="guide-domain" id="d3">
+          <h2><span class="domain-num" style="margin:0;">3</span> Deploying and implementing a cloud solution</h2>
+          <p>Highest-weight, hands-on domain. Know the deploy commands and the operational building blocks.</p>
+
+          <h3>Compute Engine</h3>
+          <ul>
+            <li>Create a VM: <pre><code>gcloud compute instances create web-1 \
+  --zone=us-central1-a --machine-type=e2-medium \
+  --image-family=debian-12 --image-project=debian-cloud</code></pre></li>
+            <li><strong>Instance template</strong> → blueprint for identical VMs (image, machine type, startup script in metadata).</li>
+            <li><strong>Managed Instance Group (MIG)</strong> → autohealing + autoscaling + rolling updates (maxSurge / maxUnavailable) from a template. <strong>Unmanaged</strong> groups = arbitrary VMs, no templating.</li>
+            <li><strong>Persistent disks</strong> can be resized larger while attached (then grow the filesystem) — never shrunk. <strong>Snapshots</strong> = incremental backups; automate with a <strong>snapshot schedule</strong> (resource policy).</li>
+          </ul>
+
+          <h3>GKE</h3>
+          <ul>
+            <li>Get credentials for <code>kubectl</code>: <pre><code>gcloud container clusters get-credentials my-cluster --region us-central1</code></pre></li>
+            <li>Expose a workload: Service <code>ClusterIP</code> (internal), <code>NodePort</code>, <code>LoadBalancer</code> (external L4), or an <strong>Ingress</strong> (L7 HTTP(S) LB).</li>
+            <li><strong>Autopilot</strong> manages nodes for you; <strong>Standard</strong> = you manage node pools.</li>
+          </ul>
+
+          <h3>Serverless</h3>
+          <ul>
+            <li>Cloud Run: <pre><code>gcloud run deploy api --image=REGION-docker.pkg.dev/PROJ/repo/img:tag --region=REGION</code></pre></li>
+            <li>App Engine: <code>gcloud app deploy</code>; supports multiple <strong>versions</strong> and <strong>traffic splitting</strong> for canary rollouts.</li>
+            <li>Schedule serverless work with <strong>Cloud Scheduler</strong> (managed cron) → HTTP / Pub/Sub / Cloud Run job.</li>
+            <li>Store images &amp; packages in <strong>Artifact Registry</strong> (supersedes Container Registry).</li>
+          </ul>
+
+          <h3>Networking on deploy</h3>
+          <ul>
+            <li><strong>Static external IP</strong> → stable public IP that survives VM recreation.</li>
+            <li><strong>Cloud NAT</strong> → outbound-only internet for VMs without external IPs.</li>
+            <li><strong>Private Google Access</strong> → reach Google APIs from VMs without external IPs.</li>
+            <li>Load balancers: <strong>global external Application LB</strong> (L7, one anycast IP, cross-region) vs. <strong>Network LB</strong> (L4, regional).</li>
+          </ul>
+
+          <h3>Data movement</h3>
+          <pre><code>gcloud storage cp -r ./localdir gs://my-bucket     # upload
+gcloud storage cp gs://my-bucket/file .            # download
+bq load DATASET.TABLE gs://bucket/data.csv         # into BigQuery</code></pre>
+        </div>
+
+        <!-- DOMAIN 4 -->
+        <div class="guide-domain" id="d4">
+          <h2><span class="domain-num" style="margin:0;">4</span> Ensuring successful operation</h2>
+          <table class="svc">
+            <tr><th>Goal</th><th>Tool</th></tr>
+            <tr><td>Metrics, dashboards, alerts (CPU/disk/network + custom)</td><td><strong>Cloud Monitoring</strong></td></tr>
+            <tr><td>Search / route / retain logs</td><td><strong>Cloud Logging</strong></td></tr>
+            <tr><td>Aggregate &amp; dedupe application errors</td><td><strong>Error Reporting</strong></td></tr>
+            <tr><td>Latency &amp; distributed request tracing</td><td><strong>Cloud Trace</strong></td></tr>
+            <tr><td>Probe availability from global locations</td><td><strong>Uptime checks</strong></td></tr>
+          </table>
+          <ul>
+            <li><strong>Ops Agent</strong> is needed on VMs for <em>memory</em> and custom/guest metrics (CPU/disk/network come by default).</li>
+            <li><strong>Alerting policy</strong> = condition on a metric + <strong>notification channels</strong> (email, SMS, PagerDuty, Slack, Pub/Sub).</li>
+            <li><strong>Log sinks</strong> route matching logs to <strong>BigQuery</strong> (analysis), <strong>Cloud Storage</strong> (cheap long-term retention), or <strong>Pub/Sub</strong> (streaming). <strong>Aggregated sinks</strong> at folder/org level centralize logs from many projects.</li>
+            <li><strong>Quotas</strong> cap how much of a resource a project may use (CPUs, external IPs, API rate). Request increases in IAM &amp; Admin → Quotas.</li>
+            <li>Backups: <strong>snapshots</strong> for disks (+ schedules); <strong>machine images</strong> capture a whole VM (all disks + config).</li>
+          </ul>
+        </div>
+
+        <!-- DOMAIN 5 -->
+        <div class="guide-domain" id="d5">
+          <h2><span class="domain-num" style="margin:0;">5</span> Configuring access and security</h2>
+          <h3>IAM building blocks</h3>
+          <p><strong>Who (principal)</strong> → <strong>can do what (role = bundle of permissions)</strong> → <strong>on which resource</strong>.</p>
+          <table class="svc">
+            <tr><th>Role type</th><th>Notes</th></tr>
+            <tr><td><strong>Basic</strong> (Owner/Editor/Viewer)</td><td>Broad, legacy — avoid for least privilege.</td></tr>
+            <tr><td><strong>Predefined</strong></td><td>Service-specific, curated by Google (e.g., <code>roles/storage.objectViewer</code>). Preferred default.</td></tr>
+            <tr><td><strong>Custom</strong></td><td>Your chosen permission set, at org or project level. Use when no predefined role fits.</td></tr>
+          </table>
+          <ul>
+            <li><strong>Least privilege</strong> is the guiding principle. Grant to <strong>groups</strong>, not individuals, for scale.</li>
+            <li><strong>IAM deny policies</strong> are evaluated first and <em>override</em> allow grants.</li>
+            <li>View a project's policy: <pre><code>gcloud projects get-iam-policy PROJECT_ID</code></pre></li>
+            <li>Add a binding: <pre><code>gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="group:devs@example.com" --role="roles/compute.viewer"</code></pre></li>
+          </ul>
+
+          <h3>Service accounts (SAs)</h3>
+          <ul>
+            <li>Attach an SA to a VM and grant it minimal roles → app gets short-lived creds from the metadata server. <em>Avoid downloaded JSON keys.</em></li>
+            <li><code>roles/iam.serviceAccountUser</code> → <em>act as</em> an SA (e.g., deploy a VM that runs as it).</li>
+            <li><code>roles/iam.serviceAccountTokenCreator</code> → <em>impersonate</em> / mint short-lived tokens.</li>
+            <li>Leaked key? <strong>Disable/delete the key</strong> immediately, then rotate. Prefer Workload Identity.</li>
+          </ul>
+
+          <h3>Security &amp; governance</h3>
+          <ul>
+            <li><strong>Organization Policy constraints</strong> enforce config rules org-wide (e.g., <code>compute.vmExternalIpAccess</code> to ban external IPs). IAM = <em>who can act</em>; Org Policy = <em>what's allowed</em>.</li>
+            <li><strong>Cloud Audit Logs</strong>: <em>Admin Activity</em> (always on — who changed what), <em>Data Access</em> (opt-in), <em>System Event</em>, <em>Policy Denied</em>.</li>
+            <li><strong>Secret Manager</strong> for passwords/keys — encrypted, versioned, IAM-controlled.</li>
+            <li>Encryption at rest is on by default (Google-managed). Use <strong>CMEK</strong> (Cloud KMS) to control/rotate your own keys.</li>
+            <li><strong>OS Login</strong> ties SSH access to IAM identities instead of per-VM key management.</li>
+          </ul>
+        </div>
+
+        <!-- CHEAT SHEET -->
+        <div class="guide-domain" id="cheatsheet">
+          <h2>gcloud cheat sheet</h2>
+          <pre><code># Config / context
+gcloud init
+gcloud config set project PROJECT_ID
+gcloud config configurations create prod
+gcloud auth login   /   gcloud auth list
+
+# Compute Engine
+gcloud compute instances list
+gcloud compute instances create NAME --zone=ZONE --machine-type=e2-medium
+gcloud compute instances stop|start NAME --zone=ZONE
+gcloud compute ssh NAME --zone=ZONE
+gcloud compute disks resize DISK --size=200GB --zone=ZONE
+
+# Instance groups
+gcloud compute instance-templates create TPL --machine-type=e2-medium ...
+gcloud compute instance-groups managed create MIG --template=TPL --size=3 --zone=ZONE
+gcloud compute instance-groups managed set-autoscaling MIG --max-num-replicas=10 ...
+
+# GKE
+gcloud container clusters create-auto CLUSTER --region=REGION   # Autopilot
+gcloud container clusters get-credentials CLUSTER --region=REGION
+kubectl apply -f deploy.yaml   /   kubectl get pods
+
+# Serverless
+gcloud run deploy SVC --image=IMG --region=REGION
+gcloud app deploy   /   gcloud functions deploy FN --trigger-http
+
+# Storage
+gcloud storage buckets create gs://BUCKET --location=US
+gcloud storage cp -r ./dir gs://BUCKET
+
+# IAM
+gcloud projects get-iam-policy PROJECT_ID
+gcloud projects add-iam-policy-binding PROJECT_ID --member=... --role=...
+gcloud iam service-accounts create SA_NAME</code></pre>
+        </div>
+
+        <!-- TIPS -->
+        <div class="guide-domain" id="tips">
+          <h2>Exam-day tips</h2>
+          <ul>
+            <li><strong>Least privilege wins.</strong> When two roles both work, pick the <em>narrower</em> one.</li>
+            <li><strong>Managed &gt; DIY.</strong> Prefer the managed/serverless option unless the question demands OS-level control.</li>
+            <li><strong>Match scope to resource:</strong> VM = zonal, subnet = regional, VPC = global.</li>
+            <li><strong>Watch the keywords:</strong> "scale to zero" → Cloud Run/App Engine std; "global relational + strong consistency" → Spanner; "interruptible batch, cheapest" → Spot VMs; "who did what" → Admin Activity audit logs.</li>
+            <li><strong>Read multi-select counts.</strong> "Choose two" means exactly two.</li>
+            <li>Flag-and-return: don't burn time on one item; ~2.2 min/question average.</li>
+          </ul>
+          <div class="cta-row" style="justify-content:flex-start; margin-top:20px;">
+            <a class="btn btn-primary" href="practice.html">Test yourself now →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Study guide for the Google Cloud Associate Cloud Engineer certification. Confirm current objectives on the
+        <a href="https://cloud.google.com/learn/certification/cloud-engineer" target="_blank" rel="noopener">official page</a>.</p>
+      <p>Not affiliated with or endorsed by Google.</p>
+    </div>
+  </footer>
+</body>
+</html>

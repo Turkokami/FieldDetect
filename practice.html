@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practice Exams — ACE Trainer</title>
+  <meta name="description" content="Timed and untimed practice exams for the Google Cloud Associate Cloud Engineer (ACE) certification, with instant answer explanations and per-domain scoring." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2748%27 fill=%27%234285f4%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2756%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27Arial%27 font-weight=%27bold%27%3EA%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><span class="dot"></span> ACE Trainer</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="study-guide.html">Study Guide</a>
+        <a href="practice.html" class="active">Practice Exams</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container" style="padding-top:34px; padding-bottom:40px; min-height:70vh;">
+    <div id="quiz-root"><!-- quiz engine renders here --></div>
+    <noscript>
+      <p style="color:var(--muted)">This practice engine requires JavaScript. Please enable it to take the exams.</p>
+    </noscript>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Answers reflect current Google Cloud services and best practices. Questions are original study material in the style of the ACE exam.</p>
+      <p>Not affiliated with or endorsed by Google.</p>
+    </div>
+  </footer>
+
+  <script src="data/questions.js"></script>
+  <script src="js/quiz.js"></script>
+</body>
+</html>
