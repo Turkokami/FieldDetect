@@ -247,6 +247,11 @@ pre code{background:none;border:none;padding:0;color:var(--text);font-size:12.5p
 .empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px;}
 .empty p{margin:0 auto;font-size:13.5px;max-width:340px;}
 
+/* ---------- Embedded player ---------- */
+.embed{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:#000;box-shadow:var(--shadow);}
+.embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.embed-note{font-size:12px;color:var(--faint);margin:8px 2px 14px;text-align:center;}
+
 .hidden{display:none!important;}
 .foot{text-align:center;color:var(--faint);font-size:11.5px;padding:16px 8px 4px;}
 </style>
@@ -1606,12 +1611,13 @@ var CARDS = [
   {d:5,q:"Logs that answer 'who changed what, when'?",a:"Cloud Audit Logs — Admin Activity (always on)."}
 ];
 
-/* ---------- VIDEOS & AUDIO (data-driven; add your own) ---------- */
-/* Each item: {title, by, dur, url}. Leave arrays empty for an empty state. */
-var VIDEOS = [
-  {title:"Official ACE certification overview", by:"Google Cloud", dur:"link", url:"https://cloud.google.com/learn/certification/cloud-engineer"},
-  {title:"Associate Cloud Engineer learning path", by:"Google Cloud Skills Boost", dur:"link", url:"https://www.cloudskillsboost.google/paths/11"}
-];
+/* ---------- VIDEOS & AUDIO ---------- */
+/* YT_PLAYLIST: a YouTube playlist ID (the PL... value). If set, the Videos tab
+   embeds the whole playlist as one inline player. Set to "" to disable.       */
+var YT_PLAYLIST = "PLR1fEU68qlN0"; // TODO: confirm full playlist ID
+/* Optional extra single videos as cards: {title, by, dur, url}. */
+var VIDEOS = [];
+/* Audio guides: {title, by, dur, url}. Leave [] for an empty state.          */
 var AUDIO = []; // e.g. {title:"Domain 1 walkthrough", by:"You", dur:"12:40", url:"https://.../d1.mp3"}
 
 /* =====================================================================
@@ -1677,22 +1683,45 @@ function mountCard(){
 /* ----- Videos / Audio ----- */
 function iconVideo(){return '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 9l5-3v12l-5-3"/></svg>';}
 function iconAudio(){return '<svg viewBox="0 0 24 24"><path d="M3 10v4M7 7v10M11 4v16M15 8v8M19 6v12"/></svg>';}
-function renderResources(panelId, list, kind){
-  var el = $("#"+panelId);
-  var isV = kind==="video";
-  var head = '<div class="panel-head"><span class="eyebrow">'+(isV?"Watch":"Listen")+'</span><h1>'+(isV?"Video lessons":"Audio guides")+'</h1><p>'+(isV?"Curated walkthroughs and official training.":"Play on the go — great for review between jobs.")+'</p></div>';
-  if(!list.length){
-    el.innerHTML = head+'<div class="empty"><div class="big">'+(isV?iconVideo():iconAudio())+'</div><b>No '+(isV?"videos":"audio guides")+' added yet</b><p>Add your own in the data file (the <code>'+(isV?"VIDEOS":"AUDIO")+'</code> list) — each becomes a tappable card here.</p></div>';
-    return;
-  }
-  var h = head;
+function resCards(list, isV){
+  var h="";
   list.forEach(function(r){
     h += '<a class="res" href="'+esc(r.url)+'" target="_blank" rel="noopener">'+
       '<span class="thumb">'+(isV?iconVideo():iconAudio())+'</span>'+
       '<span class="meta"><b>'+esc(r.title)+'</b><span>'+esc(r.by||"")+'</span></span>'+
       '<span class="dur">'+esc(r.dur||"")+'</span></a>';
   });
+  return h;
+}
+function renderVideos(){
+  var el = $("#p-videos");
+  var head = '<div class="panel-head"><span class="eyebrow">Watch</span><h1>Video lessons</h1><p>Work through the playlist, or tap a single lesson.</p></div>';
+  var h = head;
+  if(YT_PLAYLIST){
+    var pid = encodeURIComponent(YT_PLAYLIST);
+    h += '<div class="embed"><iframe src="https://www.youtube-nocookie.com/embed/videoseries?list='+pid+'"'+
+         ' title="Video playlist" loading="lazy" allowfullscreen'+
+         ' referrerpolicy="strict-origin-when-cross-origin"'+
+         ' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"></iframe></div>'+
+         '<div class="embed-note">Playing inside the app. Use the player’s list icon to jump between videos.</div>'+
+         '<a class="btn btn-ghost" href="https://www.youtube.com/playlist?list='+pid+'" target="_blank" rel="noopener">Open full playlist on YouTube ↗</a>';
+  }
+  if(VIDEOS.length){
+    h += '<h4 style="margin:22px 0 10px;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em;">More videos</h4>'+resCards(VIDEOS,true);
+  }
+  if(!YT_PLAYLIST && !VIDEOS.length){
+    h += '<div class="empty"><div class="big">'+iconVideo()+'</div><b>No videos added yet</b><p>Set <code>YT_PLAYLIST</code> to a YouTube playlist ID, or add items to the <code>VIDEOS</code> list — each becomes a card here.</p></div>';
+  }
   el.innerHTML = h;
+}
+function renderAudio(){
+  var el = $("#p-audio");
+  var head = '<div class="panel-head"><span class="eyebrow">Listen</span><h1>Audio guides</h1><p>Play on the go — great for review between jobs.</p></div>';
+  if(!AUDIO.length){
+    el.innerHTML = head+'<div class="empty"><div class="big">'+iconAudio()+'</div><b>No audio guides added yet</b><p>Add items to the <code>AUDIO</code> list — each becomes a tappable card here.</p></div>';
+    return;
+  }
+  el.innerHTML = head+resCards(AUDIO,false);
 }
 
 /* =====================================================================
@@ -1813,8 +1842,8 @@ function show(tab){
     if(tab==="sections")renderSections();
     else if(tab==="practice")quizHome();
     else if(tab==="cards"){buildDeck();renderCardsShell();}
-    else if(tab==="videos")renderResources("p-videos",VIDEOS,"video");
-    else if(tab==="audio")renderResources("p-audio",AUDIO,"audio");
+    else if(tab==="videos")renderVideos();
+    else if(tab==="audio")renderAudio();
     built[tab]=true;
   }
   try{location.hash=tab;}catch(e){}
