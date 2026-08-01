@@ -1,121 +1,1841 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ACE Trainer — Google Cloud Associate Cloud Engineer Prep</title>
-  <meta name="description" content="Free study guide and practice exams for the Google Cloud Associate Cloud Engineer (ACE) certification. Domain-by-domain notes, gcloud commands, and timed practice tests with explanations." />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2748%27 fill=%27%234285f4%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2756%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27Arial%27 font-weight=%27bold%27%3EA%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/style.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>ACE Trainer</title>
+<meta name="description" content="A clean, mobile-first study hub for the ACE certification: section breakdowns, practice tests, flashcards, videos, and audio guides." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%235B7CFA%27/%3E%3Ctext x=%2750%27 y=%2770%27 font-size=%2758%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27Arial%27 font-weight=%27bold%27%3EA%3C/text%3E%3C/svg%3E" />
+<style>
+/* ---------- Design tokens ---------- */
+:root{
+  --accent:#5B7CFA; --accent-ink:#ffffff;
+  --ok:#22C55E; --no:#EF4444; --flag:#F59E0B;
+  --bg:#0e131c; --surface:#161d2b; --surface-2:#1e2636; --raised:#232c40;
+  --border:#2a3346; --border-soft:#222a3b;
+  --text:#e8edf6; --muted:#93a1bb; --faint:#6b7a97;
+  --radius:16px; --radius-sm:11px;
+  --shadow:0 8px 24px rgba(0,0,0,.35);
+  --tabbar-h:64px; --appbar-h:56px;
+  --maxw:680px;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f4f6fb; --surface:#ffffff; --surface-2:#f1f4fa; --raised:#ffffff;
+    --border:#e2e8f2; --border-soft:#eaeff7;
+    --text:#141b28; --muted:#5b6a86; --faint:#8592ab;
+    --shadow:0 8px 24px rgba(23,42,84,.08);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e131c; --surface:#161d2b; --surface-2:#1e2636; --raised:#232c40;
+  --border:#2a3346; --border-soft:#222a3b;
+  --text:#e8edf6; --muted:#93a1bb; --faint:#6b7a97; --shadow:0 8px 24px rgba(0,0,0,.35);
+}
+:root[data-theme="light"]{
+  --bg:#f4f6fb; --surface:#ffffff; --surface-2:#f1f4fa; --raised:#ffffff;
+  --border:#e2e8f2; --border-soft:#eaeff7;
+  --text:#141b28; --muted:#5b6a86; --faint:#8592ab; --shadow:0 8px 24px rgba(23,42,84,.08);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font); background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased; line-height:1.5;
+  overscroll-behavior-y:none;
+}
+button{font-family:inherit;}
+a{color:var(--accent);text-decoration:none;}
+
+.app{max-width:var(--maxw);margin:0 auto;min-height:100vh;position:relative;background:var(--bg);}
+
+/* ---------- App bar ---------- */
+.appbar{
+  position:sticky;top:0;z-index:40;height:var(--appbar-h);
+  display:flex;align-items:center;gap:12px;padding:0 16px;
+  padding-top:env(safe-area-inset-top);
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(12px);
+  border-bottom:1px solid var(--border-soft);
+}
+.appbar .logo{
+  width:30px;height:30px;border-radius:9px;background:var(--accent);
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;flex:0 0 auto;
+}
+.appbar .titles{display:flex;flex-direction:column;line-height:1.15;min-width:0;}
+.appbar .titles b{font-size:15px;letter-spacing:-.01em;}
+.appbar .titles span{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.appbar .spacer{margin-left:auto;}
+.icon-btn{
+  width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;font-size:16px;
+}
+.icon-btn:active{transform:scale(.94);}
+
+/* ---------- View / tabs ---------- */
+.view{padding:16px 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 20px);}
+.panel{display:none;animation:fade .18s ease;}
+.panel.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion:reduce){.panel.active{animation:none;} *{scroll-behavior:auto;}}
+
+.panel-head{margin:2px 0 14px;}
+.panel-head h1{font-size:23px;letter-spacing:-.02em;margin:0 0 3px;text-wrap:balance;}
+.panel-head p{margin:0;color:var(--muted);font-size:14px;}
+
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);}
+
+/* ---------- Bottom tab bar ---------- */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  display:flex;max-width:var(--maxw);margin:0 auto;
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  backdrop-filter:saturate(1.4) blur(14px);
+  border-top:1px solid var(--border);
+}
+.tabbar button{
+  flex:1;border:none;background:none;cursor:pointer;color:var(--faint);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:10.5px;font-weight:600;letter-spacing:.01em;padding:6px 2px;position:relative;
+  transition:color .15s;
+}
+.tabbar button .ic{width:24px;height:24px;display:grid;place-items:center;}
+.tabbar button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.tabbar button.active{color:var(--accent);}
+.tabbar button.active .ic{transform:translateY(-1px);}
+.tabbar button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:10px;}
+
+/* ---------- Cards / accordion ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+.stack{display:flex;flex-direction:column;gap:12px;}
+
+.acc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.acc + .acc{margin-top:12px;}
+.acc summary{
+  list-style:none;cursor:pointer;padding:15px 16px;display:flex;align-items:center;gap:13px;
+  user-select:none;
+}
+.acc summary::-webkit-details-marker{display:none;}
+.acc summary:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;}
+.acc .num{
+  flex:0 0 auto;width:34px;height:34px;border-radius:10px;font-weight:800;font-size:14px;
+  display:grid;place-items:center;color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 15%,transparent);
+}
+.acc .lbl{flex:1;min-width:0;}
+.acc .lbl b{display:block;font-size:15.5px;letter-spacing:-.01em;line-height:1.25;}
+.acc .lbl span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;}
+.acc .chev{flex:0 0 auto;color:var(--faint);transition:transform .2s;}
+.acc[open] .chev{transform:rotate(180deg);}
+.acc .body{padding:2px 16px 16px;border-top:1px solid var(--border-soft);margin-top:-1px;}
+.acc .body{font-size:14.5px;color:var(--text);}
+.acc .body h4{margin:16px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.acc .body ul{margin:8px 0;padding-left:20px;}
+.acc .body li{margin:5px 0;}
+.acc .body p{margin:8px 0;}
+.acc .body strong{color:var(--text);}
+code{font-family:var(--mono);background:var(--surface-2);border:1px solid var(--border-soft);border-radius:6px;padding:1px 5px;font-size:12.5px;}
+pre{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:10px;padding:12px;overflow-x:auto;margin:8px 0;}
+pre code{background:none;border:none;padding:0;color:var(--text);font-size:12.5px;line-height:1.6;}
+.tip{border-left:3px solid var(--flag);background:color-mix(in srgb,var(--flag) 10%,transparent);padding:10px 12px;border-radius:8px;margin:12px 0;font-size:13.5px;}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0;display:block;overflow-x:auto;}
+.tbl th,.tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border-soft);vertical-align:top;}
+.tbl th{color:var(--muted);font-weight:700;white-space:nowrap;}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 18px;border-radius:12px;font-weight:700;font-size:15px;
+  border:1px solid transparent;cursor:pointer;transition:transform .05s,background .15s,border-color .15s;
+  min-height:46px;width:100%;
+}
+.btn:active{transform:translateY(1px);}
+.btn-primary{background:var(--accent);color:var(--accent-ink);}
+.btn-ghost{background:var(--surface);color:var(--text);border-color:var(--border);}
+.btn-row{display:flex;gap:10px;}
+.btn-sm{padding:9px 14px;min-height:40px;font-size:14px;width:auto;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{
+  flex:0 0 auto;padding:8px 14px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+}
+.chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* ---------- Progress ---------- */
+.bar{height:7px;background:var(--surface-2);border-radius:999px;overflow:hidden;}
+.bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s;}
+
+/* ---------- Quiz ---------- */
+.q-meta{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted);margin:10px 0;}
+.timer{font-weight:800;font-variant-numeric:tabular-nums;}
+.timer.warn{color:var(--flag);} .timer.danger{color:var(--no);}
+.q-dom{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);}
+.q-text{font-size:18px;font-weight:650;letter-spacing:-.01em;margin:6px 0 6px;text-wrap:pretty;}
+.q-hint{font-size:12.5px;color:var(--muted);margin-bottom:12px;}
+.opt{
+  display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--border);border-radius:13px;
+  padding:13px 14px;margin-bottom:9px;cursor:pointer;background:var(--surface);transition:border-color .12s,background .12s;
+}
+.opt:active{transform:scale(.995);}
+.opt.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 11%,transparent);}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,transparent);}
+.opt.bad{border-color:var(--no);background:color-mix(in srgb,var(--no) 12%,transparent);}
+.opt .mk{flex:0 0 auto;width:23px;height:23px;border-radius:7px;border:1.5px solid var(--faint);display:grid;place-items:center;font-weight:800;font-size:12px;color:var(--faint);}
+.opt.multi .mk{border-radius:50%;}
+.opt.sel .mk{border-color:var(--accent);color:var(--accent);}
+.opt.ok .mk{border-color:var(--ok);color:var(--ok);}
+.opt.bad .mk{border-color:var(--no);color:var(--no);}
+.opt .ot{flex:1;font-size:14.5px;padding-top:1px;}
+.explain{margin-top:4px;border-radius:12px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border-soft);font-size:13.5px;}
+.explain .v{font-weight:800;margin-bottom:4px;}
+.explain .v.ok{color:var(--ok);} .explain .v.no{color:var(--no);}
+.q-nav{display:flex;gap:10px;margin-top:16px;}
+
+.ring{--p:0;width:150px;height:150px;border-radius:50%;margin:6px auto 8px;
+  background:conic-gradient(var(--accent) calc(var(--p)*1%),var(--surface-2) 0);
+  display:grid;place-items:center;}
+.ring .in{width:118px;height:118px;border-radius:50%;background:var(--bg);display:grid;place-items:center;text-align:center;}
+.ring .pct{font-size:32px;font-weight:800;}
+.ring .lab{font-size:11px;color:var(--muted);}
+.dbar{margin:9px 0;}
+.dbar .r{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+.dbar .t{height:7px;background:var(--surface-2);border-radius:999px;overflow:hidden;}
+.dbar .t>i{display:block;height:100%;background:var(--ok);}
+.rev{border:1px solid var(--border);border-radius:12px;padding:12px 13px;margin-bottom:9px;background:var(--surface);}
+.rev .b{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-right:7px;}
+.rev .b.ok{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok);}
+.rev .b.no{background:color-mix(in srgb,var(--no) 20%,transparent);color:var(--no);}
+
+/* ---------- Flashcards ---------- */
+.fc-wrap{perspective:1200px;margin:6px 0 4px;}
+.fc{position:relative;width:100%;min-height:270px;cursor:pointer;transform-style:preserve-3d;transition:transform .45s;}
+.fc.flip{transform:rotateY(180deg);}
+@media (prefers-reduced-motion:reduce){.fc{transition:none;}}
+.fc .face{
+  position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow);
+  padding:24px 22px;display:flex;flex-direction:column;justify-content:center;
+}
+.fc .face .tag{position:absolute;top:14px;left:16px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);}
+.fc .face .hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:11.5px;color:var(--faint);}
+.fc .front{font-size:20px;font-weight:650;text-align:center;letter-spacing:-.01em;}
+.fc .back{transform:rotateY(180deg);font-size:15.5px;line-height:1.55;}
+.fc .back .tag{color:var(--accent);}
+.fc-nav{display:flex;align-items:center;gap:10px;margin-top:12px;}
+.fc-nav .count{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;min-width:56px;text-align:center;}
+
+/* ---------- Resource lists (videos/audio) ---------- */
+.res{display:flex;gap:13px;align-items:center;padding:13px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);margin-bottom:10px;cursor:pointer;color:var(--text);}
+.res:active{transform:scale(.995);}
+.res .thumb{flex:0 0 auto;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);}
+.res .thumb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.res .meta{flex:1;min-width:0;}
+.res .meta b{display:block;font-size:14.5px;letter-spacing:-.01em;}
+.res .meta span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;}
+.res .dur{flex:0 0 auto;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums;}
+.empty{text-align:center;padding:34px 18px;color:var(--muted);}
+.empty .big{width:56px;height:56px;border-radius:16px;background:var(--surface-2);display:grid;place-items:center;margin:0 auto 12px;color:var(--faint);}
+.empty .big svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px;}
+.empty p{margin:0 auto;font-size:13.5px;max-width:340px;}
+
+.hidden{display:none!important;}
+.foot{text-align:center;color:var(--faint);font-size:11.5px;padding:16px 8px 4px;}
+</style>
 </head>
 <body>
-  <nav class="nav">
-    <div class="nav-inner">
-      <a class="brand" href="index.html"><span class="dot"></span> ACE Trainer</a>
-      <div class="nav-links">
-        <a href="index.html" class="active">Home</a>
-        <a href="study-guide.html">Study Guide</a>
-        <a href="practice.html">Practice Exams</a>
-      </div>
+<div class="app">
+  <header class="appbar">
+    <div class="logo">A</div>
+    <div class="titles">
+      <b>ACE Trainer</b>
+      <span id="appbar-sub">Associate Cloud Engineer prep</span>
     </div>
-  </nav>
-
-  <header class="hero">
-    <div class="container">
-      <span class="badge">Google Cloud · Associate Cloud Engineer</span>
-      <h1>Pass the Google Cloud<br />Associate Cloud Engineer exam</h1>
-      <p class="lead">
-        A free, self-paced training site: a domain-by-domain study guide plus
-        multiple timed practice exams with instant explanations — built in the
-        style of the official ACE sample exam.
-      </p>
-      <div class="cta-row">
-        <a class="btn btn-primary" href="practice.html">Start a practice exam</a>
-        <a class="btn btn-ghost" href="study-guide.html">Read the study guide</a>
-      </div>
-    </div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle light/dark">◐</button>
   </header>
 
-  <section>
-    <div class="container">
-      <div class="facts">
-        <div class="fact"><div class="n">50–60</div><div class="l">Questions on exam</div></div>
-        <div class="fact"><div class="n">120</div><div class="l">Minutes</div></div>
-        <div class="fact"><div class="n">~70%</div><div class="l">Target to pass</div></div>
-        <div class="fact"><div class="n">5</div><div class="l">Exam domains</div></div>
-        <div class="fact"><div class="n">$200</div><div class="l">Exam fee (USD)</div></div>
-      </div>
-    </div>
-  </section>
+  <main class="view">
+    <!-- SECTIONS -->
+    <section class="panel active" id="p-sections" role="tabpanel" aria-label="Sections"></section>
+    <!-- PRACTICE -->
+    <section class="panel" id="p-practice" role="tabpanel" aria-label="Practice"><div id="quiz-root"></div></section>
+    <!-- FLASHCARDS -->
+    <section class="panel" id="p-cards" role="tabpanel" aria-label="Flashcards"></section>
+    <!-- VIDEOS -->
+    <section class="panel" id="p-videos" role="tabpanel" aria-label="Videos"></section>
+    <!-- AUDIO -->
+    <section class="panel" id="p-audio" role="tabpanel" aria-label="Audio"></section>
+  </main>
 
-  <section>
-    <div class="container">
-      <h2 class="section-title">The five exam domains</h2>
-      <p class="section-sub">The ACE exam measures your ability to deploy, operate, and secure solutions on Google Cloud. Google lists these five areas of skills measured.</p>
-      <div class="grid grid-3">
-        <div class="card">
-          <div class="domain-num">1</div>
-          <h3>Setting up a cloud environment</h3>
-          <p>Projects, billing accounts, budgets, the Cloud SDK/CLI, Cloud Shell, and the resource hierarchy (org → folder → project).</p>
-        </div>
-        <div class="card">
-          <div class="domain-num">2</div>
-          <h3>Planning &amp; configuring</h3>
-          <p>Choosing compute, storage, and network options; estimating cost with the Pricing Calculator; planning for scale.</p>
-        </div>
-        <div class="card">
-          <div class="domain-num">3</div>
-          <h3>Deploying &amp; implementing</h3>
-          <p>Deploying Compute Engine, GKE, Cloud Run, App Engine, Cloud Functions, storage, and networking — console and gcloud.</p>
-        </div>
-        <div class="card">
-          <div class="domain-num">4</div>
-          <h3>Ensuring successful operation</h3>
-          <p>Cloud Monitoring, Logging, alerts, snapshots, images, quotas, and day-2 management of running resources.</p>
-        </div>
-        <div class="card">
-          <div class="domain-num">5</div>
-          <h3>Configuring access &amp; security</h3>
-          <p>IAM roles, service accounts, least privilege, audit logs, org policies, KMS/CMEK, and Secret Manager.</p>
-        </div>
-        <div class="card" style="display:flex; flex-direction:column; justify-content:center; background:var(--card-2);">
-          <h3>Ready to test yourself?</h3>
-          <p style="margin-bottom:14px;">Take a timed exam or study untimed with instant explanations.</p>
-          <a class="btn btn-primary btn-sm" href="practice.html" style="align-self:flex-start;">Go to practice exams →</a>
-        </div>
-      </div>
-    </div>
-  </section>
+  <nav class="tabbar" role="tablist" aria-label="Study modes">
+    <button data-tab="sections" class="active" role="tab" aria-selected="true">
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>Sections
+    </button>
+    <button data-tab="practice" role="tab" aria-selected="false">
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>Practice
+    </button>
+    <button data-tab="cards" role="tab" aria-selected="false">
+      <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></span>Flashcards
+    </button>
+    <button data-tab="videos" role="tab" aria-selected="false">
+      <span class="ic"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 9l5-3v12l-5-3"/></svg></span>Videos
+    </button>
+    <button data-tab="audio" role="tab" aria-selected="false">
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M3 10v4M7 7v10M11 4v16M15 8v8M19 6v12M23 10v4"/></svg></span>Audio
+    </button>
+  </nav>
+</div>
 
-  <section>
-    <div class="container">
-      <h2 class="section-title">How to use this site</h2>
-      <div class="grid grid-3">
-        <div class="card">
-          <span class="tag">Step 1</span>
-          <h3>Learn the map</h3>
-          <p>Skim the <a href="study-guide.html">study guide</a> to see which service solves which problem. That mapping is most of the exam.</p>
-        </div>
-        <div class="card">
-          <span class="tag">Step 2</span>
-          <h3>Practice untimed</h3>
-          <p>Run an exam in <strong>Practice mode</strong> to check each answer as you go and read the explanation immediately.</p>
-        </div>
-        <div class="card">
-          <span class="tag">Step 3</span>
-          <h3>Simulate the real thing</h3>
-          <p>Switch to <strong>timed mode</strong>, aim for 80%+ consistently, and review your weakest domain in the results breakdown.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+<script>
+/*
+ * Google Cloud Associate Cloud Engineer (ACE) — Practice Question Bank
+ * ---------------------------------------------------------------------
+ * Each question object:
+ *   {
+ *     id:        unique string
+ *     domain:    one of DOMAINS keys (1..5)
+ *     type:      "single" | "multi"
+ *     text:      question stem
+ *     options:   [ "A ...", "B ..." ]  (text only, no letter prefix)
+ *     answer:    index (single) or array of indices (multi)
+ *     explanation: why the answer is correct
+ *   }
+ *
+ * These questions are written in the style of the official ACE sample exam:
+ * scenario-based, single best answer or "choose N", vendor-neutral phrasing
+ * where possible, and grounded in current Google Cloud services.
+ */
 
-  <footer>
-    <div class="container">
-      <p>ACE Trainer — an independent, free study resource for the Google Cloud Associate Cloud Engineer certification.</p>
-      <p>Not affiliated with or endorsed by Google. Always confirm current objectives on the
-        <a href="https://cloud.google.com/learn/certification/cloud-engineer" target="_blank" rel="noopener">official certification page</a>.</p>
-    </div>
-  </footer>
+const DOMAINS = {
+  1: "Setting up a cloud solution environment",
+  2: "Planning and configuring a cloud solution",
+  3: "Deploying and implementing a cloud solution",
+  4: "Ensuring successful operation of a cloud solution",
+  5: "Configuring access and security",
+};
+
+const EXAMS = [
+  {
+    id: "exam-1",
+    title: "Practice Exam 1 — Core Fundamentals",
+    description:
+      "A balanced 25-question set covering all five domains. Great for your first full run.",
+    minutes: 40,
+    questions: [
+      {
+        id: "e1q1",
+        domain: 1,
+        type: "single",
+        text: "Your company has an existing Google Cloud organization. You need to create a new project for the finance team and ensure its costs are billed to the corporate billing account. What is the correct order of operations?",
+        options: [
+          "Create the billing account, then create the project and it is linked automatically",
+          "Create the project, then link it to the existing corporate billing account",
+          "Create the project under a folder; billing is inherited from the folder automatically",
+          "Enable the Cloud Billing API in the organization, then projects bill automatically",
+        ],
+        answer: 1,
+        explanation:
+          "Projects are not automatically linked to a billing account (and billing is not inherited from folders). You create the project, then explicitly link it to the corporate billing account. This can be done in the Console or with `gcloud billing projects link PROJECT_ID --billing-account=BILLING_ACCOUNT_ID`.",
+      },
+      {
+        id: "e1q2",
+        domain: 1,
+        type: "single",
+        text: "You want to run gcloud commands from your local terminal against a specific project without passing --project each time. Which command sets the active project in your configuration?",
+        options: [
+          "gcloud projects set-active PROJECT_ID",
+          "gcloud config set project PROJECT_ID",
+          "gcloud init project PROJECT_ID",
+          "gcloud auth set-project PROJECT_ID",
+        ],
+        answer: 1,
+        explanation:
+          "`gcloud config set project PROJECT_ID` sets the project property in your active gcloud configuration, so subsequent commands use it by default. `gcloud init` walks you through creating a configuration interactively, but the direct property setter is `gcloud config set`.",
+      },
+      {
+        id: "e1q3",
+        domain: 5,
+        type: "single",
+        text: "A developer needs to view Compute Engine instances in a project but must not be able to start, stop, or modify them. Which predefined IAM role follows the principle of least privilege?",
+        options: [
+          "roles/compute.admin",
+          "roles/compute.instanceAdmin.v1",
+          "roles/compute.viewer",
+          "roles/viewer",
+        ],
+        answer: 2,
+        explanation:
+          "`roles/compute.viewer` grants read-only access to Compute Engine resources. `roles/viewer` (a basic role) is broader than needed, and the two admin roles allow modification. Prefer the narrowest predefined role that meets the requirement.",
+      },
+      {
+        id: "e1q4",
+        domain: 2,
+        type: "single",
+        text: "You need object storage for infrequently accessed backups that will be kept for at least a year, with the lowest cost while still allowing occasional retrieval within milliseconds. Which Cloud Storage class is most appropriate?",
+        options: ["Standard", "Nearline", "Coldline", "Archive"],
+        answer: 2,
+        explanation:
+          "Coldline is designed for data accessed less than once a quarter with a 90-day minimum storage duration and low storage cost, while still offering millisecond access. Archive (365-day minimum) is cheapest but intended for data accessed less than once a year. For yearly-retained backups touched occasionally, Coldline balances cost and access.",
+      },
+      {
+        id: "e1q5",
+        domain: 3,
+        type: "single",
+        text: "You must deploy a stateless containerized web API that should scale to zero when idle and scale up automatically on request volume, with no cluster to manage. Which service should you choose?",
+        options: [
+          "Google Kubernetes Engine (Standard)",
+          "Compute Engine managed instance group",
+          "Cloud Run",
+          "App Engine flexible environment",
+        ],
+        answer: 2,
+        explanation:
+          "Cloud Run is a fully managed, serverless platform for stateless containers that scales to zero and scales out with request concurrency, with no cluster to operate. GKE requires cluster management; MIGs don't scale to zero the same way; App Engine flexible keeps at least one instance running.",
+      },
+      {
+        id: "e1q6",
+        domain: 5,
+        type: "single",
+        text: "An application running on a Compute Engine VM needs to read objects from a Cloud Storage bucket. What is the recommended way to grant this access?",
+        options: [
+          "Embed a service account JSON key file in the application code",
+          "Attach a service account to the VM and grant that service account the storage.objectViewer role",
+          "Store your personal user credentials on the VM",
+          "Make the bucket public so any VM can read it",
+        ],
+        answer: 1,
+        explanation:
+          "The recommended pattern is to attach a service account to the VM and grant that account the minimal role (e.g., roles/storage.objectViewer). The VM then obtains short-lived credentials from the metadata server automatically—no key files to manage or leak. Embedding JSON keys or making buckets public are security anti-patterns.",
+      },
+      {
+        id: "e1q7",
+        domain: 3,
+        type: "single",
+        text: "You need to deploy a group of identical Compute Engine VMs that automatically recreate failed instances and can autoscale based on CPU utilization. Which resource do you use?",
+        options: [
+          "An unmanaged instance group",
+          "A managed instance group (MIG) with an instance template",
+          "A sole-tenant node group",
+          "A set of individually created VMs behind a static IP",
+        ],
+        answer: 1,
+        explanation:
+          "A managed instance group uses an instance template to create identical VMs and provides autohealing (recreating failed instances) and autoscaling. Unmanaged instance groups are just collections of arbitrary VMs with no templating, autohealing, or autoscaling.",
+      },
+      {
+        id: "e1q8",
+        domain: 2,
+        type: "single",
+        text: "Your team needs a fully managed relational database that is horizontally scalable, provides strong global consistency, and offers up to 99.999% availability for a mission-critical global application. Which service fits best?",
+        options: ["Cloud SQL", "Cloud Spanner", "Firestore", "Bigtable"],
+        answer: 1,
+        explanation:
+          "Cloud Spanner is a fully managed relational database offering horizontal scalability, strong (external) consistency, and up to 99.999% availability with a multi-region configuration—ideal for global, mission-critical workloads. Cloud SQL is regional and vertically scaled; Firestore is a document DB; Bigtable is NoSQL wide-column.",
+      },
+      {
+        id: "e1q9",
+        domain: 4,
+        type: "single",
+        text: "You want to receive an alert when the average CPU utilization of a VM exceeds 80% for 5 minutes. Which Google Cloud service do you configure?",
+        options: [
+          "Cloud Logging",
+          "Cloud Monitoring alerting policy",
+          "Cloud Trace",
+          "Error Reporting",
+        ],
+        answer: 1,
+        explanation:
+          "Cloud Monitoring lets you create alerting policies based on metrics (such as CPU utilization) with conditions and notification channels. Cloud Logging handles logs, Cloud Trace handles latency/distributed tracing, and Error Reporting aggregates application errors.",
+      },
+      {
+        id: "e1q10",
+        domain: 3,
+        type: "single",
+        text: "You need to give a running Compute Engine instance a persistent disk with more space without deleting the VM. What can you do?",
+        options: [
+          "Persistent disks cannot be resized; recreate the VM",
+          "Resize the persistent disk and then extend the file system inside the VM",
+          "Only the boot disk can be resized, never data disks",
+          "Delete the disk and attach a larger snapshot",
+        ],
+        answer: 1,
+        explanation:
+          "Persistent disks can be increased in size while attached and even while the VM is running. After resizing the disk (Console or `gcloud compute disks resize`), you extend the file system inside the guest OS to use the new space. You cannot shrink a persistent disk.",
+      },
+      {
+        id: "e1q11",
+        domain: 5,
+        type: "multi",
+        text: "Which of the following are valid types of IAM roles in Google Cloud? (Choose three.)",
+        options: [
+          "Basic roles (Owner, Editor, Viewer)",
+          "Predefined roles",
+          "Custom roles",
+          "Anonymous roles",
+        ],
+        answer: [0, 1, 2],
+        explanation:
+          "Google Cloud IAM has three role types: basic (primitive) roles—Owner, Editor, Viewer; predefined roles that are service-specific and curated by Google; and custom roles you define with a chosen set of permissions. 'Anonymous roles' is not a role type.",
+      },
+      {
+        id: "e1q12",
+        domain: 1,
+        type: "single",
+        text: "In the Google Cloud resource hierarchy, which is the correct top-to-bottom order?",
+        options: [
+          "Project → Folder → Organization → Resource",
+          "Organization → Folder → Project → Resource",
+          "Organization → Project → Folder → Resource",
+          "Folder → Organization → Project → Resource",
+        ],
+        answer: 1,
+        explanation:
+          "The hierarchy is Organization (root) → Folders (optional, can nest) → Projects → Resources. IAM policies and organization policies set higher in the hierarchy are inherited by everything below.",
+      },
+      {
+        id: "e1q13",
+        domain: 2,
+        type: "single",
+        text: "You are estimating the monthly cost of a proposed architecture before deploying anything. Which tool should you use?",
+        options: [
+          "Cloud Billing budgets",
+          "The Google Cloud Pricing Calculator",
+          "Cost Table report",
+          "Recommender",
+        ],
+        answer: 1,
+        explanation:
+          "The Pricing Calculator lets you model expected usage of services and estimate monthly cost before deployment. Budgets and the Cost Table report track actual/forecasted spend on already-running resources; Recommender suggests optimizations on existing resources.",
+      },
+      {
+        id: "e1q14",
+        domain: 3,
+        type: "single",
+        text: "You want to deploy a containerized application to GKE without managing nodes, node pools, or capacity. Which GKE mode should you use?",
+        options: [
+          "GKE Standard with node auto-provisioning",
+          "GKE Autopilot",
+          "GKE on-prem (Anthos)",
+          "A single-node zonal cluster",
+        ],
+        answer: 1,
+        explanation:
+          "GKE Autopilot is a hands-off mode where Google manages the nodes, scaling, and capacity; you pay for the resources your Pods request. Standard mode still requires you to manage node pools even with auto-provisioning enabled.",
+      },
+      {
+        id: "e1q15",
+        domain: 4,
+        type: "single",
+        text: "You need to create a point-in-time backup of a Compute Engine persistent disk that can be used to restore or clone the disk later, and you want it stored efficiently and geo-redundantly. What do you create?",
+        options: [
+          "A machine image",
+          "A persistent disk snapshot",
+          "A custom image only",
+          "A local SSD copy",
+        ],
+        answer: 1,
+        explanation:
+          "Persistent disk snapshots are incremental point-in-time backups stored redundantly (multi-regional by default) that you can use to restore or create new disks. Machine images capture the whole VM configuration including multiple disks and metadata but the specific ask—disk backup for restore/clone—maps to a snapshot.",
+      },
+      {
+        id: "e1q16",
+        domain: 5,
+        type: "single",
+        text: "You must allow inbound SSH (TCP 22) to VMs tagged 'bastion' from your corporate IP range only. What is the correct approach?",
+        options: [
+          "Create a VPC firewall rule allowing tcp:22 from the corporate CIDR to targets with network tag 'bastion'",
+          "Enable OS Login on all projects",
+          "Add a route for tcp:22 to the bastion subnet",
+          "Assign the roles/compute.osAdminLogin role to the corporate range",
+        ],
+        answer: 0,
+        explanation:
+          "VPC firewall rules control traffic by protocol/port, source (CIDR or tags/service accounts), and target (network tags or service accounts). An ingress allow rule for tcp:22 from the corporate CIDR targeting the 'bastion' tag is correct. Routes direct traffic paths, not access control; OS Login governs SSH key management, not source-IP filtering.",
+      },
+      {
+        id: "e1q17",
+        domain: 2,
+        type: "single",
+        text: "An analytics team needs a serverless, highly scalable data warehouse to run SQL queries over terabytes of data with pay-per-query pricing. Which service should you recommend?",
+        options: ["Cloud SQL", "BigQuery", "Dataproc", "Bigtable"],
+        answer: 1,
+        explanation:
+          "BigQuery is Google Cloud's serverless, petabyte-scale data warehouse with standard SQL and on-demand (per-query) or capacity-based pricing. Cloud SQL is OLTP relational; Dataproc is managed Spark/Hadoop; Bigtable is NoSQL for high-throughput operational workloads.",
+      },
+      {
+        id: "e1q18",
+        domain: 3,
+        type: "single",
+        text: "You want to deploy an application from source code to a fully managed platform that automatically handles scaling and versioning, using supported runtimes like Python and Java, without containers. Which service is the best fit?",
+        options: [
+          "Compute Engine",
+          "App Engine standard environment",
+          "Cloud Run",
+          "GKE",
+        ],
+        answer: 1,
+        explanation:
+          "App Engine standard environment runs your code on a fully managed platform with automatic scaling (including to zero for some runtimes), traffic splitting, and built-in versioning, using supported language runtimes—no container image required. Cloud Run needs a container; Compute Engine and GKE require more management.",
+      },
+      {
+        id: "e1q19",
+        domain: 1,
+        type: "single",
+        text: "You want to organize resources for three departments (HR, Finance, Engineering) so that IAM policies and org policies can be applied per department and inherited by that department's projects. What should you create?",
+        options: [
+          "Three separate billing accounts",
+          "Three folders under the organization, each containing that department's projects",
+          "Three VPC networks",
+          "Three custom roles",
+        ],
+        answer: 1,
+        explanation:
+          "Folders group projects and let you apply IAM and organization policies at the folder level, which are then inherited by the projects inside. Billing accounts and VPCs don't provide the policy-inheritance grouping described.",
+      },
+      {
+        id: "e1q20",
+        domain: 4,
+        type: "single",
+        text: "You need to search and analyze logs from many resources, and export a subset of logs to BigQuery for long-term analysis. Which feature do you configure?",
+        options: [
+          "A Cloud Monitoring dashboard",
+          "A Cloud Logging sink with a filter and a BigQuery destination",
+          "A Pub/Sub topic subscription",
+          "A Cloud Trace export",
+        ],
+        answer: 1,
+        explanation:
+          "Cloud Logging log sinks route log entries matching a filter to destinations such as BigQuery, Cloud Storage, or Pub/Sub. A sink with a filter and BigQuery destination is exactly the mechanism for exporting a subset of logs for analysis.",
+      },
+      {
+        id: "e1q21",
+        domain: 5,
+        type: "single",
+        text: "A service account needs to impersonate another service account to obtain short-lived credentials. Which IAM role must be granted on the target service account?",
+        options: [
+          "roles/iam.serviceAccountUser",
+          "roles/iam.serviceAccountTokenCreator",
+          "roles/iam.serviceAccountAdmin",
+          "roles/owner",
+        ],
+        answer: 1,
+        explanation:
+          "`roles/iam.serviceAccountTokenCreator` allows a principal to create short-lived credentials (impersonate) for the target service account. `roles/iam.serviceAccountUser` lets a principal run operations as a service account (e.g., deploy a VM with it) but is not the impersonation/token-minting role.",
+      },
+      {
+        id: "e1q22",
+        domain: 3,
+        type: "single",
+        text: "You need to copy a local directory of files to a Cloud Storage bucket from Cloud Shell. Which command should you use?",
+        options: [
+          "gcloud storage cp -r ./mydir gs://my-bucket",
+          "gcloud compute scp ./mydir gs://my-bucket",
+          "bq load gs://my-bucket ./mydir",
+          "gcloud storage mount gs://my-bucket ./mydir",
+        ],
+        answer: 0,
+        explanation:
+          "`gcloud storage cp -r ./mydir gs://my-bucket` recursively copies a local directory to a bucket (the modern replacement for `gsutil cp -r`). `gcloud compute scp` is for VMs, `bq load` is for BigQuery tables, and there is no `gcloud storage mount` for this task.",
+      },
+      {
+        id: "e1q23",
+        domain: 2,
+        type: "single",
+        text: "You are designing a VPC and need instances in two different subnets (in the same region) to communicate over private IP addresses. What is required?",
+        options: [
+          "VPC Peering between the subnets",
+          "Nothing special—instances in the same VPC can route to each other by default via internal IPs, subject to firewall rules",
+          "A Cloud VPN tunnel between subnets",
+          "A shared VPC host project",
+        ],
+        answer: 1,
+        explanation:
+          "Subnets within the same VPC network can communicate over internal IPs by default (subject to firewall rules); no peering or VPN is needed. VPC Peering connects separate VPC networks, not subnets within one network.",
+      },
+      {
+        id: "e1q24",
+        domain: 4,
+        type: "single",
+        text: "Your organization wants to prevent a project from exceeding a certain number of a specific resource (for example, in-use external IP addresses) in a region. What controls this limit?",
+        options: [
+          "IAM deny policies",
+          "Resource quotas",
+          "Organization policy constraints only",
+          "Firewall rules",
+        ],
+        answer: 1,
+        explanation:
+          "Quotas limit how much of a particular resource a project can use (e.g., number of external IPs, CPUs per region). You can view and request changes to quotas in IAM & Admin → Quotas. Org policies enforce broader governance constraints but the specific per-resource count limit is a quota.",
+      },
+      {
+        id: "e1q25",
+        domain: 1,
+        type: "single",
+        text: "You want to try Google Cloud CLI commands in the browser with credentials and tools preinstalled, without installing anything locally. What should you use?",
+        options: [
+          "Cloud Shell",
+          "Cloud Code for VS Code",
+          "The mobile app",
+          "A local Docker container",
+        ],
+        answer: 0,
+        explanation:
+          "Cloud Shell is a browser-based shell with the gcloud CLI, kubectl, and other tools preinstalled and preauthenticated, plus a persistent home directory. It's ideal for quick CLI work without local installation.",
+      },
+    ],
+  },
+  {
+    id: "exam-2",
+    title: "Practice Exam 2 — Compute, Networking & Deployment",
+    description:
+      "25 questions weighted toward Domain 2 and Domain 3: choosing and deploying compute, storage, and networking.",
+    minutes: 40,
+    questions: [
+      {
+        id: "e2q1",
+        domain: 2,
+        type: "single",
+        text: "You need a NoSQL database for high-throughput, low-latency operational workloads such as time-series or IoT data at massive scale. Which service is designed for this?",
+        options: ["Firestore", "Cloud Bigtable", "Cloud SQL", "BigQuery"],
+        answer: 1,
+        explanation:
+          "Cloud Bigtable is a wide-column NoSQL database built for high-throughput, low-latency workloads at massive scale, such as time-series, IoT, and analytics ingestion. Firestore is document-oriented for app data; Cloud SQL is relational; BigQuery is an analytics warehouse.",
+      },
+      {
+        id: "e2q2",
+        domain: 3,
+        type: "single",
+        text: "You want to deploy a container to Cloud Run from an image stored in Artifact Registry using the CLI. Which command is correct?",
+        options: [
+          "gcloud run deploy my-service --image=REGION-docker.pkg.dev/PROJECT/REPO/IMAGE:tag --region=REGION",
+          "gcloud container deploy my-service --image=IMAGE",
+          "gcloud app deploy --image=IMAGE",
+          "gcloud compute instances create-from-container my-service",
+        ],
+        answer: 0,
+        explanation:
+          "`gcloud run deploy SERVICE --image=... --region=...` deploys a container image to Cloud Run. The other commands target different services (App Engine, Compute Engine) or aren't valid for Cloud Run.",
+      },
+      {
+        id: "e2q3",
+        domain: 2,
+        type: "single",
+        text: "A workload is fault-tolerant and can be interrupted at any time (for example, batch rendering). You want to minimize compute cost on Compute Engine. Which option should you choose?",
+        options: [
+          "Sole-tenant nodes",
+          "Spot VMs (preemptible)",
+          "Committed use discounts on standard VMs",
+          "Local SSDs",
+        ],
+        answer: 1,
+        explanation:
+          "Spot VMs (the evolution of preemptible VMs) offer steep discounts in exchange for the possibility of being reclaimed at any time—ideal for fault-tolerant, interruptible batch work. Committed use discounts reduce cost but require a 1- or 3-year commitment for steady-state usage.",
+      },
+      {
+        id: "e2q4",
+        domain: 3,
+        type: "single",
+        text: "You need to distribute global HTTP(S) traffic across backends in multiple regions with a single anycast IP and SSL termination. Which load balancer should you use?",
+        options: [
+          "Internal passthrough Network Load Balancer",
+          "Global external Application Load Balancer",
+          "Regional external Network Load Balancer",
+          "Internal Application Load Balancer",
+        ],
+        answer: 1,
+        explanation:
+          "The global external Application Load Balancer (HTTP(S)) provides a single global anycast IP, cross-region backend distribution, and SSL termination. Network Load Balancers operate at L4 and are regional; internal load balancers don't serve external global traffic.",
+      },
+      {
+        id: "e2q5",
+        domain: 2,
+        type: "single",
+        text: "You need to connect your on-premises data center to a VPC over an encrypted tunnel across the public internet with minimal setup. Which option fits?",
+        options: [
+          "Dedicated Interconnect",
+          "Partner Interconnect",
+          "Cloud VPN (HA VPN)",
+          "Direct Peering",
+        ],
+        answer: 2,
+        explanation:
+          "Cloud VPN (HA VPN) establishes IPsec-encrypted tunnels over the public internet between on-prem and your VPC—quick to set up and cost-effective for moderate bandwidth. Dedicated/Partner Interconnect provide private, high-bandwidth connections but require more provisioning and cost.",
+      },
+      {
+        id: "e2q6",
+        domain: 3,
+        type: "single",
+        text: "You created an instance template and want all new VMs in a managed instance group to use a startup script that installs a web server. Where should the startup script be defined?",
+        options: [
+          "In the firewall rule",
+          "In the instance template's metadata (startup-script)",
+          "In the VPC subnet configuration",
+          "In the project's billing settings",
+        ],
+        answer: 1,
+        explanation:
+          "Startup scripts are provided via instance metadata (key `startup-script` or `startup-script-url`). Defining it in the instance template ensures every VM the MIG creates runs the same provisioning script at boot.",
+      },
+      {
+        id: "e2q7",
+        domain: 2,
+        type: "single",
+        text: "Your application needs a managed MySQL database with automatic backups, replication, and patching, for a regional OLTP workload of modest size. Which service should you choose?",
+        options: ["Cloud Spanner", "Cloud SQL for MySQL", "Bigtable", "Firestore"],
+        answer: 1,
+        explanation:
+          "Cloud SQL is the managed relational database service supporting MySQL, PostgreSQL, and SQL Server, with automated backups, replication, and patching—right for regional OLTP workloads. Spanner is for global horizontal scale (and higher cost); Bigtable/Firestore are NoSQL.",
+      },
+      {
+        id: "e2q8",
+        domain: 3,
+        type: "single",
+        text: "You want to run a container on a schedule (for example, nightly) without keeping infrastructure running. Which combination is a common serverless approach?",
+        options: [
+          "Cloud Scheduler triggering a Cloud Run job",
+          "A cron job on a persistent Compute Engine VM",
+          "GKE CronJob on an always-on cluster",
+          "Manually running the container each night",
+        ],
+        answer: 0,
+        explanation:
+          "Cloud Scheduler (managed cron) can trigger a Cloud Run job (or an HTTP endpoint / Pub/Sub) to run containerized work on a schedule with no always-on infrastructure. A VM cron or GKE CronJob works but keeps infrastructure running, which isn't serverless.",
+      },
+      {
+        id: "e2q9",
+        domain: 2,
+        type: "single",
+        text: "You need shared file storage (NFS) that multiple Compute Engine VMs can mount simultaneously. Which managed service should you use?",
+        options: ["Cloud Storage", "Filestore", "Persistent Disk", "Local SSD"],
+        answer: 1,
+        explanation:
+          "Filestore provides managed NFS file shares that multiple VMs (and GKE Pods) can mount concurrently. Cloud Storage is object storage (not POSIX file semantics), and persistent disks/local SSDs are block storage generally attached to one VM (read-write).",
+      },
+      {
+        id: "e2q10",
+        domain: 3,
+        type: "multi",
+        text: "Which two commands can you use to authenticate kubectl with a GKE cluster so you can deploy workloads? (Choose two.)",
+        options: [
+          "gcloud container clusters get-credentials CLUSTER --region REGION",
+          "gcloud auth configure-docker",
+          "kubectl config use-context (after get-credentials populates kubeconfig)",
+          "gcloud compute ssh CLUSTER",
+        ],
+        answer: [0, 2],
+        explanation:
+          "`gcloud container clusters get-credentials` fetches cluster credentials and writes a context into your kubeconfig; `kubectl config use-context` then selects that context. `gcloud auth configure-docker` configures Docker auth for registries, and `gcloud compute ssh` connects to a VM, not a cluster API.",
+      },
+      {
+        id: "e2q11",
+        domain: 2,
+        type: "single",
+        text: "You want your VPC to span multiple regions without creating separate networks, and to control IP ranges per region. Which VPC mode should you choose?",
+        options: [
+          "Auto mode VPC",
+          "Custom mode VPC",
+          "Legacy network",
+          "Default network only",
+        ],
+        answer: 1,
+        explanation:
+          "A custom mode VPC lets you define exactly which subnets and IP ranges exist in each region, giving full control. Auto mode automatically creates one subnet per region with predefined ranges. A single VPC already spans regions globally—each subnet is regional.",
+      },
+      {
+        id: "e2q12",
+        domain: 3,
+        type: "single",
+        text: "You need to create a Compute Engine VM in the us-central1-a zone with the machine type e2-medium from the CLI. Which command is correct?",
+        options: [
+          "gcloud compute instances create my-vm --zone=us-central1-a --machine-type=e2-medium",
+          "gcloud compute vms new my-vm --region=us-central1",
+          "gcloud vm create my-vm --type=e2-medium",
+          "gcloud compute instances add my-vm --zone=us-central1",
+        ],
+        answer: 0,
+        explanation:
+          "`gcloud compute instances create NAME --zone=ZONE --machine-type=TYPE` is the correct syntax. VMs are zonal resources, so a zone (not just a region) is required.",
+      },
+      {
+        id: "e2q13",
+        domain: 2,
+        type: "single",
+        text: "You expect steady, predictable 24/7 usage of a specific VM family for the next three years and want the largest sustained cost reduction. Which pricing option should you use?",
+        options: [
+          "Spot VMs",
+          "Sustained use discounts",
+          "3-year committed use discount (CUD)",
+          "On-demand pricing",
+        ],
+        answer: 2,
+        explanation:
+          "Committed use discounts give the deepest savings for steady-state, predictable usage in exchange for a 1- or 3-year commitment. Sustained use discounts apply automatically but are smaller; Spot is for interruptible workloads, not steady 24/7 baselines.",
+      },
+      {
+        id: "e2q13b",
+        domain: 3,
+        type: "single",
+        text: "You need to expose a Deployment in GKE to external internet traffic on a stable IP with L4 load balancing. Which Kubernetes Service type do you use?",
+        options: ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"],
+        answer: 2,
+        explanation:
+          "A Service of type LoadBalancer provisions an external load balancer (a Network Load Balancer by default in GKE) with a stable external IP forwarding to your Pods. ClusterIP is internal-only, NodePort exposes a port on each node, and ExternalName maps to a DNS name.",
+      },
+      {
+        id: "e2q14",
+        domain: 2,
+        type: "single",
+        text: "You need object storage that is served with the lowest latency to users across many continents and can tolerate a regional outage. Which Cloud Storage location type should you choose?",
+        options: [
+          "Regional bucket",
+          "Dual-region bucket",
+          "Multi-region bucket",
+          "Zonal bucket",
+        ],
+        answer: 2,
+        explanation:
+          "A multi-region bucket stores data redundantly across a large geographic area (e.g., US, EU, ASIA), providing high availability and low latency to a broad user base and surviving a regional outage. Dual-region gives redundancy across two specific regions; regional is single-region; there is no zonal bucket.",
+      },
+      {
+        id: "e2q15",
+        domain: 3,
+        type: "single",
+        text: "You want to grant external internet access to VMs that have no external IP address, for outbound updates only. Which service provides this?",
+        options: [
+          "Cloud NAT",
+          "Cloud CDN",
+          "Cloud Armor",
+          "A public firewall rule",
+        ],
+        answer: 0,
+        explanation:
+          "Cloud NAT provides outbound-only internet access for VMs without external IPs (and for GKE nodes), keeping them unreachable from the internet inbound. Cloud CDN caches content, Cloud Armor is a WAF/DDoS service, and firewall rules don't provide address translation.",
+      },
+      {
+        id: "e2q16",
+        domain: 3,
+        type: "single",
+        text: "You need to deploy a second version of an App Engine app and gradually shift 10% of traffic to it to test in production. Which App Engine feature enables this?",
+        options: [
+          "Blue/green DNS swaps only",
+          "Traffic splitting across versions",
+          "Instance templates",
+          "Cloud Load Balancing backend buckets",
+        ],
+        answer: 1,
+        explanation:
+          "App Engine supports deploying multiple versions of a service and splitting traffic between them by percentage (by IP, cookie, or random), enabling canary/gradual rollouts. This is built into App Engine and doesn't require external DNS tricks.",
+      },
+      {
+        id: "e2q17",
+        domain: 2,
+        type: "single",
+        text: "Your team wants a fully managed, serverless document database with real-time synchronization and offline support for a mobile app. Which service should you choose?",
+        options: ["Firestore", "Cloud SQL", "Bigtable", "Memorystore"],
+        answer: 0,
+        explanation:
+          "Firestore is a serverless, scalable NoSQL document database with real-time listeners and offline support—well suited to mobile and web apps. Cloud SQL is relational, Bigtable is wide-column, and Memorystore is managed Redis/Memcached caching.",
+      },
+      {
+        id: "e2q18",
+        domain: 3,
+        type: "single",
+        text: "You want to store and manage Docker container images and language packages (npm, Maven) in Google Cloud with fine-grained IAM. Which service should you use?",
+        options: [
+          "Container Registry (gcr.io) only",
+          "Artifact Registry",
+          "Cloud Storage buckets",
+          "Cloud Source Repositories",
+        ],
+        answer: 1,
+        explanation:
+          "Artifact Registry is the recommended service for storing container images and language packages with regional repositories and fine-grained IAM. It supersedes the older Container Registry. Cloud Source Repositories host source code, not artifacts.",
+      },
+      {
+        id: "e2q19",
+        domain: 2,
+        type: "single",
+        text: "You need in-memory caching to reduce database load and improve response times for a web application. Which managed service should you use?",
+        options: ["Memorystore", "Filestore", "Cloud SQL read replicas", "Bigtable"],
+        answer: 0,
+        explanation:
+          "Memorystore provides managed Redis and Memcached for in-memory caching, reducing backend/database load and latency. Read replicas help scale reads but aren't an in-memory cache; Filestore is NFS; Bigtable is a NoSQL database.",
+      },
+      {
+        id: "e2q20",
+        domain: 3,
+        type: "single",
+        text: "You need to reserve a static external IP address so that a service keeps the same public IP even if the VM is recreated. What should you do?",
+        options: [
+          "Use the default ephemeral IP; it never changes",
+          "Reserve a static external IP address and assign it to the resource",
+          "Add an alias IP range",
+          "Enable Private Google Access",
+        ],
+        answer: 1,
+        explanation:
+          "Reserving a static external IP address gives you a stable public IP you can assign (and reassign) to resources, surviving VM recreation. Ephemeral IPs can change when a VM stops/starts. Alias IP ranges and Private Google Access address different needs.",
+      },
+      {
+        id: "e2q21",
+        domain: 2,
+        type: "single",
+        text: "Two separate VPC networks (in different projects) need to communicate over internal IPs without traversing the internet, with no transitive routing. Which feature enables this?",
+        options: [
+          "Cloud VPN",
+          "VPC Network Peering",
+          "Shared VPC",
+          "Cloud Interconnect",
+        ],
+        answer: 1,
+        explanation:
+          "VPC Network Peering connects two VPC networks so resources communicate using internal IPs, without an external path, and it is non-transitive. Shared VPC is a different model where projects share one host network; VPN/Interconnect connect to on-prem.",
+      },
+      {
+        id: "e2q22",
+        domain: 3,
+        type: "single",
+        text: "You created a VM without an external IP but it needs to reach Google APIs (like Cloud Storage) over internal routing. What must you enable on the subnet?",
+        options: [
+          "Cloud NAT",
+          "Private Google Access",
+          "A public firewall rule",
+          "Alias IP ranges",
+        ],
+        answer: 1,
+        explanation:
+          "Private Google Access lets VMs without external IPs reach Google APIs and services using internal routing. Cloud NAT provides general outbound internet access; Private Google Access specifically targets Google APIs/services.",
+      },
+      {
+        id: "e2q23",
+        domain: 2,
+        type: "single",
+        text: "You are choosing between Cloud Run and GKE for a small team that wants to deploy several stateless microservices with minimal operational overhead and per-request scaling. Which is generally the better default?",
+        options: [
+          "GKE Standard, for maximum control",
+          "Cloud Run, for minimal ops and request-based autoscaling",
+          "Compute Engine MIGs",
+          "App Engine flexible with custom runtimes",
+        ],
+        answer: 1,
+        explanation:
+          "For stateless microservices where a small team wants minimal operational overhead and automatic per-request scaling (including to zero), Cloud Run is the better default. GKE offers more control but adds cluster operations the team must manage.",
+      },
+      {
+        id: "e2q24",
+        domain: 3,
+        type: "single",
+        text: "You want to roll out a new instance template to a managed instance group gradually, replacing instances a few at a time while keeping the service available. Which MIG feature do you use?",
+        options: [
+          "Rolling update (with maxSurge/maxUnavailable settings)",
+          "Delete and recreate the MIG",
+          "A single restart of all instances",
+          "Change the firewall rule",
+        ],
+        answer: 0,
+        explanation:
+          "Managed instance groups support rolling updates: you set a new template and control maxSurge and maxUnavailable so instances are replaced gradually with no full outage. This enables canary and progressive rollouts without recreating the group.",
+      },
+      {
+        id: "e2q25",
+        domain: 2,
+        type: "single",
+        text: "You must estimate and control spend so the team is notified as costs approach a threshold, without automatically stopping resources. What should you configure?",
+        options: [
+          "A Cloud Billing budget with alert thresholds",
+          "A hard quota of $0",
+          "An org policy that disables billing",
+          "A firewall rule",
+        ],
+        answer: 0,
+        explanation:
+          "A Cloud Billing budget with alert thresholds (e.g., 50%, 90%, 100%) sends notifications as spend approaches the budget. Budgets alert but do not by themselves stop resources (that requires additional automation via Pub/Sub). This meets 'notify but don't auto-stop.'",
+      },
+    ],
+  },
+  {
+    id: "exam-3",
+    title: "Practice Exam 3 — Security, IAM & Operations",
+    description:
+      "25 questions weighted toward Domain 4 and Domain 5: IAM, service accounts, monitoring, logging, and operations.",
+    minutes: 40,
+    questions: [
+      {
+        id: "e3q1",
+        domain: 5,
+        type: "single",
+        text: "You want to grant the entire 'developers' Google Group read access to a specific Cloud Storage bucket, following least privilege. What should you do?",
+        options: [
+          "Grant roles/storage.objectViewer on the bucket to the group principal group:developers@example.com",
+          "Grant roles/owner on the project to each developer",
+          "Make the bucket public",
+          "Grant roles/editor on the project to the group",
+        ],
+        answer: 0,
+        explanation:
+          "Grant the narrowly scoped role (roles/storage.objectViewer) at the bucket level to the group principal (group:...). Managing access via groups scales well and least privilege avoids project-wide Owner/Editor grants or making the bucket public.",
+      },
+      {
+        id: "e3q2",
+        domain: 5,
+        type: "single",
+        text: "A contractor should be able to deploy Cloud Functions but should not be able to change IAM policies or billing. Which approach is best?",
+        options: [
+          "Grant roles/owner",
+          "Grant the predefined roles/cloudfunctions.developer role only",
+          "Grant roles/editor",
+          "Add them as a billing administrator",
+        ],
+        answer: 1,
+        explanation:
+          "Grant the specific predefined role for the task (roles/cloudfunctions.developer) so the contractor can deploy functions without the broad powers of Owner/Editor (which include IAM changes) or billing roles. This follows least privilege.",
+      },
+      {
+        id: "e3q3",
+        domain: 4,
+        type: "single",
+        text: "You need to view CPU, disk, and network metrics for your VMs and build a dashboard. Which service provides this out of the box?",
+        options: [
+          "Cloud Logging",
+          "Cloud Monitoring",
+          "Cloud Trace",
+          "Cloud Profiler",
+        ],
+        answer: 1,
+        explanation:
+          "Cloud Monitoring collects metrics (CPU, disk, network, custom metrics) and lets you build dashboards and alerting policies. The Ops Agent can add memory and additional guest metrics. Logging handles logs; Trace/Profiler handle latency/performance profiling.",
+      },
+      {
+        id: "e3q4",
+        domain: 5,
+        type: "single",
+        text: "Your security team wants a record of who did what and when in your Google Cloud project (for example, who deleted a firewall rule). Which logs should you review?",
+        options: [
+          "VPC Flow Logs",
+          "Cloud Audit Logs (Admin Activity)",
+          "Application logs only",
+          "Load balancer logs",
+        ],
+        answer: 1,
+        explanation:
+          "Cloud Audit Logs—specifically Admin Activity logs—record administrative actions (who did what, when) such as changing configuration or deleting resources. Admin Activity logs are always on. VPC Flow Logs capture network flows, not admin actions.",
+      },
+      {
+        id: "e3q5",
+        domain: 5,
+        type: "single",
+        text: "You need to store a database password so applications can retrieve it securely with IAM-controlled access and versioning. Which service should you use?",
+        options: [
+          "A plaintext file in Cloud Storage",
+          "Secret Manager",
+          "VM metadata",
+          "Environment variables committed to source control",
+        ],
+        answer: 1,
+        explanation:
+          "Secret Manager stores secrets (API keys, passwords, certificates) encrypted at rest, with versioning and fine-grained IAM for access. Storing secrets in plaintext files, VM metadata, or source control is insecure.",
+      },
+      {
+        id: "e3q6",
+        domain: 4,
+        type: "single",
+        text: "To collect memory utilization and custom application metrics from a Compute Engine VM into Cloud Monitoring, what should you install?",
+        options: [
+          "The Ops Agent",
+          "Nothing—memory metrics are collected by default",
+          "A firewall rule",
+          "The gcloud CLI",
+        ],
+        answer: 0,
+        explanation:
+          "By default, Cloud Monitoring collects CPU, disk, and network metrics for VMs, but memory and many guest/application metrics require the Ops Agent (which unifies logging and monitoring agents). Installing the Ops Agent enables memory and custom metrics.",
+      },
+      {
+        id: "e3q7",
+        domain: 5,
+        type: "single",
+        text: "You want to enforce that no Compute Engine VM in the organization can have an external IP address. Which mechanism enforces this org-wide?",
+        options: [
+          "A firewall rule",
+          "An Organization Policy constraint (constraints/compute.vmExternalIpAccess)",
+          "A custom IAM role",
+          "A quota of zero external IPs",
+        ],
+        answer: 1,
+        explanation:
+          "Organization Policy constraints, such as constraints/compute.vmExternalIpAccess, enforce governance rules like disallowing external IPs across the org/folder/project hierarchy. IAM controls who can act; org policies control what configurations are allowed.",
+      },
+      {
+        id: "e3q8",
+        domain: 5,
+        type: "single",
+        text: "A principal has roles/editor at the project level but you added an IAM deny policy blocking storage.buckets.delete. What is the effective result for deleting buckets?",
+        options: [
+          "They can delete buckets because Editor allows it",
+          "They cannot delete buckets because deny policies take precedence over allow grants",
+          "The deny is ignored for basic roles",
+          "It depends on the billing account",
+        ],
+        answer: 1,
+        explanation:
+          "IAM deny policies are evaluated before allow policies and take precedence: a matching deny rule blocks the permission even if an allow grant (like Editor) would otherwise permit it. So bucket deletion is denied.",
+      },
+      {
+        id: "e3q9",
+        domain: 4,
+        type: "single",
+        text: "An application is throwing intermittent 500 errors. You want to see aggregated, deduplicated error occurrences with stack traces and trends. Which service should you use?",
+        options: [
+          "Error Reporting",
+          "Cloud Monitoring uptime checks",
+          "Cloud Trace",
+          "VPC Flow Logs",
+        ],
+        answer: 0,
+        explanation:
+          "Error Reporting automatically groups and counts errors from your logs, showing stack traces, first/last seen, and trends. Uptime checks probe availability, Trace measures latency, and Flow Logs capture network data.",
+      },
+      {
+        id: "e3q10",
+        domain: 5,
+        type: "single",
+        text: "You need to create a custom IAM role containing exactly three permissions and assign it at the project level. Which statement is true about custom roles?",
+        options: [
+          "Custom roles can only be created at the organization level",
+          "Custom roles can be created at the organization or project level and contain a curated set of permissions",
+          "Custom roles are identical to basic roles",
+          "Custom roles cannot be edited after creation",
+        ],
+        answer: 1,
+        explanation:
+          "Custom roles can be defined at the organization or project level and include a specific set of permissions you choose, supporting least privilege. They can be updated over time and are ideal when no predefined role fits exactly.",
+      },
+      {
+        id: "e3q11",
+        domain: 4,
+        type: "single",
+        text: "You want to verify that your public website is reachable from multiple global locations and get alerted if it goes down. What should you configure?",
+        options: [
+          "A Cloud Monitoring uptime check with an alerting policy",
+          "A Cloud Logging sink",
+          "A firewall rule",
+          "A snapshot schedule",
+        ],
+        answer: 0,
+        explanation:
+          "Cloud Monitoring uptime checks probe your endpoint from multiple global locations at intervals; pairing an uptime check with an alerting policy notifies you when it fails. Logging sinks route logs, not availability probes.",
+      },
+      {
+        id: "e3q12",
+        domain: 5,
+        type: "single",
+        text: "You want to allow a user to attach a specific service account to a VM they create (run the VM as that service account) but not to manage the service account itself. Which role should you grant on the service account?",
+        options: [
+          "roles/iam.serviceAccountUser",
+          "roles/iam.serviceAccountAdmin",
+          "roles/owner",
+          "roles/iam.serviceAccountKeyAdmin",
+        ],
+        answer: 0,
+        explanation:
+          "roles/iam.serviceAccountUser lets a principal use (act as) a service account—for example, deploy a VM that runs as it—without permission to manage or modify the service account. Admin/KeyAdmin roles grant management capabilities beyond what's needed.",
+      },
+      {
+        id: "e3q13",
+        domain: 4,
+        type: "single",
+        text: "You need long-term, cheaper retention of audit logs beyond the default retention period for compliance. What is a recommended approach?",
+        options: [
+          "Increase VM disk size",
+          "Create a Cloud Logging sink exporting logs to a Cloud Storage bucket (or BigQuery) for retention",
+          "Turn off audit logs to save space",
+          "Store logs in VM metadata",
+        ],
+        answer: 1,
+        explanation:
+          "To retain logs beyond default retention, create a log sink that exports matching log entries to Cloud Storage (cheap long-term storage) or BigQuery (for analysis). This is the standard pattern for compliance retention.",
+      },
+      {
+        id: "e3q14",
+        domain: 5,
+        type: "single",
+        text: "You suspect a leaked service account key. What is the immediate remediation to stop the key from being used?",
+        options: [
+          "Rotate the project ID",
+          "Disable or delete the compromised service account key",
+          "Change the billing account",
+          "Delete the VPC",
+        ],
+        answer: 1,
+        explanation:
+          "The immediate step is to disable or delete the compromised key so it can no longer authenticate, then investigate and rotate credentials. Better long-term, avoid downloaded keys entirely by using attached service accounts / Workload Identity.",
+      },
+      {
+        id: "e3q15",
+        domain: 4,
+        type: "single",
+        text: "You want to automate daily snapshots of a persistent disk for backup and retention. What should you configure?",
+        options: [
+          "A snapshot schedule (resource policy) attached to the disk",
+          "A firewall rule",
+          "A Cloud Scheduler job that SSHes into the VM",
+          "Manual snapshots each day",
+        ],
+        answer: 0,
+        explanation:
+          "Snapshot schedules (a type of resource policy) automate periodic persistent disk snapshots with retention rules—you attach the schedule to the disk. This is the managed, reliable way to automate backups without manual work or custom scripts.",
+      },
+      {
+        id: "e3q16",
+        domain: 5,
+        type: "multi",
+        text: "Which of the following are best practices for managing service accounts? (Choose two.)",
+        options: [
+          "Grant the minimum necessary roles to each service account",
+          "Reuse one highly privileged service account for all workloads",
+          "Prefer attached service accounts / Workload Identity over downloaded keys",
+          "Commit service account keys to your Git repository for convenience",
+        ],
+        answer: [0, 2],
+        explanation:
+          "Best practices: grant least privilege to each service account and avoid downloaded keys by using attached service accounts or Workload Identity (which provide short-lived, automatically rotated credentials). Sharing one over-privileged account or committing keys to source control are anti-patterns.",
+      },
+      {
+        id: "e3q17",
+        domain: 4,
+        type: "single",
+        text: "Your team wants to reduce noise by only being paged for critical alerts while lower-severity issues go to email. In Cloud Monitoring, what do you configure to route notifications?",
+        options: [
+          "Notification channels attached to alerting policies",
+          "A single global email address for everything",
+          "A firewall rule per severity",
+          "IAM roles",
+        ],
+        answer: 0,
+        explanation:
+          "In Cloud Monitoring you define notification channels (email, SMS, PagerDuty, Slack, Pub/Sub, etc.) and attach the appropriate channels to each alerting policy, letting you route critical vs. low-severity alerts differently.",
+      },
+      {
+        id: "e3q18",
+        domain: 5,
+        type: "single",
+        text: "You want centralized management of SSH access to Linux VMs using IAM (so you don't manually manage keys per instance). What should you enable?",
+        options: [
+          "OS Login",
+          "A shared private key stored in a bucket",
+          "Password authentication",
+          "A single project-wide SSH key committed to source control",
+        ],
+        answer: 0,
+        explanation:
+          "OS Login ties SSH access to IAM identities and centralizes key management, so you grant/revoke access via IAM roles (e.g., roles/compute.osLogin) instead of managing metadata keys per VM. This improves security and manageability.",
+      },
+      {
+        id: "e3q19",
+        domain: 4,
+        type: "single",
+        text: "Which command shows the IAM policy currently bound to a project so you can audit who has which roles?",
+        options: [
+          "gcloud projects get-iam-policy PROJECT_ID",
+          "gcloud iam roles list",
+          "gcloud config list",
+          "gcloud projects describe PROJECT_ID --billing",
+        ],
+        answer: 0,
+        explanation:
+          "`gcloud projects get-iam-policy PROJECT_ID` returns the project's IAM policy (bindings of members to roles), which you use to audit access. `gcloud iam roles list` lists role definitions, not who is bound to them.",
+      },
+      {
+        id: "e3q20",
+        domain: 5,
+        type: "single",
+        text: "You want data at rest in a Cloud Storage bucket encrypted with keys that you manage and can rotate/disable in Cloud KMS. Which option should you use?",
+        options: [
+          "Google-managed encryption keys (default)",
+          "Customer-managed encryption keys (CMEK) with Cloud KMS",
+          "No encryption",
+          "Client-side base64 encoding",
+        ],
+        answer: 1,
+        explanation:
+          "Customer-managed encryption keys (CMEK) let you control encryption keys in Cloud KMS—rotating, disabling, or destroying them—while Google handles the encryption operations. All data is encrypted at rest by default with Google-managed keys, but CMEK gives you control.",
+      },
+      {
+        id: "e3q21",
+        domain: 4,
+        type: "single",
+        text: "You need to correlate slow requests with the specific microservice calls that caused the latency in a distributed application. Which service should you use?",
+        options: ["Cloud Trace", "Cloud Logging", "Error Reporting", "Cloud NAT"],
+        answer: 0,
+        explanation:
+          "Cloud Trace captures latency data and distributed traces across services, letting you see where time is spent in a request path. Logging captures log entries, Error Reporting aggregates errors, and Cloud NAT is networking.",
+      },
+      {
+        id: "e3q22",
+        domain: 5,
+        type: "single",
+        text: "A user reports they cannot create a VM even though they have roles/compute.viewer. What is the most likely cause?",
+        options: [
+          "compute.viewer is read-only and lacks permission to create instances; they need a role like compute.instanceAdmin.v1",
+          "The project has no billing—unrelated",
+          "They must be an Owner of the organization",
+          "The VPC is missing",
+        ],
+        answer: 0,
+        explanation:
+          "roles/compute.viewer grants read-only access. Creating VMs requires write permissions such as those in roles/compute.instanceAdmin.v1 (plus the ability to act as the VM's service account). Grant an appropriate role that includes compute.instances.create.",
+      },
+      {
+        id: "e3q23",
+        domain: 4,
+        type: "single",
+        text: "You want a single pane to view logs across all projects in a folder for a security investigation. Which capability helps aggregate logs centrally?",
+        options: [
+          "An aggregated log sink at the folder/organization level routing to a central log bucket or BigQuery",
+          "Copying logs manually from each project",
+          "VM local log files",
+          "Snapshots",
+        ],
+        answer: 0,
+        explanation:
+          "Aggregated sinks defined at the folder or organization level can route logs from all included projects to a central destination (log bucket, BigQuery, Cloud Storage, or Pub/Sub), enabling centralized analysis without per-project manual work.",
+      },
+      {
+        id: "e3q24",
+        domain: 5,
+        type: "single",
+        text: "Which principle should guide how you assign IAM roles across your organization?",
+        options: [
+          "Grant Owner broadly to avoid access tickets",
+          "Least privilege: grant only the permissions needed to perform a task",
+          "Always use basic roles instead of predefined roles",
+          "Assign roles to individual users rather than groups",
+        ],
+        answer: 1,
+        explanation:
+          "Least privilege—granting only the minimum permissions required—is the guiding IAM principle. Prefer predefined/custom roles over broad basic roles, and manage access via groups for scalability rather than per-user grants.",
+      },
+      {
+        id: "e3q25",
+        domain: 4,
+        type: "single",
+        text: "You want to be notified via Pub/Sub when a billing budget threshold is exceeded so automation can react. What must you attach to the budget?",
+        options: [
+          "A Pub/Sub topic as the budget's notification target",
+          "A firewall rule",
+          "A snapshot schedule",
+          "A custom IAM role",
+        ],
+        answer: 0,
+        explanation:
+          "Cloud Billing budgets can publish threshold notifications to a Pub/Sub topic, enabling programmatic responses (e.g., a Cloud Function that disables billing or scales down resources). Email alerts notify humans; Pub/Sub enables automation.",
+      },
+    ],
+  },
+];
+
+// Expose to browser and (optionally) Node
+if (typeof window !== "undefined") {
+  window.ACE_DATA = { DOMAINS, EXAMS };
+}
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { DOMAINS, EXAMS };
+}
+
+</script>
+<script>
+/* =====================================================================
+   ACE Trainer — single-screen study hub
+   Content is data-driven: swap the objects below to retarget the cert.
+   ===================================================================== */
+(function(){
+"use strict";
+
+/* ---------- fallback data (if data/questions.js not loaded, e.g. inlined) ---------- */
+var DOMAINS = (window.ACE_DATA && window.ACE_DATA.DOMAINS) || {
+  1:"Setting up a cloud solution environment",
+  2:"Planning and configuring a cloud solution",
+  3:"Deploying and implementing a cloud solution",
+  4:"Ensuring successful operation of a cloud solution",
+  5:"Configuring access and security"
+};
+var EXAMS = (window.ACE_DATA && window.ACE_DATA.EXAMS) || [];
+
+/* ---------- SECTION BREAKDOWNS (accordion) ---------- */
+var SECTIONS = [
+  {n:1, title:"Setting up a cloud environment", sub:"Projects · billing · CLI · resource hierarchy",
+   html:`<h4>Resource hierarchy</h4>
+     <p><code>Organization → Folders → Projects → Resources</code>. IAM and org policies set higher up are <strong>inherited</strong> downward. Folders group projects (e.g. per department) so one policy covers them all.</p>
+     <h4>Projects &amp; billing</h4>
+     <ul>
+       <li>Every resource lives in a <strong>project</strong>. A project must be linked to a <strong>billing account</strong> — this is <em>not</em> automatic and <em>not</em> inherited from a folder.</li>
+       <li>One billing account can pay for many projects; a project has exactly one active billing account.</li>
+       <li><strong>Budgets &amp; alerts</strong> notify you near a threshold — they do <em>not</em> stop resources by themselves.</li>
+     </ul>
+     <h4>Tooling</h4>
+     <p><strong>gcloud CLI</strong> locally (<code>gcloud init</code> to auth &amp; pick a project) or <strong>Cloud Shell</strong> — a browser terminal with tools pre-installed and pre-authenticated.</p>
+     <div class="tip"><strong>Remember:</strong> VMs are <em>zonal</em>, subnets are <em>regional</em>, a VPC network is <em>global</em>.</div>`},
+
+  {n:2, title:"Planning &amp; configuring", sub:"Choosing compute, storage &amp; networking",
+   html:`<h4>Pick the compute platform</h4>
+     <table class="tbl"><tr><th>Need</th><th>Service</th></tr>
+     <tr><td>Full OS control, lift-and-shift, GPUs</td><td><strong>Compute Engine</strong></td></tr>
+     <tr><td>Kubernetes / containers</td><td><strong>GKE</strong> (Autopilot = no nodes)</td></tr>
+     <tr><td>Stateless containers, scale to zero</td><td><strong>Cloud Run</strong></td></tr>
+     <tr><td>App from source, managed runtime</td><td><strong>App Engine</strong></td></tr>
+     <tr><td>Event-driven functions</td><td><strong>Cloud Functions</strong></td></tr></table>
+     <h4>Pick the data store</h4>
+     <table class="tbl"><tr><th>Need</th><th>Service</th></tr>
+     <tr><td>Objects / blobs</td><td><strong>Cloud Storage</strong></td></tr>
+     <tr><td>Regional relational OLTP</td><td><strong>Cloud SQL</strong></td></tr>
+     <tr><td>Global relational, strong consistency</td><td><strong>Cloud Spanner</strong></td></tr>
+     <tr><td>Document DB, mobile realtime</td><td><strong>Firestore</strong></td></tr>
+     <tr><td>Wide-column NoSQL, IoT/time-series</td><td><strong>Bigtable</strong></td></tr>
+     <tr><td>Serverless analytics warehouse</td><td><strong>BigQuery</strong></td></tr></table>
+     <h4>Storage classes</h4>
+     <p><strong>Standard</strong> (hot) · <strong>Nearline</strong> (&lt;1×/month, 30d) · <strong>Coldline</strong> (&lt;1×/quarter, 90d) · <strong>Archive</strong> (&lt;1×/year, 365d).</p>
+     <h4>Cost levers</h4>
+     <ul><li><strong>Pricing Calculator</strong> — estimate before deploying.</li>
+     <li><strong>Spot VMs</strong> — cheap, interruptible → fault-tolerant batch.</li>
+     <li><strong>Committed use discount</strong> — 1/3-yr, steady 24/7 usage → biggest savings.</li></ul>`},
+
+  {n:3, title:"Deploying &amp; implementing", sub:"The hands-on, highest-weight domain",
+   html:`<h4>Compute Engine</h4>
+     <pre><code>gcloud compute instances create web-1 \\
+  --zone=us-central1-a \\
+  --machine-type=e2-medium</code></pre>
+     <ul><li><strong>Instance template</strong> → blueprint for identical VMs.</li>
+     <li><strong>Managed instance group</strong> → autohealing + autoscaling + rolling updates.</li>
+     <li>Persistent disks resize <em>larger</em> live (then grow the FS); never shrink. <strong>Snapshots</strong> = incremental backups.</li></ul>
+     <h4>GKE &amp; serverless</h4>
+     <pre><code>gcloud container clusters get-credentials CLUSTER --region REGION
+gcloud run deploy api --image=IMG --region=REGION</code></pre>
+     <p>K8s Service types: <code>ClusterIP</code> (internal), <code>NodePort</code>, <code>LoadBalancer</code> (external L4), Ingress (L7). App Engine supports <strong>traffic splitting</strong> for canaries.</p>
+     <h4>Networking</h4>
+     <ul><li><strong>Static external IP</strong> — stable public IP across recreation.</li>
+     <li><strong>Cloud NAT</strong> — outbound-only internet for VMs without external IPs.</li>
+     <li><strong>Private Google Access</strong> — reach Google APIs without an external IP.</li></ul>`},
+
+  {n:4, title:"Ensuring successful operation", sub:"Monitoring · logging · backups · quotas",
+   html:`<table class="tbl"><tr><th>Goal</th><th>Tool</th></tr>
+     <tr><td>Metrics, dashboards, alerts</td><td><strong>Cloud Monitoring</strong></td></tr>
+     <tr><td>Search / route / retain logs</td><td><strong>Cloud Logging</strong></td></tr>
+     <tr><td>Aggregate app errors</td><td><strong>Error Reporting</strong></td></tr>
+     <tr><td>Latency / request tracing</td><td><strong>Cloud Trace</strong></td></tr>
+     <tr><td>Probe availability globally</td><td><strong>Uptime checks</strong></td></tr></table>
+     <ul>
+     <li><strong>Ops Agent</strong> is required for <em>memory</em> &amp; custom VM metrics (CPU/disk/network are default).</li>
+     <li><strong>Log sinks</strong> export to BigQuery (analyze), Cloud Storage (cheap retention) or Pub/Sub (stream). Aggregated sinks centralize many projects.</li>
+     <li><strong>Quotas</strong> cap per-project resource use; request increases in IAM &amp; Admin → Quotas.</li>
+     <li>Backups: <strong>snapshots</strong> (disks, + schedules) vs. <strong>machine images</strong> (whole VM).</li></ul>`},
+
+  {n:5, title:"Configuring access &amp; security", sub:"IAM · service accounts · audit · encryption",
+   html:`<h4>IAM = who · can do what · on which resource</h4>
+     <table class="tbl"><tr><th>Role type</th><th>Notes</th></tr>
+     <tr><td><strong>Basic</strong> (Owner/Editor/Viewer)</td><td>Broad — avoid for least privilege</td></tr>
+     <tr><td><strong>Predefined</strong></td><td>Service-specific, curated — preferred default</td></tr>
+     <tr><td><strong>Custom</strong></td><td>Your chosen permissions when nothing fits</td></tr></table>
+     <ul><li><strong>Least privilege</strong> is the guiding rule; grant to <strong>groups</strong>, not individuals.</li>
+     <li><strong>Deny policies</strong> are evaluated first and override allow grants.</li></ul>
+     <h4>Service accounts</h4>
+     <ul><li>Attach an SA to a VM with minimal roles → app gets short-lived creds automatically. <strong>Avoid downloaded JSON keys.</strong></li>
+     <li><code>serviceAccountUser</code> = act as an SA; <code>serviceAccountTokenCreator</code> = impersonate/mint tokens.</li>
+     <li>Leaked key? <strong>Disable/delete it immediately</strong>, then rotate.</li></ul>
+     <h4>Governance</h4>
+     <ul><li><strong>Org Policy</strong> constraints enforce config rules (e.g. ban external IPs). IAM = who can act; Org Policy = what's allowed.</li>
+     <li><strong>Audit Logs</strong>: Admin Activity (always on — who changed what). <strong>Secret Manager</strong> for secrets. <strong>CMEK</strong> (Cloud KMS) for your own keys.</li></ul>`},
+
+  {n:"★", title:"gcloud cheat sheet", sub:"The commands worth memorizing",
+   html:`<pre><code># context
+gcloud init
+gcloud config set project PROJECT_ID
+
+# compute
+gcloud compute instances list
+gcloud compute instances create NAME --zone=ZONE --machine-type=e2-medium
+gcloud compute ssh NAME --zone=ZONE
+
+# gke / run
+gcloud container clusters get-credentials CLUSTER --region=REGION
+gcloud run deploy SVC --image=IMG --region=REGION
+
+# storage
+gcloud storage buckets create gs://BUCKET --location=US
+gcloud storage cp -r ./dir gs://BUCKET
+
+# iam
+gcloud projects get-iam-policy PROJECT_ID
+gcloud projects add-iam-policy-binding PROJECT_ID \\
+  --member="group:team@x.com" --role="roles/compute.viewer"</code></pre>`}
+];
+
+/* ---------- FLASHCARDS ---------- */
+var CARDS = [
+  {d:2,q:"Serverless, stateless containers that scale to zero?",a:"Cloud Run."},
+  {d:2,q:"GKE mode with no node management?",a:"Autopilot (Google manages nodes; you pay for Pod resource requests)."},
+  {d:2,q:"Global, horizontally-scalable relational DB with strong consistency?",a:"Cloud Spanner."},
+  {d:2,q:"Managed MySQL/Postgres/SQL Server for regional OLTP?",a:"Cloud SQL."},
+  {d:2,q:"Wide-column NoSQL for IoT / time-series at scale?",a:"Cloud Bigtable."},
+  {d:2,q:"Serverless SQL data warehouse?",a:"BigQuery."},
+  {d:2,q:"Cheapest storage class for data touched &lt; once a year?",a:"Archive (365-day minimum)."},
+  {d:2,q:"Discount for steady 24/7 usage over 1–3 years?",a:"Committed use discount (CUD)."},
+  {d:2,q:"Cheap, interruptible VMs for fault-tolerant batch?",a:"Spot VMs (formerly preemptible)."},
+  {d:3,q:"What gives a Compute Engine group autohealing + autoscaling?",a:"A managed instance group (MIG) built from an instance template."},
+  {d:3,q:"Outbound-only internet for VMs without external IPs?",a:"Cloud NAT."},
+  {d:3,q:"Reach Google APIs from a VM with no external IP?",a:"Enable Private Google Access on the subnet."},
+  {d:3,q:"Keep the same public IP after a VM is recreated?",a:"Reserve a static external IP address."},
+  {d:3,q:"GKE Service type for an external L4 IP?",a:"LoadBalancer."},
+  {d:1,q:"Correct resource hierarchy order?",a:"Organization → Folders → Projects → Resources."},
+  {d:1,q:"Is a new project auto-linked to billing?",a:"No — you must link it explicitly; it isn't inherited from a folder."},
+  {d:1,q:"Scope of a VM vs. subnet vs. VPC?",a:"VM = zonal, subnet = regional, VPC = global."},
+  {d:4,q:"What must you install for VM memory metrics?",a:"The Ops Agent (CPU/disk/network are collected by default)."},
+  {d:4,q:"Retain logs cheaply for compliance?",a:"A log sink exporting to Cloud Storage (or BigQuery to analyze)."},
+  {d:4,q:"Automate daily disk backups?",a:"A snapshot schedule (resource policy) attached to the disk."},
+  {d:5,q:"Which IAM policy wins — allow or deny?",a:"Deny — it's evaluated first and overrides allow grants."},
+  {d:5,q:"Role to let a principal run a VM as a service account?",a:"roles/iam.serviceAccountUser."},
+  {d:5,q:"Where to store passwords / API keys securely?",a:"Secret Manager (encrypted, versioned, IAM-controlled)."},
+  {d:5,q:"Logs that answer 'who changed what, when'?",a:"Cloud Audit Logs — Admin Activity (always on)."}
+];
+
+/* ---------- VIDEOS & AUDIO (data-driven; add your own) ---------- */
+/* Each item: {title, by, dur, url}. Leave arrays empty for an empty state. */
+var VIDEOS = [
+  {title:"Official ACE certification overview", by:"Google Cloud", dur:"link", url:"https://cloud.google.com/learn/certification/cloud-engineer"},
+  {title:"Associate Cloud Engineer learning path", by:"Google Cloud Skills Boost", dur:"link", url:"https://www.cloudskillsboost.google/paths/11"}
+];
+var AUDIO = []; // e.g. {title:"Domain 1 walkthrough", by:"You", dur:"12:40", url:"https://.../d1.mp3"}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+var $ = function(s,r){return (r||document).querySelector(s);};
+var esc = function(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});};
+
+/* ----- Sections ----- */
+function renderSections(){
+  var el = $("#p-sections");
+  var h = '<div class="panel-head"><span class="eyebrow">Study guide</span><h1>Section breakdowns</h1><p>Tap a section to expand it. Everything else stays tucked away.</p></div>';
+  SECTIONS.forEach(function(s,i){
+    h += '<details class="acc"'+(i===0?' open':'')+'>'+
+      '<summary><span class="num">'+s.n+'</span>'+
+      '<span class="lbl"><b>'+s.title+'</b><span>'+s.sub+'</span></span>'+
+      '<span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>'+
+      '</summary><div class="body">'+s.html+'</div></details>';
+  });
+  h += '<p class="foot">Independent study aid · not affiliated with or endorsed by Google.</p>';
+  el.innerHTML = h;
+}
+
+/* ----- Flashcards ----- */
+var fcDeck=[], fcIdx=0, fcFilter=0;
+function buildDeck(){
+  fcDeck = CARDS.map(function(c,i){return {c:c,i:i};})
+    .filter(function(x){return fcFilter===0 || x.c.d===fcFilter;});
+  fcIdx = 0;
+}
+function renderCardsShell(){
+  var el = $("#p-cards");
+  var chips = '<div class="chips"><button class="chip'+(fcFilter===0?' active':'')+'" data-f="0">All</button>';
+  [1,2,3,4,5].forEach(function(d){chips+='<button class="chip'+(fcFilter===d?' active':'')+'" data-f="'+d+'">Domain '+d+'</button>';});
+  chips += '</div>';
+  el.innerHTML = '<div class="panel-head"><span class="eyebrow">Active recall</span><h1>Flashcards</h1><p>Tap the card to flip. Swipe through the deck to drill key facts.</p></div>'+
+    chips+'<div id="fc-mount"></div>';
+  el.querySelectorAll(".chip").forEach(function(b){b.addEventListener("click",function(){fcFilter=+b.dataset.f;buildDeck();renderCardsShell();mountCard();});});
+  mountCard();
+}
+function mountCard(){
+  var m = $("#fc-mount"); if(!m) return;
+  if(!fcDeck.length){ m.innerHTML='<div class="empty"><b>No cards here yet</b></div>'; return; }
+  var it = fcDeck[fcIdx], c = it.c;
+  m.innerHTML =
+    '<div class="fc-wrap"><div class="fc" id="thecard">'+
+      '<div class="face front"><span class="tag">Domain '+c.d+'</span><div>'+c.q+'</div><span class="hint">Tap to reveal</span></div>'+
+      '<div class="face back"><span class="tag">Answer</span><div class="back-body">'+c.a+'</div><span class="hint">Tap to flip back</span></div>'+
+    '</div></div>'+
+    '<div class="fc-nav">'+
+      '<button class="btn btn-ghost btn-sm" id="fc-prev" style="flex:0 0 auto;">‹ Prev</button>'+
+      '<div class="count">'+(fcIdx+1)+' / '+fcDeck.length+'</div>'+
+      '<button class="btn btn-ghost btn-sm" id="fc-next" style="flex:0 0 auto;margin-left:auto;">Next ›</button>'+
+      '<button class="btn btn-ghost btn-sm" id="fc-shuf" style="flex:0 0 auto;">⤮ Shuffle</button>'+
+    '</div>';
+  var card = $("#thecard");
+  card.addEventListener("click",function(){card.classList.toggle("flip");});
+  $("#fc-prev").addEventListener("click",function(){fcIdx=(fcIdx-1+fcDeck.length)%fcDeck.length;mountCard();});
+  $("#fc-next").addEventListener("click",function(){fcIdx=(fcIdx+1)%fcDeck.length;mountCard();});
+  $("#fc-shuf").addEventListener("click",function(){for(var i=fcDeck.length-1;i>0;i--){var j=rnd(i+1);var t=fcDeck[i];fcDeck[i]=fcDeck[j];fcDeck[j]=t;}fcIdx=0;mountCard();});
+}
+
+/* ----- Videos / Audio ----- */
+function iconVideo(){return '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 9l5-3v12l-5-3"/></svg>';}
+function iconAudio(){return '<svg viewBox="0 0 24 24"><path d="M3 10v4M7 7v10M11 4v16M15 8v8M19 6v12"/></svg>';}
+function renderResources(panelId, list, kind){
+  var el = $("#"+panelId);
+  var isV = kind==="video";
+  var head = '<div class="panel-head"><span class="eyebrow">'+(isV?"Watch":"Listen")+'</span><h1>'+(isV?"Video lessons":"Audio guides")+'</h1><p>'+(isV?"Curated walkthroughs and official training.":"Play on the go — great for review between jobs.")+'</p></div>';
+  if(!list.length){
+    el.innerHTML = head+'<div class="empty"><div class="big">'+(isV?iconVideo():iconAudio())+'</div><b>No '+(isV?"videos":"audio guides")+' added yet</b><p>Add your own in the data file (the <code>'+(isV?"VIDEOS":"AUDIO")+'</code> list) — each becomes a tappable card here.</p></div>';
+    return;
+  }
+  var h = head;
+  list.forEach(function(r){
+    h += '<a class="res" href="'+esc(r.url)+'" target="_blank" rel="noopener">'+
+      '<span class="thumb">'+(isV?iconVideo():iconAudio())+'</span>'+
+      '<span class="meta"><b>'+esc(r.title)+'</b><span>'+esc(r.by||"")+'</span></span>'+
+      '<span class="dur">'+esc(r.dur||"")+'</span></a>';
+  });
+  el.innerHTML = h;
+}
+
+/* =====================================================================
+   Quiz engine (mounts in #quiz-root within the Practice tab)
+   ===================================================================== */
+var LT=["A","B","C","D","E","F"];
+function rnd(n){ if(window.crypto&&window.crypto.getRandomValues){var u=new Uint32Array(1);window.crypto.getRandomValues(u);return u[0]%n;} return Math.floor(n*0.5);}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=rnd(i+1);var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function fmt(s){var m=Math.floor(s/60),x=s%60;return m+":"+String(x).padStart(2,"0");}
+
+var qExam=null,qOrder=[],qCur=0,qAns={},qRev={},qMode="exam",qTimer=null,qRem=0;
+
+function quizHome(){
+  stopTimer();
+  var root=$("#quiz-root");
+  if(!EXAMS.length){root.innerHTML='<div class="empty"><b>No practice exams loaded</b><p>The question bank (data/questions.js) did not load.</p></div>';return;}
+  var total=EXAMS.reduce(function(n,e){return n+e.questions.length;},0);
+  var h='<div class="panel-head"><span class="eyebrow">Test yourself</span><h1>Practice exams</h1><p>'+EXAMS.length+' exams · '+total+' questions · instant explanations.</p></div><div class="stack">';
+  EXAMS.forEach(function(e){
+    h+='<div class="card" style="padding:16px;">'+
+      '<div class="q-dom" style="margin-bottom:4px;">'+e.questions.length+' questions · pass ≥ 70%</div>'+
+      '<b style="font-size:16px;letter-spacing:-.01em;">'+esc(e.title)+'</b>'+
+      '<p style="color:var(--muted);font-size:13.5px;margin:6px 0 14px;">'+esc(e.description)+'</p>'+
+      '<div class="btn-row"><button class="btn btn-primary" data-s="'+e.id+'" data-m="exam">Timed exam</button>'+
+      '<button class="btn btn-ghost" data-s="'+e.id+'" data-m="practice">Practice</button></div></div>';
+  });
+  h+='</div>';
+  root.innerHTML=h;
+  root.querySelectorAll("[data-s]").forEach(function(b){b.addEventListener("click",function(){startExam(b.dataset.s,b.dataset.m);});});
+}
+function startExam(id,m){
+  qExam=EXAMS.find(function(e){return e.id===id;}); if(!qExam)return;
+  qMode=m; qOrder=shuffle(qExam.questions.map(function(_,i){return i;})); qCur=0; qAns={}; qRev={};
+  if(m==="exam"){qRem=(qExam.minutes||40)*60;startTimer();}
+  renderQ();
+}
+function startTimer(){stopTimer();qTimer=setInterval(function(){qRem--;tick();if(qRem<=0){stopTimer();finish();}},1000);}
+function stopTimer(){if(qTimer)clearInterval(qTimer);qTimer=null;}
+function tick(){var el=$("#timer");if(!el)return;el.textContent=fmt(Math.max(0,qRem));el.classList.toggle("warn",qRem<=300&&qRem>60);el.classList.toggle("danger",qRem<=60);}
+function correct(q,sel){
+  if(q.type==="multi"){if(!Array.isArray(sel))return false;var a=q.answer.slice().sort(),b=sel.slice().sort();return a.length===b.length&&a.every(function(v,i){return v===b[i];});}
+  return sel===q.answer;
+}
+function renderQ(){
+  var root=$("#quiz-root"),q=qExam.questions[qOrder[qCur]],sel=qAns[q.id],rev=!!qRev[q.id],multi=q.type==="multi";
+  var h='<div class="q-meta"><span><strong>'+esc(qExam.title)+'</strong></span>'+
+    (qMode==="exam"?'<span class="timer" id="timer">'+fmt(qRem)+'</span>':'<button class="btn btn-ghost btn-sm" id="q-exit">Exit</button>')+'</div>'+
+    '<div class="bar"><i style="width:'+((qCur+1)/qOrder.length*100)+'%"></i></div>'+
+    '<div class="q-meta"><span>Question '+(qCur+1)+' of '+qOrder.length+'</span><span>'+Object.keys(qAns).length+' answered</span></div>'+
+    '<div class="q-dom">Domain '+q.domain+' · '+esc(DOMAINS[q.domain])+'</div>'+
+    '<div class="q-text">'+esc(q.text)+'</div>'+
+    (multi?'<div class="q-hint">Select all that apply ('+q.answer.length+' correct).</div>':'')+
+    '<div id="opts">';
+  q.options.forEach(function(opt,i){
+    var s=multi?(Array.isArray(sel)&&sel.indexOf(i)>-1):sel===i;
+    var isC=multi?q.answer.indexOf(i)>-1:q.answer===i;
+    var cls="opt"+(multi?" multi":""),mk=LT[i];
+    if(rev){if(isC){cls+=" ok";mk="✓";}else if(s){cls+=" bad";mk="✕";}}
+    else if(s)cls+=" sel";
+    h+='<div class="'+cls+'" data-o="'+i+'"><div class="mk">'+mk+'</div><div class="ot">'+esc(opt)+'</div></div>';
+  });
+  h+='</div>';
+  if(rev){var ok=correct(q,sel);h+='<div class="explain"><div class="v '+(ok?"ok":"no")+'">'+(ok?"✓ Correct":"✕ Not quite")+'</div>'+esc(q.explanation)+'</div>';}
+  h+='<div class="q-nav">'+
+    '<button class="btn btn-ghost" id="q-prev" '+(qCur===0?"disabled":"")+' style="flex:0 0 40%;">‹ Prev</button>'+
+    (qMode==="practice"&&!rev?'<button class="btn btn-ghost" id="q-check">Check</button>':"")+
+    (qCur<qOrder.length-1?'<button class="btn btn-primary" id="q-next">Next ›</button>':'<button class="btn btn-primary" id="q-fin">Finish</button>')+
+    '</div>';
+  root.innerHTML=h;
+  if(qMode==="exam")tick();
+  if(!rev)root.querySelectorAll(".opt").forEach(function(el){el.addEventListener("click",function(){pick(q,+el.dataset.o);});});
+  bind("q-prev",function(){if(qCur>0){qCur--;renderQ();}});
+  bind("q-next",function(){qCur++;renderQ();});
+  bind("q-fin",finish);
+  bind("q-check",function(){qRev[q.id]=true;renderQ();});
+  bind("q-exit",function(){if(confirm("Exit this exam? Progress will be lost.")){stopTimer();quizHome();}});
+}
+function bind(id,fn){var el=document.getElementById(id);if(el)el.addEventListener("click",fn);}
+function pick(q,i){
+  if(q.type==="multi"){var a=Array.isArray(qAns[q.id])?qAns[q.id].slice():[];var k=a.indexOf(i);if(k>-1)a.splice(k,1);else a.push(i);qAns[q.id]=a;}
+  else qAns[q.id]=i;
+  renderQ();
+}
+function finish(){
+  stopTimer();
+  var c=0,per={};Object.keys(DOMAINS).forEach(function(d){per[d]={c:0,t:0};});
+  qExam.questions.forEach(function(q){per[q.domain].t++;if(correct(q,qAns[q.id])){c++;per[q.domain].c++;}});
+  var total=qExam.questions.length,pct=Math.round(c/total*100),pass=pct>=70;
+  var db="";Object.keys(DOMAINS).forEach(function(d){var p=per[d];if(!p.t)return;var dp=Math.round(p.c/p.t*100);
+    db+='<div class="dbar"><div class="r"><span>D'+d+' · '+esc(DOMAINS[d])+'</span><span>'+p.c+'/'+p.t+'</span></div><div class="t"><i style="width:'+dp+'%"></i></div></div>';});
+  var rev="";qExam.questions.forEach(function(q,i){var ok=correct(q,qAns[q.id]);var sel=qAns[q.id];
+    var st=q.type==="multi"?((Array.isArray(sel)&&sel.length)?sel.map(function(x){return LT[x];}).join(", "):"—"):(typeof sel==="number"?LT[sel]:"—");
+    var co=q.type==="multi"?q.answer.map(function(x){return LT[x];}).join(", "):LT[q.answer];
+    rev+='<div class="rev"><div style="font-weight:650;margin-bottom:4px;"><span class="b '+(ok?"ok":"no")+'">'+(ok?"CORRECT":"MISSED")+'</span>Q'+(i+1)+'. '+esc(q.text)+'</div>'+
+      '<div style="font-size:12.5px;color:var(--muted);margin:3px 0;">You: <strong>'+st+'</strong> · Correct: <strong>'+co+'</strong></div>'+
+      '<div class="explain" style="margin-top:6px;">'+esc(q.explanation)+'</div></div>';});
+  $("#quiz-root").innerHTML=
+    '<div class="panel-head" style="text-align:center;"><h1>'+esc(qExam.title)+'</h1></div>'+
+    '<div class="ring" style="--p:'+pct+'"><div class="in"><div><div class="pct">'+pct+'%</div><div class="lab">'+c+'/'+total+' correct</div></div></div></div>'+
+    '<p style="text-align:center;font-weight:800;color:'+(pass?"var(--ok)":"var(--no)")+';">'+(pass?"🎉 Pass — cleared 70%":"Keep going — aim for 70%+")+'</p>'+
+    '<div class="card" style="padding:16px;"><b>Score by domain</b><div style="margin-top:10px;">'+db+'</div></div>'+
+    '<div class="q-nav" style="margin:16px 0;"><button class="btn btn-primary" id="q-retry">Retake</button><button class="btn btn-ghost" id="q-home">All exams</button></div>'+
+    '<h1 style="font-size:19px;margin:8px 0 10px;">Answer review</h1>'+rev;
+  bind("q-retry",function(){startExam(qExam.id,qMode);});
+  bind("q-home",quizHome);
+  $("#p-practice").scrollIntoView({block:"start"});
+}
+
+/* =====================================================================
+   Tab router + theme
+   ===================================================================== */
+var built={sections:false,practice:false,cards:false,videos:false,audio:false};
+function show(tab){
+  document.querySelectorAll(".tabbar button").forEach(function(b){var on=b.dataset.tab===tab;b.classList.toggle("active",on);b.setAttribute("aria-selected",on?"true":"false");});
+  document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("active");});
+  $("#p-"+tab).classList.add("active");
+  if(!built[tab]){
+    if(tab==="sections")renderSections();
+    else if(tab==="practice")quizHome();
+    else if(tab==="cards"){buildDeck();renderCardsShell();}
+    else if(tab==="videos")renderResources("p-videos",VIDEOS,"video");
+    else if(tab==="audio")renderResources("p-audio",AUDIO,"audio");
+    built[tab]=true;
+  }
+  try{location.hash=tab;}catch(e){}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tabbar button").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.tab);});});
+
+/* theme */
+function applyTheme(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("ace-theme",t);}catch(e){}}
+$("#theme-btn").addEventListener("click",function(){
+  var cur=document.documentElement.getAttribute("data-theme");
+  if(!cur){cur=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}
+  applyTheme(cur==="dark"?"light":"dark");
+});
+try{var saved=localStorage.getItem("ace-theme");if(saved)document.documentElement.setAttribute("data-theme",saved);}catch(e){}
+
+/* boot — honor #hash deep link */
+var start=(location.hash||"").replace("#","");
+if(["sections","practice","cards","videos","audio"].indexOf(start)<0)start="sections";
+show(start);
+})();
+</script>
 </body>
 </html>

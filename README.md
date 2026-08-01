@@ -1,76 +1,50 @@
-# ACE Trainer — Google Cloud Associate Cloud Engineer Prep
+# ACE Trainer
 
-A free, self-contained **static training website** for people studying for the
-**Google Cloud Associate Cloud Engineer (ACE)** certification. It includes a
-domain-by-domain study guide and multiple timed practice exams with instant
-explanations — built in the style of the official ACE sample exam.
+A clean, **mobile-first study hub** for the ACE certification, delivered as a
+single self-contained HTML file. Everything lives in `index.html` — no build
+step, no dependencies, no external requests — so it's trivial to host or embed.
 
-## What's inside
+## What it does
 
-| Page | Purpose |
-|------|---------|
-| `index.html` | Landing page: exam-at-a-glance, the five domains, how to study |
-| `study-guide.html` | Full study guide — service decision tables, `gcloud` cheat sheet, exam tips |
-| `practice.html` | Interactive quiz engine — pick an exam, answer, get scored |
-| `data/questions.js` | The question bank (3 exams, 76 questions, single & multi-select) |
-| `js/quiz.js` | Vanilla-JS quiz engine (timer, scoring, per-domain breakdown, review) |
-| `css/style.css` | Styles (responsive, light/dark aware) |
+A single screen with a fixed bottom tab bar (thumb-reachable) and five modes:
 
-## Features
+| Tab | What's there |
+|-----|--------------|
+| **Sections** | Collapsible accordion cards — a section breakdown per exam domain plus a `gcloud` cheat sheet. Tap to expand; everything else stays tucked away. |
+| **Practice** | Timed and untimed practice exams with instant explanations, per-domain scoring, and full answer review. |
+| **Flashcards** | Tap-to-flip cards for active recall, filterable by domain, with shuffle. |
+| **Videos** | Tappable resource cards (data-driven — add your own). |
+| **Audio** | Audio-guide cards for review on the go (data-driven — add your own). |
 
-- **3 practice exams** covering all five exam domains, each question tagged by domain.
-- **Two modes:** *timed exam* (simulates the real thing) and *untimed practice*
-  (check each answer immediately and read the explanation).
-- **Instant explanations** for every question — right and wrong.
-- **Per-domain score breakdown** on the results screen so you know what to review.
-- **Answer review** listing every question with your answer vs. the correct one.
-- **Question shuffling** each attempt, deep-link support (`practice.html?exam=exam-2&mode=practice`).
-- No build step, no dependencies, no tracking — just open the files.
+Also: light/dark theme toggle (remembers your choice), `#hash` deep links to
+each tab, and no horizontal scroll on phones.
 
-## Run locally
-
-Any static file server works. For example:
+## Run / view locally
 
 ```bash
 python3 -m http.server 8000
-# then open http://localhost:8000
+# open http://localhost:8000
 ```
 
-## Deploy (GitHub Pages)
+Because it's one self-contained file, you can also just open `index.html`
+directly in a browser, or drop it into any host (GitHub Pages, an `<iframe>`,
+a WebView, etc.).
 
-Because it's a plain static site, you can host it free on GitHub Pages:
+## Editing the content
 
-1. Push this branch and merge to your default branch.
-2. In the repo, go to **Settings → Pages**.
-3. Set **Source** to *Deploy from a branch*, pick the branch and `/root`.
-4. Your site will be served at `https://<user>.github.io/<repo>/`.
+All content is data-driven inside the `<script>` in `index.html`:
 
-## Adding more questions
+- **`SECTIONS`** — the accordion section breakdowns (title, summary, HTML body).
+- **`EXAMS` / `DOMAINS`** — the practice question bank. Each question:
+  `{ id, domain, type: "single"|"multi", text, options, answer, explanation }`.
+- **`CARDS`** — flashcards: `{ d: domain, q: front, a: back }`.
+- **`VIDEOS` / `AUDIO`** — resource lists: `{ title, by, dur, url }`.
+  Leave a list empty (`[]`) to show a friendly empty state.
 
-Open `data/questions.js` and add question objects to an exam's `questions` array
-(or add a whole new exam to `EXAMS`). Each question looks like:
-
-```js
-{
-  id: "e1q1",          // unique
-  domain: 3,           // 1..5, maps to DOMAINS
-  type: "single",      // "single" | "multi"
-  text: "…",
-  options: ["…", "…"], // no letter prefixes
-  answer: 2,           // index (single) or [i, j] (multi)
-  explanation: "…",
-}
-```
-
-Run a quick integrity check with Node:
-
-```bash
-node -e 'const {EXAMS}=require("./data/questions.js");console.log(EXAMS.reduce((n,e)=>n+e.questions.length,0),"questions")'
-```
+Swap those objects to retarget the guide to a different certification without
+touching any layout or logic.
 
 ## Disclaimer
 
-This is an independent study aid and is **not affiliated with or endorsed by
-Google**. Certification objectives change over time — always confirm the current
-exam guide on the
-[official certification page](https://cloud.google.com/learn/certification/cloud-engineer).
+Independent study aid. Not affiliated with or endorsed by any certification
+body. Confirm current exam objectives with the official source.
