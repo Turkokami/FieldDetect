@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
-    "build": "prisma db push --accept-data-loss && next build",
+    "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:status": "prisma migrate status",
     "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts"
   },
   "prisma": {

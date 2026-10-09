@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Prisma generated (regenerated on install)
 src/generated/
+
+# database backups
+*.dump
