@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
     "@fullcalendar/timegrid",
     "@fullcalendar/interaction",
   ],
+  // Public estimate pages are private links: keep them out of search engines.
+  async headers() {
+    return [
+      { source: "/e/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/api/public/estimates/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.uploadthing.com" },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { catalogSetsForModules, seedCatalog } from "@/lib/products";
 
 const updateSettingsSchema = z.object({
@@ -25,6 +26,7 @@ const updateSettingsSchema = z.object({
   ccEmails: z.array(z.string().email()).optional(),
   contractTemplate: z.string().optional().nullable(),
   enabledModules: z.array(z.string()).optional(),
+  estimateOpenAlerts: z.boolean().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -61,7 +63,17 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const validated = updateSettingsSchema.parse(body);
+    const { estimateOpenAlerts, ...validated } = updateSettingsSchema.parse(body);
+
+    // Toggles stored in the org's settings JSON
+    let settings: Record<string, unknown> | undefined;
+    if (estimateOpenAlerts !== undefined) {
+      const current = await prisma.organization.findUnique({ where: { id: user.organizationId }, select: { settings: true } });
+      const base = current?.settings && typeof current.settings === "object" && !Array.isArray(current.settings)
+        ? (current.settings as Record<string, unknown>)
+        : {};
+      settings = { ...base, estimateOpenAlerts };
+    }
 
     const org = await prisma.organization.update({
       where: { id: user.organizationId },
@@ -70,6 +82,7 @@ export async function PATCH(req: NextRequest) {
         website: validated.website || null,
         email: validated.email || null,
         googleReviewUrl: validated.googleReviewUrl || null,
+        ...(settings ? { settings: settings as Prisma.InputJsonValue } : {}),
       },
     });
 

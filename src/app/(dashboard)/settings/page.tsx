@@ -16,6 +16,8 @@ import { ContractTemplateSection } from "@/components/settings/contract-template
 import { ModulesSection } from "@/components/settings/modules-section";
 import { ChemicalLibrarySection } from "@/components/settings/chemical-library-section";
 import { ApiKeysSection } from "@/components/settings/api-keys-section";
+import { EstimateAlertsToggle } from "@/components/settings/estimate-alerts-toggle";
+import { openAlertsEnabled } from "@/lib/public-estimate";
 
 export const metadata = { title: "Settings" };
 
@@ -186,6 +188,15 @@ export default async function SettingsPage({
             initialTemplate={(org as { contractTemplate?: string | null }).contractTemplate ?? null}
             canEdit={canEdit}
           />
+        </div>
+      )}
+
+      {/* Estimate alerts */}
+      {canEdit && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Estimate Alerts</h2>
+          <p className="text-sm text-muted-foreground mb-4">Notifications when customers open, accept or decline estimates online.</p>
+          <EstimateAlertsToggle initialEnabled={openAlertsEnabled(org.settings)} />
         </div>
       )}
 

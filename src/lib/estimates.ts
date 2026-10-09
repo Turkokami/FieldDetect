@@ -86,6 +86,13 @@ export async function sendEstimate(estimateId: string, organization: Pick<Organi
   if (!estimate) throw new Error("NotFound");
   if (!estimate.customer.email) throw new Error("NoCustomerEmail");
 
+  // The email links to the public estimate page, so make sure it has a token.
+  const publicToken = estimate.publicToken ?? generatePublicToken();
+  if (!estimate.publicToken) {
+    await prisma.estimate.update({ where: { id: estimate.id }, data: { publicToken } });
+  }
+  const estimateUrl = `${APP_URL}/e/${publicToken}`;
+
   const orgName = escapeHtml(organization.name);
   const lineHtml = estimate.lineItems.map((li) => `
       <tr>
@@ -112,7 +119,7 @@ export async function sendEstimate(estimateId: string, organization: Pick<Organi
     </p>
     <p style="color:#374151;margin:0 0 20px">
       Hi ${escapeHtml(estimate.customer.firstName)},<br><br>
-      Please find your estimate for inspection services below. You can accept or request changes directly from your portal.
+      Please find your estimate below. You can review and accept it online.
     </p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
       <thead>
@@ -133,7 +140,7 @@ export async function sendEstimate(estimateId: string, organization: Pick<Organi
     </div>
     ${estimate.scopeNotes ? `<div style="background:#f8fafc;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#374151"><strong>Scope of Work:</strong><br>${escapeHtml(estimate.scopeNotes)}</div>` : ""}
     <div style="text-align:center">
-      <a href="${APP_URL}/portal" style="display:inline-block;background:#0ABAB5;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">
+      <a href="${estimateUrl}" style="display:inline-block;background:#0ABAB5;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">
         View &amp; Accept Estimate →
       </a>
     </div>
@@ -157,9 +164,9 @@ export async function sendEstimate(estimateId: string, organization: Pick<Organi
   return prisma.estimate.update({
     where: { id: estimate.id },
     data: {
-      status: "SENT",
+      // Re-sending never downgrades an estimate the customer viewed or accepted.
+      ...(["VIEWED", "ACCEPTED", "CONVERTED"].includes(estimate.status) ? {} : { status: "SENT" as const }),
       sentAt: new Date(),
-      ...(estimate.publicToken ? {} : { publicToken: generatePublicToken() }),
     },
   });
 }
