@@ -1,14 +1,15 @@
+import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
+import { isAuthorizedCron } from "@/lib/cron";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.RESEND_FROM_EMAIL ?? "noreply@fielddetect.com";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://field-detect.vercel.app";
 
 export async function GET(req: NextRequest) {
-  const cronSecret = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && cronSecret !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -40,7 +41,9 @@ export async function GET(req: NextRequest) {
     if (!email) { skipped++; continue; }
 
     const firstName = ins.appointment.customer.firstName;
-    const reviewUrl = `${APP_URL}/review/${ins.id}`;
+    // /review/<token> looks the inspection up by its secret review token
+    const reviewToken = ins.reviewToken ?? randomBytes(20).toString("hex");
+    const reviewUrl = `${APP_URL}/review/${reviewToken}`;
 
     const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
       <div style="background:linear-gradient(135deg,#0ABAB5,#0D9488);padding:20px 24px;border-radius:10px 10px 0 0">
@@ -62,6 +65,11 @@ export async function GET(req: NextRequest) {
     </div>`;
 
     try {
+      // Save the token before emailing it, so the link always resolves
+      if (!ins.reviewToken) {
+        await prisma.inspection.update({ where: { id: ins.id }, data: { reviewToken } });
+      }
+
       if (resend) {
         await resend.emails.send({
           from: FROM,

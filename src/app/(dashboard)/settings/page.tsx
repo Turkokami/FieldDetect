@@ -14,6 +14,7 @@ import CcEmailsSection from "@/components/settings/cc-emails-section";
 import { ContractTemplateSection } from "@/components/settings/contract-template-section";
 import { ModulesSection } from "@/components/settings/modules-section";
 import { ChemicalLibrarySection } from "@/components/settings/chemical-library-section";
+import { ApiKeysSection } from "@/components/settings/api-keys-section";
 
 export const metadata = { title: "Settings" };
 
@@ -68,6 +69,15 @@ export default async function SettingsPage({
   ]);
 
   if (!org) notFound();
+
+  const isOwner = user.role === "OWNER";
+  const apiKeys = isOwner
+    ? await prisma.apiKey.findMany({
+        where: { organizationId: user.organizationId },
+        select: { id: true, name: true, prefix: true, scopes: true, lastUsedAt: true, revokedAt: true, createdAt: true },
+        orderBy: [{ revokedAt: { sort: "desc", nulls: "first" } }, { createdAt: "desc" }],
+      })
+    : [];
 
   const canEdit = ["OWNER", "ADMIN"].includes(user.role);
 
@@ -175,6 +185,17 @@ export default async function SettingsPage({
             initialTemplate={(org as { contractTemplate?: string | null }).contractTemplate ?? null}
             canEdit={canEdit}
           />
+        </div>
+      )}
+
+      {/* API Keys (owner only) */}
+      {isOwner && (
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">API Keys</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Let outside tools, like the Roof Estimator, send leads and read your price list. Keys only work for {org.name}.
+          </p>
+          <ApiKeysSection initialKeys={JSON.parse(JSON.stringify(apiKeys))} />
         </div>
       )}
 

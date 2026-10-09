@@ -71,6 +71,9 @@ export function rbacResponse(err: unknown) {
   if (err instanceof Error && err.message === "Forbidden") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  if (err instanceof Error && err.message === "RateLimited") {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
   return null;
 }
 
@@ -100,6 +103,7 @@ export const ROLE_PERMISSIONS = {
     "settings:write",
     "payments:read",
     "payments:write",
+    "api_keys:manage",
   ],
   ADMIN: [
     "customers:read",
