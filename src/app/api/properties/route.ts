@@ -17,6 +17,8 @@ const createPropertySchema = z.object({
   city: z.string().min(1),
   state: z.string().min(1),
   zip: z.string().min(1),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
   totalUnits: z.number().int().positive().optional().nullable(),
   totalBuildings: z.number().int().positive().optional().nullable(),
   accessNotes: z.string().optional().nullable(),

@@ -3,6 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, rbacResponse } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import {
+  computeEstimateTotals,
+  generateEstimateNumber,
+  generatePublicToken,
+  lineItemTotal,
+  withUniqueRetry,
+} from "@/lib/estimates";
 
 const lineItemSchema = z.object({
   description: z.string().min(1),
@@ -24,14 +31,6 @@ const createSchema = z.object({
   facilityData: z.unknown().optional().nullable(),
   lineItems: z.array(lineItemSchema).min(1),
 });
-
-function generateEstimateNumber() {
-  const now = new Date();
-  const yy = now.getFullYear().toString().slice(-2);
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const rand = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-  return `EST-${yy}${mm}-${rand}`;
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -66,18 +65,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = createSchema.parse(body);
 
-    const subtotal = validated.lineItems.reduce(
-      (s, i) => s + i.quantity * i.unitPrice, 0
+    const { subtotal, taxAmount, totalAmount } = computeEstimateTotals(
+      validated.lineItems, validated.taxRate, validated.discountAmount
     );
-    const taxAmount = (subtotal * validated.taxRate) / 100;
-    const totalAmount = subtotal + taxAmount - validated.discountAmount;
 
-    const estimate = await prisma.estimate.create({
+    const estimate = await withUniqueRetry(() => prisma.estimate.create({
       data: {
         organizationId: ctx.organization.id,
         customerId: validated.customerId,
         propertyId: validated.propertyId ?? null,
         estimateNumber: generateEstimateNumber(),
+        publicToken: generatePublicToken(),
         title: validated.title ?? null,
         serviceType: (validated.serviceType as never) ?? "BED_BUG_INSPECTION",
         scopeNotes: validated.scopeNotes ?? null,
@@ -94,13 +92,13 @@ export async function POST(req: NextRequest) {
             description: item.description,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            total: item.quantity * item.unitPrice,
+            total: lineItemTotal(item),
             sortOrder: item.sortOrder,
           })),
         },
       },
       include: { lineItems: true },
-    });
+    }));
 
     return NextResponse.json({ data: estimate }, { status: 201 });
   } catch (err) {
