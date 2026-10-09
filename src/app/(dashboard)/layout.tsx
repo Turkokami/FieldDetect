@@ -27,9 +27,9 @@ export default async function DashboardLayout({
     user
       ? prisma.$queryRaw<[{ count: bigint }]>`
           SELECT COUNT(*) as count FROM appointments
-          WHERE organization_id = ${user.organizationId}
+          WHERE "organizationId" = ${user.organizationId}
             AND notes IS NOT NULL
-            AND (office_notes_read_at IS NULL OR office_notes_read_at < updated_at)
+            AND ("officeNotesReadAt" IS NULL OR "officeNotesReadAt" < "updatedAt")
         `.then(([r]) => Number(r.count)).catch(() => 0)
       : 0,
   ]);
