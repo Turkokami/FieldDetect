@@ -3,12 +3,38 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// Prisma CLI commands (migrate, db execute) need a direct connection: migrate
+// takes a session-level advisory lock, which breaks behind a transaction-mode
+// pooler such as Neon's "-pooler" endpoint. The app itself keeps using
+// DATABASE_URL (see src/lib/prisma.ts).
+function directDatabaseUrl(): string | undefined {
+  const explicit =
+    process.env["DIRECT_URL"] ??
+    process.env["DATABASE_URL_UNPOOLED"] ??
+    process.env["POSTGRES_URL_NON_POOLING"];
+  if (explicit) return explicit;
+
+  const url = process.env["DATABASE_URL"];
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    // Neon: the direct host is the pooled host without "-pooler".
+    if (parsed.hostname.includes("-pooler.")) {
+      parsed.hostname = parsed.hostname.replace("-pooler.", ".");
+      return parsed.toString();
+    }
+  } catch {
+    // not a URL we can parse; use as-is
+  }
+  return url;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: directDatabaseUrl(),
   },
 });
