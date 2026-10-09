@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { rbacResponse } from "@/lib/auth";
 import { requireApiKey } from "@/lib/api-key";
 import { alertOwners } from "@/lib/owner-alerts";
+import { sourceLabel } from "@/lib/estimate-sources";
 import { normalizeAddressKey, normalizePhone } from "@/lib/lead-matching";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -72,12 +73,6 @@ const schema = z.object({
 
 type LeadInput = z.infer<typeof schema>;
 
-const SOURCE_LABELS: Record<string, string> = {
-  "roof-estimator": "Roof Estimator",
-  "proposal-studio": "Proposal Studio",
-  "exclusion-calculator": "Exclusion Calculator",
-  manual: "Manual",
-};
 
 // ─── Matching helpers ─────────────────────────────────────────────────────────
 
@@ -288,16 +283,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const sourceLabel = SOURCE_LABELS[data.source] ?? data.source;
+    const sourceName = sourceLabel(data.source) ?? data.source;
     const customerName = `${customer.firstName} ${customer.lastName}`.trim();
     const total = formatCurrency(estimate.totalAmount);
 
     if (created) {
       await alertOwners(orgId, {
-        subject: `New estimate from ${sourceLabel} — ${customerName} · ${total}`,
-        sms: `New ${sourceLabel} estimate ${estimate.estimateNumber}: ${customerName} · ${total}`,
+        subject: `New estimate from ${sourceName} — ${customerName} · ${total}`,
+        sms: `New ${sourceName} estimate ${estimate.estimateNumber}: ${customerName} · ${total}`,
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
-          <h2 style="font-size:19px;margin:0 0 12px">New estimate from ${escapeHtml(sourceLabel)}</h2>
+          <h2 style="font-size:19px;margin:0 0 12px">New estimate from ${escapeHtml(sourceName)}</h2>
           <p style="margin:0 0 8px"><strong>${escapeHtml(customerName)}</strong>${customer.companyName ? ` · ${escapeHtml(customer.companyName)}` : ""}</p>
           <p style="margin:0 0 8px;color:#6b7280">${escapeHtml([customer.email, customer.phone].filter(Boolean).join(" · "))}</p>
           <p style="margin:0 0 8px;color:#6b7280">📍 ${escapeHtml(`${property.addressLine1}, ${property.city}, ${property.state} ${property.zip}`)}</p>

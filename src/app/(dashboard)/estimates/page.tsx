@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { SOURCE_LABELS, sourceLabel } from "@/lib/estimate-sources";
+import { NOT_HOT_STATUSES, hotSince as hotWindowStart } from "@/lib/estimate-activity";
 
 export const metadata = { title: "Estimates" };
 
@@ -19,7 +21,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }
 export default async function EstimatesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; source?: string; hot?: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
@@ -27,18 +29,26 @@ export default async function EstimatesPage({
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) redirect("/onboarding");
 
-  const { status } = await searchParams;
+  const { status, source, hot } = await searchParams;
+  const hotSince = hotWindowStart();
+  const hotWhere = {
+    status: { notIn: [...NOT_HOT_STATUSES] },
+    events: { some: { type: "OPENED" as const, createdAt: { gte: hotSince } } },
+  };
 
-  const [estimates, summaries] = await Promise.all([
+  const [estimates, summaries, sources, hotCount] = await Promise.all([
     prisma.estimate.findMany({
       where: {
         organizationId: user.organizationId,
         ...(status ? { status: status as never } : {}),
+        ...(source ? (source === "manual" ? { OR: [{ source: "manual" }, { source: null }] } : { source }) : {}),
+        ...(hot === "1" ? hotWhere : {}),
       },
       include: {
         customer: { select: { firstName: true, lastName: true, companyName: true } },
         property: { select: { name: true, city: true } },
         lineItems: { select: { id: true } },
+        _count: { select: { events: { where: { type: "OPENED", createdAt: { gte: hotSince } } } } },
       },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -49,7 +59,32 @@ export default async function EstimatesPage({
       _count: { id: true },
       _sum: { totalAmount: true },
     }),
+    prisma.estimate.groupBy({
+      by: ["source"],
+      where: { organizationId: user.organizationId },
+      _count: { id: true },
+    }),
+    prisma.estimate.count({ where: { organizationId: user.organizationId, ...hotWhere } }),
   ]);
+
+  // Filter links keep the other active filters.
+  const href = (next: { status?: string | null; source?: string | null; hot?: string | null }) => {
+    const q = new URLSearchParams();
+    const merged = { status, source, hot, ...next };
+    for (const [k, v] of Object.entries(merged)) if (v) q.set(k, v);
+    const qs = q.toString();
+    return qs ? `/estimates?${qs}` : "/estimates";
+  };
+  const sourceCounts = sources.reduce((acc: Record<string, number>, s) => {
+    const key = s.source ?? "manual";
+    acc[key] = (acc[key] ?? 0) + s._count.id;
+    return acc;
+  }, {});
+  const sourceKeys = [...new Set([...Object.keys(SOURCE_LABELS), ...Object.keys(sourceCounts)])].filter((k) => sourceCounts[k]);
+  const pill = (active: boolean) =>
+    `px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+      active ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
+    }`;
 
   const statusCounts = summaries.reduce((acc: Record<string, number>, s) => {
     acc[s.status] = s._count.id;
@@ -82,29 +117,34 @@ export default async function EstimatesPage({
 
       {/* Status filters */}
       <div className="flex flex-wrap gap-2">
-        <Link
-          href="/estimates"
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            !status ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
-          }`}
-        >
-          All ({estimates.length})
+        <Link href={href({ status: null, hot: null })} className={pill(!status && hot !== "1")}>
+          All
+        </Link>
+        <Link href={href({ hot: hot === "1" ? null : "1", status: null })} className={pill(hot === "1")}>
+          🔥 Hot ({hotCount})
         </Link>
         {filterStatuses.map((s) => {
           const cfg = STATUS_CONFIG[s];
           return (
-            <Link
-              key={s}
-              href={`/estimates?status=${s}`}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                status === s ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
+            <Link key={s} href={href({ status: s, hot: null })} className={pill(status === s)}>
               {cfg?.label ?? s} ({statusCounts[s] ?? 0})
             </Link>
           );
         })}
       </div>
+
+      {/* Source filters */}
+      {sourceKeys.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1">Source</span>
+          <Link href={href({ source: null })} className={pill(!source)}>Any</Link>
+          {sourceKeys.map((k) => (
+            <Link key={k} href={href({ source: k })} className={pill(source === k)}>
+              {sourceLabel(k)} ({sourceCounts[k]})
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Estimate list */}
       <div className="space-y-2">
@@ -125,7 +165,17 @@ export default async function EstimatesPage({
                         {cfg.label}
                       </span>
                       <span className="text-xs font-mono text-muted-foreground">{est.estimateNumber}</span>
-                      {isExpired && (
+                      {est._count.events > 0 && !(NOT_HOT_STATUSES as readonly string[]).includes(est.status) && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700" title="Opened in the last 24 hours">
+                          🔥 Hot
+                        </span>
+                      )}
+                      {est.source && est.source !== "manual" && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          {sourceLabel(est.source)}
+                        </span>
+                      )}
+                      {isExpired && est.status !== "EXPIRED" && (
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">
                           Expired
                         </span>

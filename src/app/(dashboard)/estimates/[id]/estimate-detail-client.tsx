@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { EstimateActivityPanel } from "./estimate-activity-panel";
+import { formatQuantity, unitSuffix, type LineUnit } from "@/lib/units";
+import { sourceLabel } from "@/lib/estimate-sources";
 
 type LineItem = {
   id: string;
@@ -11,6 +14,7 @@ type LineItem = {
   unitPrice: number;
   total: number;
   sortOrder: number;
+  unit: LineUnit;
 };
 
 type Estimate = {
@@ -35,6 +39,11 @@ type Estimate = {
   convertedAt: string | null;
   convertedToAppointmentId: string | null;
   createdAt: string;
+  source: string | null;
+  acceptedByName: string | null;
+  acceptedByTitle: string | null;
+  acceptedIp: string | null;
+  signatureDataUrl: string | null;
   customer: {
     id: string;
     firstName: string;
@@ -72,7 +81,15 @@ function formatDate(s: string | null) {
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function EstimateDetailClient({ estimate: initial }: { estimate: Estimate }) {
+export default function EstimateDetailClient({
+  estimate: initial,
+  activity,
+  publicUrl,
+}: {
+  estimate: Estimate;
+  activity: Parameters<typeof EstimateActivityPanel>[0]["activity"];
+  publicUrl: string;
+}) {
   const router = useRouter();
   const [estimate, setEstimate] = useState(initial);
   const [sending, setSending] = useState(false);
@@ -88,6 +105,15 @@ export default function EstimateDetailClient({ estimate: initial }: { estimate: 
   const canConvert = estimate.status === "ACCEPTED";
   const canMarkAccepted = ["SENT", "VIEWED"].includes(estimate.status);
   const canMarkDeclined = ["SENT", "VIEWED"].includes(estimate.status);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      showToast("Customer link copied");
+    } catch {
+      showToast(publicUrl);
+    }
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -183,12 +209,31 @@ export default function EstimateDetailClient({ estimate: initial }: { estimate: 
             >
               {cfg.label}
             </span>
+            {sourceLabel(estimate.source) && estimate.source !== "manual" && (
+              <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                {sourceLabel(estimate.source)}
+              </span>
+            )}
           </div>
           {estimate.title && (
             <p className="text-sm text-muted-foreground mt-1">{estimate.title}</p>
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={copyLink}
+            className="px-4 py-2 rounded-lg border border-border text-sm font-semibold hover:bg-muted transition-colors"
+          >
+            Copy customer link
+          </button>
+          <a
+            href={`${publicUrl}?preview=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded-lg border border-border text-sm font-semibold hover:bg-muted transition-colors"
+          >
+            Preview
+          </a>
           {canSend && (
             <button
               onClick={handleSend}
@@ -247,7 +292,7 @@ export default function EstimateDetailClient({ estimate: initial }: { estimate: 
               <thead>
                 <tr className="bg-muted/50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Description</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">Qty</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-24">Qty</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-28">Unit Price</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-28">Total</th>
                 </tr>
@@ -255,8 +300,13 @@ export default function EstimateDetailClient({ estimate: initial }: { estimate: 
               <tbody>
                 {estimate.lineItems.map((li) => (
                   <tr key={li.id} className="border-t border-border/50">
-                    <td className="px-4 py-3">{li.description}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{li.quantity}</td>
+                    <td className="px-4 py-3">
+                      {li.description}
+                      {li.unit && <div className="text-xs text-muted-foreground">{formatQuantity(li.unit, li.quantity, li.unitPrice)}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap">
+                      {li.unit === "FLAT" ? "flat" : `${li.quantity}${unitSuffix(li.unit) ? ` ${unitSuffix(li.unit)}` : ""}`}
+                    </td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(li.unitPrice)}</td>
                     <td className="px-4 py-3 text-right font-semibold">{formatCurrency(li.total)}</td>
                   </tr>
@@ -286,6 +336,18 @@ export default function EstimateDetailClient({ estimate: initial }: { estimate: 
               </div>
             </div>
           </div>
+
+          {/* Activity */}
+          <EstimateActivityPanel
+            activity={activity}
+            acceptance={{
+              acceptedAt: estimate.acceptedAt,
+              acceptedByName: estimate.acceptedByName,
+              acceptedByTitle: estimate.acceptedByTitle,
+              acceptedIp: estimate.acceptedIp,
+              signatureDataUrl: estimate.signatureDataUrl,
+            }}
+          />
 
           {/* Scope Notes */}
           {estimate.scopeNotes && (

@@ -4,6 +4,7 @@ import type { Organization } from "@prisma/client";
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
+import { unitSuffix } from "@/lib/units";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.RESEND_FROM_EMAIL ?? "quotes@fielddetect.com";
@@ -97,7 +98,7 @@ export async function sendEstimate(estimateId: string, organization: Pick<Organi
   const lineHtml = estimate.lineItems.map((li) => `
       <tr>
         <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9">${escapeHtml(li.description)}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${li.quantity}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${li.unit === "FLAT" ? "flat" : `${li.quantity}${unitSuffix(li.unit) ? ` ${unitSuffix(li.unit)}` : ""}`}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${formatCurrency(li.unitPrice)}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${formatCurrency(li.total)}</td>
       </tr>`).join("");
