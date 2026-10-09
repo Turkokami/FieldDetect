@@ -8,6 +8,8 @@
     "build": "bash scripts/migrate-deploy.sh && tsx scripts/seed-products.ts && next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:db": "vitest run tests/db",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
     "db:status": "prisma migrate status",
@@ -85,6 +87,7 @@
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }
