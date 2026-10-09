@@ -13,6 +13,7 @@ const createAppointmentSchema = z.object({
     "RODENT_EXCLUSION", "WILDLIFE_INSPECTION", "WILDLIFE_REMOVAL",
     "BIRD_EXCLUSION", "GOOSE_CONTROL", "GENERAL_PEST_INSPECTION",
     "GENERAL_PEST_TREATMENT", "OTHER",
+    "ATTIC_INSULATION", "HOLIDAY_LIGHTING", "COMMERCIAL_PEST_PROGRAM",
   ]).default("BED_BUG_INSPECTION"),
   scheduledDate: z.string().datetime(),
   scheduledEndTime: z.string().datetime().optional(),

@@ -30,6 +30,9 @@ const SERVICE_LABELS: Record<string, string> = {
   WILDLIFE_INSPECTION: "Wildlife Inspection",
   WILDLIFE_REMOVAL: "Wildlife Removal",
   GENERAL_PEST_INSPECTION: "General Pest",
+  ATTIC_INSULATION: "Attic Insulation",
+  HOLIDAY_LIGHTING: "Holiday Lighting",
+  COMMERCIAL_PEST_PROGRAM: "Commercial Pest Program",
   OTHER: "Other",
 };
 

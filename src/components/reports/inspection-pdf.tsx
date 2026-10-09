@@ -264,6 +264,9 @@ export function InspectionPDF({ org, customer, property, inspection, technician,
     GOOSE_CONTROL:         "Canada Goose Control & Management",
     GENERAL_PEST_INSPECTION: "General Pest Inspection Services",
     GENERAL_PEST_TREATMENT:  "Pest Control & Treatment Services",
+    ATTIC_INSULATION:        "Attic Insulation & Restoration Services",
+    HOLIDAY_LIGHTING:        "Holiday Lighting Services",
+    COMMERCIAL_PEST_PROGRAM: "Commercial Pest Management Program",
   };
   const SERVICE_DISCLAIMER: Record<string, string> = {
     BED_BUG_INSPECTION:    "This report reflects the findings of a K9 scent detection inspection. K9 detection is a tool used to identify areas of potential bed bug activity and is not a guarantee of infestation or non-infestation. Visual confirmation is recommended to verify K9 alerts.",

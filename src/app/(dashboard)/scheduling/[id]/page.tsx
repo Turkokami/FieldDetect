@@ -90,6 +90,9 @@ export default async function AppointmentDetailPage({
     GOOSE_CONTROL: "Goose Control",
     GENERAL_PEST_INSPECTION: "General Pest Inspection",
     GENERAL_PEST_TREATMENT: "General Pest Treatment",
+    ATTIC_INSULATION: "Attic Insulation",
+    HOLIDAY_LIGHTING: "Holiday Lighting",
+    COMMERCIAL_PEST_PROGRAM: "Commercial Pest Program",
     OTHER: "Other",
   };
 

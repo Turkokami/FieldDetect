@@ -34,6 +34,24 @@ const MODULES = [
     icon: "🦝",
     description: "General wildlife inspection and removal services.",
   },
+  {
+    key: "ATTIC_INSULATION",
+    label: "Attic Insulation",
+    icon: "🏠",
+    description: "Attic insulation removal and replacement (TAP or standard blown-in). Shows the service on booking and estimates.",
+  },
+  {
+    key: "HOLIDAY_LIGHTING",
+    label: "Holiday Lighting",
+    icon: "🎄",
+    description: "Holiday and roofline lighting installs, takedown and storage. Shows the service on booking and estimates.",
+  },
+  {
+    key: "COMMERCIAL_PEST_PROGRAM",
+    label: "Commercial Pest Program",
+    icon: "🏢",
+    description: "Recurring commercial pest management programs. Shows the service on booking and estimates.",
+  },
 ];
 
 export function ModulesSection({ initialModules }: { initialModules: string[] }) {

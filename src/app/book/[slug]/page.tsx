@@ -13,6 +13,9 @@ const SERVICE_TYPES = [
   { value: "GOOSE_CONTROL", label: "Goose Control" },
   { value: "GENERAL_PEST_INSPECTION", label: "General Pest Inspection" },
   { value: "GENERAL_PEST_TREATMENT", label: "General Pest Treatment" },
+  { value: "ATTIC_INSULATION", label: "Attic Insulation" },
+  { value: "HOLIDAY_LIGHTING", label: "Holiday Lighting" },
+  { value: "COMMERCIAL_PEST_PROGRAM", label: "Commercial Pest Program" },
   { value: "OTHER", label: "Other" },
 ];
 
@@ -23,6 +26,9 @@ const SERVICE_MODULE_MAP: Record<string, string> = {
   RODENT_EXCLUSION: "RODENT_EXCLUSION",
   WILDLIFE_INSPECTION: "WILDLIFE",
   WILDLIFE_REMOVAL: "WILDLIFE",
+  ATTIC_INSULATION: "ATTIC_INSULATION",
+  HOLIDAY_LIGHTING: "HOLIDAY_LIGHTING",
+  COMMERCIAL_PEST_PROGRAM: "COMMERCIAL_PEST_PROGRAM",
 };
 
 type OrgInfo = { name: string; phone: string | null; logoUrl: string | null; enabledModules: string[] };

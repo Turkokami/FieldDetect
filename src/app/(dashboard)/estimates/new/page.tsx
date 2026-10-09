@@ -373,6 +373,9 @@ const ALL_SERVICE_TYPES = [
   { value: "WILDLIFE_INSPECTION", label: "Wildlife Inspection", module: "WILDLIFE" },
   { value: "WILDLIFE_REMOVAL", label: "Wildlife Removal", module: "WILDLIFE" },
   { value: "GENERAL_PEST_INSPECTION", label: "General Pest Inspection" },
+  { value: "ATTIC_INSULATION", label: "Attic Insulation", module: "ATTIC_INSULATION" },
+  { value: "HOLIDAY_LIGHTING", label: "Holiday Lighting", module: "HOLIDAY_LIGHTING" },
+  { value: "COMMERCIAL_PEST_PROGRAM", label: "Commercial Pest Program", module: "COMMERCIAL_PEST_PROGRAM" },
   { value: "OTHER", label: "Other / Custom" },
 ];
 

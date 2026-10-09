@@ -75,6 +75,9 @@ enum ServiceType {
   GENERAL_PEST_INSPECTION
   GENERAL_PEST_TREATMENT
   OTHER
+  ATTIC_INSULATION
+  HOLIDAY_LIGHTING
+  COMMERCIAL_PEST_PROGRAM
 }
 
 enum AppointmentStatus {
@@ -277,6 +280,8 @@ model Organization {
   stations              Station[]
   chemicals             Chemical[]
   chemicalApplications  ChemicalApplication[]
+  apiKeys               ApiKey[]
+  products              Product[]
 
   @@map("organizations")
 }
@@ -981,6 +986,15 @@ model Estimate {
   declineReason              String?
   convertedAt                DateTime?
   convertedToAppointmentId   String?
+  publicToken                String?         @unique // random token for the public link /e/<token>
+  source                     String? // "roof-estimator" | "proposal-studio" | "manual" | "exclusion-calculator"
+  externalRef                String? // caller's id, for idempotency
+  presentation               Json? // optional deck sections
+  acceptedByName             String?
+  acceptedByTitle            String?
+  acceptedIp                 String?
+  acceptedUserAgent          String?
+  signatureDataUrl           String? // optional drawn signature (PNG data URL)
   createdAt                  DateTime        @default(now())
   updatedAt                  DateTime        @updatedAt
 
@@ -989,7 +1003,9 @@ model Estimate {
   property     Property?           @relation(fields: [propertyId], references: [id])
   taxCode      TaxCode?            @relation(fields: [taxCodeId], references: [id])
   lineItems    EstimateLineItem[]
+  events       EstimateEvent[]
 
+  @@unique([organizationId, externalRef])
   @@map("estimates")
 }
 
@@ -1001,11 +1017,94 @@ model EstimateLineItem {
   unitPrice   Float
   total       Float
   sortOrder   Int      @default(0)
+  unit        ProductUnit?
+  productId   String?
+  unitCost    Float? // snapshot at quote time, internal only
   createdAt   DateTime @default(now())
 
   estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id])
 
   @@map("estimate_line_items")
+}
+
+// ─── Estimate Events (views / acceptance) ─────────────────────────────────────
+
+enum EstimateEventType {
+  OPENED
+  SECTION_VIEW
+  ACCEPTED
+  DECLINED
+}
+
+model EstimateEvent {
+  id         String            @id @default(cuid())
+  estimateId String
+  type       EstimateEventType
+  sessionId  String? // random id kept per browser
+  section    Int? // slide/section index for SECTION_VIEW
+  seconds    Int? // dwell time for SECTION_VIEW (cap 1800)
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime          @default(now())
+
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  @@index([estimateId, createdAt])
+  @@map("estimate_events")
+}
+
+// ─── Products (price list) ────────────────────────────────────────────────────
+
+enum ProductUnit {
+  EACH
+  LINEAR_FT
+  SQ_FT
+  HOUR
+  FLAT
+}
+
+model Product {
+  id             String       @id @default(cuid())
+  organizationId String
+  sku            String // stable key, e.g. "rodent-shield", "c9-roofline"
+  name           String
+  category       String? // "Exclusion", "Holiday Lighting", "Insulation"
+  serviceType    ServiceType?
+  unit           ProductUnit  @default(EACH)
+  unitPrice      Float
+  unitCost       Float? // internal only; never sent to customers
+  description    String?
+  isActive       Boolean      @default(true)
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  lineItems    EstimateLineItem[]
+
+  @@unique([organizationId, sku])
+  @@map("products")
+}
+
+// ─── API Keys (machine-to-machine, one set per org) ───────────────────────────
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String // e.g. "Roof Estimator"
+  prefix         String // first 12 chars, shown in UI, e.g. "fd_live_ab12"
+  keyHash        String    @unique // sha256 of the full key; plaintext is never stored
+  scopes         String[]  @default(["leads:write", "products:read"])
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("api_keys")
 }
 
 // ─── Staff Invitations ────────────────────────────────────────────────────────

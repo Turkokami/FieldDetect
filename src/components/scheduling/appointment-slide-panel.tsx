@@ -46,6 +46,9 @@ const SERVICE_LABELS: Record<string, string> = {
   GOOSE_CONTROL: "Goose Control",
   GENERAL_PEST_INSPECTION: "Pest Inspection",
   GENERAL_PEST_TREATMENT: "Pest Treatment",
+  ATTIC_INSULATION: "Attic Insulation",
+  HOLIDAY_LIGHTING: "Holiday Lighting",
+  COMMERCIAL_PEST_PROGRAM: "Commercial Pest Program",
   OTHER: "Other",
 };
 

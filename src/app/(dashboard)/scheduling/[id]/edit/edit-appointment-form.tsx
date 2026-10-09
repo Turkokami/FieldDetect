@@ -35,6 +35,9 @@ const SERVICE_TYPES = [
   { value: "GOOSE_CONTROL", label: "Goose Control" },
   { value: "GENERAL_PEST_INSPECTION", label: "General Pest Inspection" },
   { value: "GENERAL_PEST_TREATMENT", label: "General Pest Treatment" },
+  { value: "ATTIC_INSULATION", label: "Attic Insulation" },
+  { value: "HOLIDAY_LIGHTING", label: "Holiday Lighting" },
+  { value: "COMMERCIAL_PEST_PROGRAM", label: "Commercial Pest Program" },
   { value: "OTHER", label: "Other" },
 ];
 

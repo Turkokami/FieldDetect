@@ -12,6 +12,9 @@ const SERVICE_LABELS: Record<string, string> = {
   RODENT_INSPECTION: "Rodent Inspection",
   GENERAL_PEST_INSPECTION: "General Pest Inspection",
   FOLLOW_UP: "Follow-Up",
+  ATTIC_INSULATION: "Attic Insulation",
+  HOLIDAY_LIGHTING: "Holiday Lighting",
+  COMMERCIAL_PEST_PROGRAM: "Commercial Pest Program",
   OTHER: "Other",
 };
 
