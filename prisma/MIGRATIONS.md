@@ -1,6 +1,7 @@
 # Database migrations
 
-Schema changes go through Prisma Migrate. The build runs `prisma migrate deploy`,
+Schema changes go through Prisma Migrate. The build runs `scripts/migrate-deploy.sh`
+(`prisma migrate deploy`),
 which applies only committed migrations that haven't run yet. It never drops data
 on its own, and with no new migrations it does nothing.
 
@@ -20,8 +21,15 @@ Don't use `prisma db push` against a shared database.
 
 ## One-time baseline (production)
 
+The build handles this automatically. If the database has tables but no migration
+history (Prisma error P3005), `scripts/migrate-deploy.sh` compares it with
+`schema.prisma`. If they match exactly, it marks `0_init` as applied and continues.
+If they don't match, the build fails and nothing is changed.
+
+To do it by hand instead (this also takes a `pg_dump` backup):
+
 `0_init` captures the schema as it was when `db push` was replaced. Production
-already has those tables, so 0_init must be marked as applied, not run:
+already has those tables, so 0_init must be marked as applied, not run.
 
 ```bash
 DATABASE_URL="<production direct URL>" ./scripts/baseline-prod-db.sh
