@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { catalogSetsForModules, seedCatalog } from "@/lib/products";
 
 const updateSettingsSchema = z.object({
   name: z.string().min(1).optional(),
@@ -71,6 +72,13 @@ export async function PATCH(req: NextRequest) {
         googleReviewUrl: validated.googleReviewUrl || null,
       },
     });
+
+    // Turning on a module with a default price list adds any missing products.
+    if (validated.enabledModules) {
+      for (const set of catalogSetsForModules(validated.enabledModules)) {
+        await seedCatalog(org.id, set).catch((err) => console.error("[SETTINGS_PATCH] seed", err));
+      }
+    }
 
     return NextResponse.json({ data: org });
   } catch (error) {

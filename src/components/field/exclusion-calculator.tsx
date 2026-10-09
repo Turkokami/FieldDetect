@@ -3,37 +3,61 @@
 import { useState, useEffect, useCallback } from "react";
 import { ClipboardCopy, Check, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { EXCLUSION_CATEGORY, EXCLUSION_PRODUCTS, type CatalogUnit } from "@/lib/product-catalog";
 
 // ─── Pricing tables ───────────────────────────────────────────────────────────
+// Prices come from the org's price list (/api/products?category=Exclusion),
+// keyed by sku. EXCLUSION_PRODUCTS holds the original prices and is used when
+// the price list can't be loaded (e.g. offline in the field).
 
-const DOOR_SWEEP_TYPES: Record<string, { label: string; price: number }> = {
-  none:       { label: "No door sweep",        price: 0   },
-  low36:      { label: 'Low-profile 36"',       price: 120 },
-  low48:      { label: 'Low-profile 48"',       price: 150 },
-  standard36: { label: 'Standard 36"',          price: 180 },
-  standard48: { label: 'Standard 48"',          price: 210 },
-  versa36:    { label: 'Versa-Line 36"',        price: 255 },
-  versa48:    { label: 'Versa-Line 48"',        price: 300 },
+const DOOR_SWEEP_TYPES: Record<string, { label: string; sku: string | null }> = {
+  none:       { label: "No door sweep",        sku: null },
+  low36:      { label: 'Low-profile 36"',       sku: "door-sweep-low36" },
+  low48:      { label: 'Low-profile 48"',       sku: "door-sweep-low48" },
+  standard36: { label: 'Standard 36"',          sku: "door-sweep-standard36" },
+  standard48: { label: 'Standard 48"',          sku: "door-sweep-standard48" },
+  versa36:    { label: 'Versa-Line 36"',        sku: "door-sweep-versa36" },
+  versa48:    { label: 'Versa-Line 48"',        sku: "door-sweep-versa48" },
 };
 
-const CRAWL_DOOR_TYPES: Record<string, { label: string; price: number }> = {
-  none:      { label: "No crawl door",                 price: 0   },
-  standard:  { label: "Standard aluminum crawl door",  price: 400 },
-  oversized: { label: "Oversized aluminum crawl door", price: 525 },
+const CRAWL_DOOR_TYPES: Record<string, { label: string; sku: string | null }> = {
+  none:      { label: "No crawl door",                 sku: null },
+  standard:  { label: "Standard aluminum crawl door",  sku: "crawl-door-standard" },
+  oversized: { label: "Oversized aluminum crawl door", sku: "crawl-door-oversized" },
 };
 
-// Per-unit / per-foot rates
-const RATES = {
-  rodentShield:      8,    // $/linear ft
-  rodeXit:          12,    // $/linear ft
-  ridgeGuard:       10,    // $/linear ft
-  foundationVent:   75,    // $/unit
-  roofVent:         85,    // $/unit
-  bathroomVentBird: 65,    // $/unit
-  garageTrimShield: 45,    // $/unit
-  garageGuardKit:   120,   // $/kit
-  cementCrawlWell:  150,   // $/well
-  remoteSurcharge:  150,   // flat fee
+// Per-unit / per-foot rates, by sku
+const RATE_SKUS = {
+  rodentShield:     "rodent-shield",       // $/linear ft
+  rodeXit:          "rodexit",             // $/linear ft
+  ridgeGuard:       "ridge-guard",         // $/linear ft
+  foundationVent:   "foundation-vent",     // $/unit
+  roofVent:         "roof-vent",           // $/unit
+  bathroomVentBird: "bathroom-vent-bird",  // $/unit
+  garageTrimShield: "garage-trim-shield",  // $/unit
+  garageGuardKit:   "garage-guard-kit",    // $/kit
+  cementCrawlWell:  "cement-crawl-well",   // $/well
+  remoteSurcharge:  "remote-surcharge",    // flat fee
+} as const;
+
+type PriceEntry = { price: number; productId: string | null; unit: CatalogUnit };
+
+const FALLBACK_PRICES: Record<string, PriceEntry> = Object.fromEntries(
+  EXCLUSION_PRODUCTS.map((p) => [p.sku, { price: p.unitPrice, productId: null, unit: p.unit }])
+);
+
+// Line item description → sku, for the fixed-description lines in saveAsEstimate.
+const LINE_SKUS: Record<string, string> = {
+  "Rodent-shield (linear ft)":               RATE_SKUS.rodentShield,
+  "RodeXit (linear ft)":                     RATE_SKUS.rodeXit,
+  "Ridge Guard / Peak Protector (linear ft)": RATE_SKUS.ridgeGuard,
+  "Foundation vent guard":                   RATE_SKUS.foundationVent,
+  "Roof vent guard":                         RATE_SKUS.roofVent,
+  "Bathroom vent bird guard":                RATE_SKUS.bathroomVentBird,
+  "Garage trim shield":                      RATE_SKUS.garageTrimShield,
+  "Garage guard kit":                        RATE_SKUS.garageGuardKit,
+  "Cement crawlspace well":                  RATE_SKUS.cementCrawlWell,
+  "Remote-area surcharge":                   RATE_SKUS.remoteSurcharge,
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -103,6 +127,24 @@ export function ExclusionCalculator({
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedEstimate, setSavedEstimate] = useState<{ id: string; number: string } | null>(null);
+  const [prices, setPrices] = useState<Record<string, PriceEntry>>(FALLBACK_PRICES);
+
+  // Load the org's price list; keep the built-in prices if it can't be reached.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/products?category=${encodeURIComponent(EXCLUSION_CATEGORY)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then(({ data }: { data: { id: string; sku: string; unitPrice: number; unit: CatalogUnit }[] }) => {
+        if (cancelled || !Array.isArray(data)) return;
+        const next = { ...FALLBACK_PRICES };
+        for (const p of data) next[p.sku] = { price: p.unitPrice, productId: p.id, unit: p.unit };
+        setPrices(next);
+      })
+      .catch(() => { /* offline or no access: built-in prices stay */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const price = (sku: string | null | undefined) => (sku ? prices[sku]?.price ?? 0 : 0);
 
   // Persist on every change
   useEffect(() => {
@@ -122,22 +164,22 @@ export function ExclusionCalculator({
 
   // ── Calculated subtotals ──────────────────────────────────────────────────
 
-  const rodentShieldWork  = n(s.rodentShieldFt) * RATES.rodentShield;
-  const rodeXitWork       = n(s.rodeXitFt) * RATES.rodeXit;
-  const ridgeGuardWork    = n(s.ridgeGuardFt) * RATES.ridgeGuard;
+  const rodentShieldWork  = n(s.rodentShieldFt) * price(RATE_SKUS.rodentShield);
+  const rodeXitWork       = n(s.rodeXitFt) * price(RATE_SKUS.rodeXit);
+  const ridgeGuardWork    = n(s.ridgeGuardFt) * price(RATE_SKUS.ridgeGuard);
   const ventBirdWork      =
-    n(s.foundationVents) * RATES.foundationVent +
-    n(s.roofVents) * RATES.roofVent +
-    n(s.bathroomVentBirds) * RATES.bathroomVentBird;
+    n(s.foundationVents) * price(RATE_SKUS.foundationVent) +
+    n(s.roofVents) * price(RATE_SKUS.roofVent) +
+    n(s.bathroomVentBirds) * price(RATE_SKUS.bathroomVentBird);
   const garageWork        =
-    n(s.garageTrimShields) * RATES.garageTrimShield +
-    n(s.garageGuardKits) * RATES.garageGuardKit;
+    n(s.garageTrimShields) * price(RATE_SKUS.garageTrimShield) +
+    n(s.garageGuardKits) * price(RATE_SKUS.garageGuardKit);
   const doorSweepWork     =
-    (DOOR_SWEEP_TYPES[s.doorSweepType]?.price ?? 0) * n(s.doorSweepQty);
+    price(DOOR_SWEEP_TYPES[s.doorSweepType]?.sku) * n(s.doorSweepQty);
   const crawlWork         =
-    (CRAWL_DOOR_TYPES[s.crawlDoor]?.price ?? 0) +
-    n(s.cementCrawlWells) * RATES.cementCrawlWell;
-  const remoteSurcharge   = s.remoteArea ? RATES.remoteSurcharge : 0;
+    price(CRAWL_DOOR_TYPES[s.crawlDoor]?.sku) +
+    n(s.cementCrawlWells) * price(RATE_SKUS.cementCrawlWell);
+  const remoteSurcharge   = s.remoteArea ? price(RATE_SKUS.remoteSurcharge) : 0;
 
   const total =
     rodentShieldWork + rodeXitWork + ridgeGuardWork +
@@ -166,24 +208,43 @@ export function ExclusionCalculator({
   // ── Save as estimate ─────────────────────────────────────────────────────
 
   const saveAsEstimate = async () => {
-    const items: { description: string; quantity: number; unitPrice: number; sortOrder: number }[] = [];
+    const items: {
+      description: string; quantity: number; unitPrice: number; sortOrder: number;
+      sku?: string; unit?: CatalogUnit; productId?: string | null;
+    }[] = [];
     let order = 0;
-    if (n(s.rodentShieldFt) > 0)   items.push({ description: "Rodent-shield (linear ft)",              quantity: n(s.rodentShieldFt),   unitPrice: RATES.rodentShield,      sortOrder: order++ });
-    if (n(s.rodeXitFt) > 0)        items.push({ description: "RodeXit (linear ft)",                    quantity: n(s.rodeXitFt),        unitPrice: RATES.rodeXit,           sortOrder: order++ });
-    if (n(s.ridgeGuardFt) > 0)     items.push({ description: "Ridge Guard / Peak Protector (linear ft)",quantity: n(s.ridgeGuardFt),     unitPrice: RATES.ridgeGuard,        sortOrder: order++ });
-    if (n(s.foundationVents) > 0)  items.push({ description: "Foundation vent guard",                  quantity: n(s.foundationVents),  unitPrice: RATES.foundationVent,    sortOrder: order++ });
-    if (n(s.roofVents) > 0)        items.push({ description: "Roof vent guard",                        quantity: n(s.roofVents),        unitPrice: RATES.roofVent,          sortOrder: order++ });
-    if (n(s.bathroomVentBirds) > 0)items.push({ description: "Bathroom vent bird guard",               quantity: n(s.bathroomVentBirds),unitPrice: RATES.bathroomVentBird,  sortOrder: order++ });
-    if (n(s.garageTrimShields) > 0)items.push({ description: "Garage trim shield",                     quantity: n(s.garageTrimShields),unitPrice: RATES.garageTrimShield,  sortOrder: order++ });
-    if (n(s.garageGuardKits) > 0)  items.push({ description: "Garage guard kit",                       quantity: n(s.garageGuardKits),  unitPrice: RATES.garageGuardKit,    sortOrder: order++ });
+    if (n(s.rodentShieldFt) > 0)   items.push({ description: "Rodent-shield (linear ft)",              quantity: n(s.rodentShieldFt),   unitPrice: price(RATE_SKUS.rodentShield),      sortOrder: order++ });
+    if (n(s.rodeXitFt) > 0)        items.push({ description: "RodeXit (linear ft)",                    quantity: n(s.rodeXitFt),        unitPrice: price(RATE_SKUS.rodeXit),           sortOrder: order++ });
+    if (n(s.ridgeGuardFt) > 0)     items.push({ description: "Ridge Guard / Peak Protector (linear ft)",quantity: n(s.ridgeGuardFt),     unitPrice: price(RATE_SKUS.ridgeGuard),        sortOrder: order++ });
+    if (n(s.foundationVents) > 0)  items.push({ description: "Foundation vent guard",                  quantity: n(s.foundationVents),  unitPrice: price(RATE_SKUS.foundationVent),    sortOrder: order++ });
+    if (n(s.roofVents) > 0)        items.push({ description: "Roof vent guard",                        quantity: n(s.roofVents),        unitPrice: price(RATE_SKUS.roofVent),          sortOrder: order++ });
+    if (n(s.bathroomVentBirds) > 0)items.push({ description: "Bathroom vent bird guard",               quantity: n(s.bathroomVentBirds),unitPrice: price(RATE_SKUS.bathroomVentBird),  sortOrder: order++ });
+    if (n(s.garageTrimShields) > 0)items.push({ description: "Garage trim shield",                     quantity: n(s.garageTrimShields),unitPrice: price(RATE_SKUS.garageTrimShield),  sortOrder: order++ });
+    if (n(s.garageGuardKits) > 0)  items.push({ description: "Garage guard kit",                       quantity: n(s.garageGuardKits),  unitPrice: price(RATE_SKUS.garageGuardKit),    sortOrder: order++ });
     if (s.doorSweepType !== "none" && n(s.doorSweepQty) > 0)
-      items.push({ description: `Door sweep – ${DOOR_SWEEP_TYPES[s.doorSweepType].label}`, quantity: n(s.doorSweepQty), unitPrice: DOOR_SWEEP_TYPES[s.doorSweepType].price, sortOrder: order++ });
+      items.push({ description: `Door sweep – ${DOOR_SWEEP_TYPES[s.doorSweepType].label}`, quantity: n(s.doorSweepQty), unitPrice: price(DOOR_SWEEP_TYPES[s.doorSweepType].sku), sortOrder: order++ });
     if (s.crawlDoor !== "none")
-      items.push({ description: CRAWL_DOOR_TYPES[s.crawlDoor].label,                       quantity: 1,                unitPrice: CRAWL_DOOR_TYPES[s.crawlDoor].price,    sortOrder: order++ });
-    if (n(s.cementCrawlWells) > 0) items.push({ description: "Cement crawlspace well",                 quantity: n(s.cementCrawlWells), unitPrice: RATES.cementCrawlWell,   sortOrder: order++ });
-    if (s.remoteArea)              items.push({ description: "Remote-area surcharge",                   quantity: 1,                    unitPrice: RATES.remoteSurcharge,   sortOrder: order++ });
+      items.push({ description: CRAWL_DOOR_TYPES[s.crawlDoor].label,                       quantity: 1,                unitPrice: price(CRAWL_DOOR_TYPES[s.crawlDoor].sku),    sortOrder: order++ });
+    if (n(s.cementCrawlWells) > 0) items.push({ description: "Cement crawlspace well",                 quantity: n(s.cementCrawlWells), unitPrice: price(RATE_SKUS.cementCrawlWell),   sortOrder: order++ });
+    if (s.remoteArea)              items.push({ description: "Remote-area surcharge",                   quantity: 1,                    unitPrice: price(RATE_SKUS.remoteSurcharge),   sortOrder: order++ });
 
     if (items.length === 0) { toast.error("No items to save"); return; }
+
+    // Attach the price-list sku, unit and product to each line, matched by its price key.
+    const skuFor = (description: string) => {
+      const door = Object.values(DOOR_SWEEP_TYPES).find((d) => d.sku && description === `Door sweep – ${d.label}`);
+      if (door?.sku) return door.sku;
+      const crawl = Object.values(CRAWL_DOOR_TYPES).find((d) => d.sku && description === d.label);
+      if (crawl?.sku) return crawl.sku;
+      return LINE_SKUS[description];
+    };
+    for (const item of items) {
+      const sku = skuFor(item.description);
+      if (!sku) continue;
+      item.sku = sku;
+      item.unit = prices[sku]?.unit;
+      item.productId = prices[sku]?.productId ?? null;
+    }
 
     setSaving(true);
     try {
@@ -195,6 +256,7 @@ export function ExclusionCalculator({
           propertyId: propertyId || null,
           title: "Exclusion Work Estimate",
           serviceType: serviceType === "RODENT_EXCLUSION" ? serviceType : "RODENT_EXCLUSION",
+          source: "exclusion-calculator",
           lineItems: items,
         }),
       });

@@ -104,6 +104,7 @@ export const ROLE_PERMISSIONS = {
     "payments:read",
     "payments:write",
     "api_keys:manage",
+    "products:write",
   ],
   ADMIN: [
     "customers:read",
@@ -125,6 +126,7 @@ export const ROLE_PERMISSIONS = {
     "settings:read",
     "payments:read",
     "payments:write",
+    "products:write",
   ],
   DISPATCHER: [
     "customers:read",

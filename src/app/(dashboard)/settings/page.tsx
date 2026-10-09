@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -187,6 +188,20 @@ export default async function SettingsPage({
           />
         </div>
       )}
+
+      {/* Price List */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Price List</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Products and prices used by the exclusion calculator and outside tools like the Roof Estimator.
+        </p>
+        <Link
+          href="/settings/price-list"
+          className="inline-flex items-center px-4 h-9 rounded-md text-sm font-medium border border-border bg-card hover:bg-muted transition-colors"
+        >
+          Open Price List →
+        </Link>
+      </div>
 
       {/* API Keys (owner only) */}
       {isOwner && (

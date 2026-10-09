@@ -5,12 +5,13 @@
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
-    "build": "bash scripts/migrate-deploy.sh && next build",
+    "build": "bash scripts/migrate-deploy.sh && tsx scripts/seed-products.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
     "db:status": "prisma migrate status",
+    "db:seed-products": "tsx scripts/seed-products.ts",
     "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts"
   },
   "prisma": {
